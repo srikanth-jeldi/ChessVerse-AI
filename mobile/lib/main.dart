@@ -417,6 +417,12 @@ class _SplashGateState extends State<SplashGate> {
     GoogleChatGate.onAuthenticated = _acceptChatGoogleLogin;
     LocalGameArchive.activityRevision.addListener(_handleBadgeProgress);
     _forceFreshWebLogin = consumeFreshWebLaunch();
+    // Email links select the invitation inbox; joining still requires explicit
+    // acceptance by the verified owner of the invited address on the server.
+    if (kIsWeb && Uri.base.queryParameters.containsKey('clubInvite')) {
+      _primaryDestination = 5;
+      _communitySection = 1;
+    }
     DailyReminderService.instance.playOpenRequests.addListener(
       _openPlayFromReminder,
     );

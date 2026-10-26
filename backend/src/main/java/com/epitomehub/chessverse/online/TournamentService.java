@@ -29,6 +29,7 @@ class TournamentService {
 
     @Transactional
     public void startDueTournaments() {
+        rescheduleUpcomingEvenings();
         List<UUID> due = jdbc.query("select id from chess_tournament where status='OPEN' and starts_at<=?",
                 (rs,row) -> rs.getObject(1, UUID.class), Timestamp.from(Instant.now()));
         due.forEach(this::startIfReady);
@@ -36,6 +37,7 @@ class TournamentService {
 
     @Transactional
     public void sendDueReminders() {
+        rescheduleUpcomingEvenings();
         Instant now = Instant.now();
         Instant cutoff = now.plus(java.time.Duration.ofHours(2));
         long slot = now.getEpochSecond() / 1800;
@@ -76,9 +78,9 @@ class TournamentService {
                 rs.getInt("participation_bonus"),rs.getString("status")));
         for (SeriesRow previous : terminal) {
             if (!"FINISHED".equals(previous.status) && !"CANCELLED".equals(previous.status)) continue;
-            Instant nextStart = previous.startsAt.plus(previous.cadenceDays, java.time.temporal.ChronoUnit.DAYS);
+            Instant nextStart = nextEveningStart(previous.seriesCode, previous.startsAt, previous.cadenceDays, Instant.now());
             while (!nextStart.isAfter(Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS))) {
-                nextStart = nextStart.plus(previous.cadenceDays, java.time.temporal.ChronoUnit.DAYS);
+                nextStart = nextEveningStart(previous.seriesCode, nextStart, previous.cadenceDays, Instant.now());
             }
             Instant nextEnd = nextStart.plus(java.time.Duration.between(previous.startsAt, previous.endsAt));
             jdbc.update("""
@@ -93,6 +95,54 @@ class TournamentService {
         }
     }
 
+    static java.time.ZoneId seriesZone(String series) {
+        String zone = switch (series) {
+            case "HYDERABAD_ROYAL" -> "Asia/Kolkata";
+            case "TOKYO_NEON" -> "Asia/Tokyo";
+            case "DUBAI_GOLD" -> "Asia/Dubai";
+            case "LONDON_CLASSIC" -> "Europe/London";
+            case "NEW_YORK_FINAL" -> "America/New_York";
+            default -> "UTC";
+        };
+        return java.time.ZoneId.of(zone);
+    }
+
+    @Transactional
+    public void rescheduleUpcomingEvenings() {
+        Instant now = Instant.now();
+        var upcoming = jdbc.query("""
+                select id,name,series_code,starts_at,ends_at from chess_tournament
+                where status='OPEN' and starts_at>? and series_code in
+                ('HYDERABAD_ROYAL','TOKYO_NEON','DUBAI_GOLD','LONDON_CLASSIC','NEW_YORK_FINAL')
+                order by id for update
+                """, (rs,n) -> new EveningRow(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),
+                rs.getTimestamp(4).toInstant(),rs.getTimestamp(5).toInstant()), Timestamp.from(now));
+        for (var event : upcoming) {
+            var zone = seriesZone(event.series());
+            var local = event.start().atZone(zone).withHour(19).withMinute(0).withSecond(0).withNano(0);
+            if (!local.toInstant().isAfter(now)) local = local.plusDays(1);
+            Instant start = local.toInstant();
+            if (start.equals(event.start())) continue;
+            Instant end = start.plus(java.time.Duration.between(event.start(),event.end()));
+            jdbc.update("update chess_tournament set starts_at=?,ends_at=? where id=?",Timestamp.from(start),Timestamp.from(end),event.id());
+            var players = jdbc.query("select player_id from chess_tournament_entry where tournament_id=? and active=true",
+                    (rs,n) -> rs.getObject(1,UUID.class),event.id());
+            String when = local.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a",java.util.Locale.UK));
+            for (UUID player : players) notifications.createOnce(player,"TOURNAMENT_RESCHEDULED",
+                    "evening:"+event.id()+":"+start,"Tournament time updated",
+                    event.name()+" now starts on "+when+" ("+zone+"). Open the tournament for your local time.","TOURNAMENT",event.id());
+        }
+    }
+
+    record EveningRow(UUID id, String name, String series, Instant start, Instant end) {}
+
+    static Instant nextEveningStart(String series, Instant previous, int cadence, Instant now) {
+        var next = previous.atZone(seriesZone(series)).plusDays(Math.max(1, cadence))
+                .withHour(19).withMinute(0).withSecond(0).withNano(0);
+        while (!next.toInstant().isAfter(now)) next = next.plusDays(Math.max(1, cadence));
+        return next.toInstant();
+    }
+
     @Transactional
     TournamentDtos.DetailDto detail(AuthenticatedPlayer player, UUID id) {
         Integer visible = jdbc.queryForObject("""
@@ -103,6 +153,7 @@ class TournamentService {
         if (visible == null || visible == 0) {
             throw new OnlineMatchException(HttpStatus.NOT_FOUND, "Tournament was not found.");
         }
+        rescheduleUpcomingEvenings();
         startIfReady(id);
         return load(player.id(), id);
     }
@@ -189,7 +240,7 @@ class TournamentService {
         match.tournamentName=jdbc.queryForObject(
                 "select name from chess_tournament where id=?",String.class,tournamentId);
         match.tournamentRound=tournamentRound;
-        match.status=OnlineMatchStatus.ACTIVE; match.startedAt=Instant.now(); match.turnStartedAt=match.startedAt; match.updatedAt=match.startedAt;
+        match.status=OnlineMatchStatus.ACTIVE; match.startedAt=Instant.now(); match.turnStartedAt=null; match.updatedAt=match.startedAt;
         // Both players must explicitly arrive through the match socket. Until
         // then they are considered absent, allowing the tournament monitor to
         // award a walkover instead of leaving the bracket ACTIVE forever.

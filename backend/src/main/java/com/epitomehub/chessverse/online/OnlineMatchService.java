@@ -27,10 +27,8 @@ public class OnlineMatchService {
     // minute to reconnect before awarding the game to the opponent.
     // 30-second reconnect window plus a final 15-second network allowance.
     static final Duration DISCONNECT_GRACE = Duration.ofSeconds(45);
-    // Keep tournament attendance and the client-visible reconnect countdown in
-    // lockstep. A five-minute server window with a 45-second UI countdown left
-    // players staring at 00:00 while the match was still active.
-    static final Duration TOURNAMENT_ATTENDANCE_GRACE = Duration.ofSeconds(45);
+    static final Duration TOURNAMENT_ATTENDANCE_GRACE = Duration.ofMinutes(5);
+    static final Duration TOURNAMENT_RECONNECT_GRACE = Duration.ofMinutes(2);
     static final Duration TOURNAMENT_ROUND_LIMIT = Duration.ofMinutes(15);
 
     private final OnlineMatchRepository matches;
@@ -239,6 +237,9 @@ public class OnlineMatchService {
         if (match.status != OnlineMatchStatus.ACTIVE) {
             throw new OnlineMatchException(HttpStatus.CONFLICT, "The match is not active.");
         }
+        if (match.tournamentName != null && match.turnStartedAt == null) {
+            throw new OnlineMatchException(HttpStatus.CONFLICT, "Waiting for both tournament players to enter the board.");
+        }
         if (match.moves.size() != expectedPly) {
             recordFairPlay(player.id(), match.id, "STALE_MOVE_BURST", 1,
                     "Client submitted an outdated ply; reconnect or concurrent input may be responsible.");
@@ -355,6 +356,8 @@ public class OnlineMatchService {
     @Transactional
     public OnlineDtos.MatchDto requestRematch(AuthenticatedPlayer player, UUID matchId) {
         OnlineMatch previous = requireParticipant(player.id(), matchId);
+        if (previous.tournamentName != null) throw new OnlineMatchException(HttpStatus.CONFLICT,
+                "Return to the tournament for your next pairing.");
         if (previous.status != OnlineMatchStatus.FINISHED) {
             throw new OnlineMatchException(HttpStatus.CONFLICT, "Finish the current match before requesting a rematch.");
         }
@@ -417,12 +420,21 @@ public class OnlineMatchService {
     public void markConnected(UUID matchId, UUID playerId) {
         OnlineMatch match = requireParticipant(playerId, matchId);
         if (match.status != OnlineMatchStatus.ACTIVE) return;
+        if (reconcileExpiredDisconnect(match, Instant.now())) {
+            matches.save(match);
+            return;
+        }
         if (match.whitePlayerId.equals(playerId)) {
             match.whiteDisconnectedAt = null;
         } else {
             match.blackDisconnectedAt = null;
         }
         match.updatedAt = Instant.now();
+        if (match.tournamentName != null && match.turnStartedAt == null
+                && match.whiteDisconnectedAt == null && match.blackDisconnectedAt == null) {
+            match.startedAt = match.updatedAt;
+            match.turnStartedAt = match.updatedAt;
+        }
         matches.save(match);
     }
 
@@ -465,16 +477,24 @@ public class OnlineMatchService {
     }
 
     static Duration disconnectGrace(OnlineMatch match) {
-        return match.tournamentName == null ? DISCONNECT_GRACE : TOURNAMENT_ATTENDANCE_GRACE;
+        return match.tournamentName == null ? DISCONNECT_GRACE
+                : match.turnStartedAt == null ? TOURNAMENT_ATTENDANCE_GRACE : TOURNAMENT_RECONNECT_GRACE;
     }
 
     private boolean reconcileExpiredDisconnect(OnlineMatch match, Instant now) {
         if (match.status != OnlineMatchStatus.ACTIVE) return false;
         Duration grace = disconnectGrace(match);
-        boolean whiteExpired = match.whiteDisconnectedAt != null
-                && !match.whiteDisconnectedAt.plus(grace).isAfter(now);
-        boolean blackExpired = match.blackDisconnectedAt != null
-                && !match.blackDisconnectedAt.plus(grace).isAfter(now);
+        // The check-in deadline belongs to the pairing, not to a reconnect.
+        Instant whiteAway = match.whiteDisconnectedAt;
+        Instant blackAway = match.blackDisconnectedAt;
+        if (match.tournamentName != null && match.turnStartedAt == null) {
+            if (whiteAway != null) whiteAway = match.startedAt;
+            if (blackAway != null) blackAway = match.startedAt;
+        }
+        boolean whiteExpired = whiteAway != null
+                && !whiteAway.plus(grace).isAfter(now);
+        boolean blackExpired = blackAway != null
+                && !blackAway.plus(grace).isAfter(now);
         if (!whiteExpired && !blackExpired) return false;
         if (whiteExpired && blackExpired) {
             if (match.tournamentName != null) {
@@ -696,7 +716,7 @@ public class OnlineMatchService {
         match.blackDisconnectedAt = null;
         match.finishedAt = Instant.now();
         match.updatedAt = match.finishedAt;
-        ratings.settle(match);
+        if (match.tournamentName == null || !match.moves.isEmpty()) ratings.settle(match);
         rewardPlayers(match);
         if (tournaments != null) tournaments.recordResult(match);
     }

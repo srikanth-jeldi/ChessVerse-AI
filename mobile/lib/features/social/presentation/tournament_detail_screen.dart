@@ -36,7 +36,6 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   bool busy = false;
   bool _openingMatch = false;
   Timer? _refreshTimer;
-  final Set<String> _openedMatches = <String>{};
 
   @override
   void initState() {
@@ -62,33 +61,30 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           detail = value;
           error = null;
         });
-        unawaited(_openReadyMatch(value));
       }
     } catch (exception) {
       if (mounted && !silent) setState(() => error = exception.toString());
     }
   }
 
-  Future<void> _openReadyMatch(TournamentDetailDto value) async {
+  Future<void> _openMatch(String matchId) async {
     if (_openingMatch || widget.onOpenMatch == null) return;
-    final TournamentPairingDto? ready = value.rounds
-        .expand((TournamentRoundDto round) => round.pairings)
-        .where(
-          (TournamentPairingDto pairing) =>
-              pairing.mine &&
-              pairing.status == 'ACTIVE' &&
-              pairing.matchId != null &&
-              !_openedMatches.contains(pairing.matchId),
-        )
-        .firstOrNull;
-    if (ready?.matchId == null) return;
-    _openingMatch = true;
-    _openedMatches.add(ready!.matchId!);
+    setState(() => _openingMatch = true);
     try {
-      await widget.onOpenMatch!(ready.matchId!);
+      await widget.onOpenMatch!(matchId);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: UiText('Unable to open your board. Please try again.'),
+          ),
+        );
+      }
     } finally {
-      _openingMatch = false;
-      if (mounted) unawaited(_load(silent: true));
+      if (mounted) {
+        setState(() => _openingMatch = false);
+        unawaited(_load(silent: true));
+      }
     }
   }
 
@@ -210,7 +206,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
               onToggle: _toggle,
               onEarnCoins: _earnCoins,
               onRefresh: _load,
-              onOpenMatch: widget.onOpenMatch,
+              onOpenMatch: _openingMatch ? null : _openMatch,
             ),
     );
   }
@@ -249,6 +245,33 @@ class TournamentDetailContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  if (detail.startsAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: UiText(
+                        'Starts at {0} (your local time)',
+                        values: [
+                          '${MaterialLocalizations.of(context).formatMediumDate(detail.startsAt!.toLocal())} '
+                              '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(detail.startsAt!.toLocal()))} '
+                              '${detail.startsAt!.toLocal().timeZoneName}',
+                        ],
+                      ),
+                    ),
+                  for (final pairing
+                      in detail.rounds
+                          .expand((r) => r.pairings)
+                          .where((p) => p.mine && p.status == 'ACTIVE'))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _PairingCard(
+                        pairing: pairing,
+                        onOpenMatch: onOpenMatch,
+                      ),
+                    ),
+                  const UiText(
+                    'Enter your board within 5 minutes of pairing. Clocks start when both players arrive. During play, reconnect within 2 minutes; your clock keeps running.',
+                  ),
+                  const SizedBox(height: 12),
                   _RegistrationPanel(
                     detail: detail,
                     busy: busy,
@@ -338,7 +361,7 @@ class _MyTournamentStatus extends StatelessWidget {
       return const _MyTournamentStatus(
         icon: Icons.sports_esports_rounded,
         title: 'YOUR MATCH IS READY',
-        body: 'Opening your tournament board now. You can also tap your highlighted pairing below at any time.',
+        body: 'Tap Enter / Resume game on your pairing. Return here between rounds; boards never open automatically.',
       );
     }
     return const _MyTournamentStatus(
@@ -365,7 +388,7 @@ class _MyTournamentStatus extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                title,
+                uiText(context, title),
                 style: const TextStyle(
                   color: Color(0xFFFFD66F),
                   fontWeight: FontWeight.w900,
@@ -373,7 +396,7 @@ class _MyTournamentStatus extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                body,
+                uiText(context, body),
                 style: const TextStyle(color: Color(0xFFC7D4DE), height: 1.35),
               ),
             ],
@@ -1197,7 +1220,7 @@ class _OfficialRules extends StatelessWidget {
       'Moves and clocks are server-authoritative; only legal moves are accepted.',
       'No engines, outside assistance, account sharing or intentional connection abuse.',
       'Keep a stable connection and return promptly if your network drops.',
-      'Disconnect grace is 45 seconds. One absent player loses; if both drop, the board is replayed.',
+      'Enter your board within 5 minutes of pairing. Clocks start when both players arrive. During play, reconnect within 2 minutes; your clock keeps running.',
     ];
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1244,7 +1267,7 @@ class _OfficialRules extends StatelessWidget {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
-                      rule,
+                      uiText(context, rule),
                       style: const TextStyle(
                         color: Color(0xFFC5D1DC),
                         height: 1.35,
@@ -1422,7 +1445,7 @@ class _PairingCard extends StatelessWidget {
   final Future<void> Function(String matchId)? onOpenMatch;
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: pairing.matchId == null || onOpenMatch == null
+    onTap: !pairing.mine || pairing.matchId == null || onOpenMatch == null
         ? null
         : () => onOpenMatch!(pairing.matchId!),
     borderRadius: BorderRadius.circular(14),
@@ -1487,6 +1510,24 @@ class _PairingCard extends StatelessWidget {
                 ? 'BYE · Advances automatically'
                 : 'Awaiting opponent',
           ),
+          if (pairing.mine && pairing.matchId != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onOpenMatch == null
+                    ? null
+                    : () => onOpenMatch!(pairing.matchId!),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: UiText(
+                  pairing.status == 'ACTIVE'
+                      ? 'Enter / Resume game'
+                      : 'View result',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     ),

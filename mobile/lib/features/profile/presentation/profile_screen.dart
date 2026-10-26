@@ -251,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 18),
           if (_tournamentAchievements.isNotEmpty) ...<Widget>[
-            _TournamentTrophies(achievements: _tournamentAchievements),
+            TournamentTrophies(achievements: _tournamentAchievements),
             const SizedBox(height: 18),
           ],
           const _SectionLabel('DEVICE ACTIVITY'),
@@ -577,9 +577,27 @@ class _RewardInfoTile extends StatelessWidget {
   );
 }
 
-class _TournamentTrophies extends StatelessWidget {
-  const _TournamentTrophies({required this.achievements});
+class TournamentTrophies extends StatelessWidget {
+  const TournamentTrophies({super.key, required this.achievements});
   final List<TournamentAchievementDto> achievements;
+
+  static String? trophyAsset(TournamentAchievementDto achievement) {
+    final identity = '${achievement.badgeCode} ${achievement.tournamentName}'
+        .toLowerCase();
+    for (final entry in const {
+      'hyderabad': 'hyderabad-royal',
+      'dubai': 'dubai-gold',
+      'tokyo': 'tokyo-neon',
+      'london': 'london-classic',
+      'new_york': 'new-york-grand-final',
+      'new york': 'new-york-grand-final',
+    }.entries) {
+      if (identity.contains(entry.key)) {
+        return 'assets/branding/trophy-${entry.value}-v1.webp';
+      }
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -589,43 +607,41 @@ class _TournamentTrophies extends StatelessWidget {
     child: Column(
       children: achievements.map((achievement) {
         final champion = achievement.placement == 'CHAMPION';
+        final trophy = champion ? trophyAsset(achievement) : null;
         return ListTile(
           key: ValueKey<String>(
             'tournament-trophy-${achievement.tournamentId}',
           ),
           contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            backgroundColor: champion
-                ? const Color(0xFF6A4A0C)
-                : const Color(0xFF29465B),
-            child: Icon(
-              champion
-                  ? Icons.emoji_events_rounded
-                  : Icons.workspace_premium_rounded,
-              color: champion
-                  ? const Color(0xFFFFD66F)
-                  : const Color(0xFFC8D4DE),
-            ),
-          ),
+          leading: trophy != null
+              ? Image.asset(trophy, width: 56, height: 56, fit: BoxFit.contain)
+              : CircleAvatar(
+                  backgroundColor: champion
+                      ? const Color(0xFF6A4A0C)
+                      : const Color(0xFF29465B),
+                  child: Icon(
+                    champion
+                        ? Icons.emoji_events_rounded
+                        : Icons.workspace_premium_rounded,
+                    color: champion
+                        ? const Color(0xFFFFD66F)
+                        : const Color(0xFFC8D4DE),
+                  ),
+                ),
           title: Text(
             achievement.tournamentName,
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           subtitle: UiText(
-            champion ? 'Champion' : 'Runner-up',
+            switch (achievement.placement) {
+              'CHAMPION' => 'Champion',
+              'RUNNER_UP' => 'Runner-up',
+              _ => 'Participant',
+            },
             style: TextStyle(
               color: champion
                   ? const Color(0xFFFFD66F)
                   : const Color(0xFFB7C6D1),
-            ),
-          ),
-          trailing: Text(
-            achievement.badgeCode.replaceAll('_', ' '),
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: Color(0xFF62E4D1),
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
             ),
           ),
         );

@@ -997,7 +997,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       setState(() {
         final OnlineMatchDto? online = _onlineMatch;
         if (_gameMode == GameMode.online) {
-          if (online == null || !online.isActive) return;
+          if (online == null ||
+              !online.isActive ||
+              online.awaitingTournamentPlayers) {
+            return;
+          }
           if (online.whiteToMove) {
             _whiteSeconds = math.max(0, _whiteSeconds - 1);
           } else {
@@ -1172,13 +1176,56 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
+  bool _allowTournamentExit = false;
+  bool _confirmingTournamentExit = false;
+
+  Future<void> _confirmTournamentExit() async {
+    if (_confirmingTournamentExit) return;
+    _confirmingTournamentExit = true;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        scrollable: true,
+        title: const UiText('Return to tournament?'),
+        content: const UiText(
+          'Your game stays in the tournament. Use Enter / Resume game to return. During play your clock keeps running and you have 2 minutes to reconnect.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const UiText('Keep playing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const UiText('Return to tournament'),
+          ),
+        ],
+      ),
+    );
+    _confirmingTournamentExit = false;
+    if (leave == true && mounted) {
+      setState(() => _allowTournamentExit = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pop();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool tournamentGuard =
+        _onlineMatch?.isTournamentMatch == true &&
+        _onlineMatch?.isActive == true &&
+        !_allowTournamentExit;
     final bool dismissResultFirst =
-        _signedIn && _gameResultTitle != null && _resultVisible;
+        _signedIn &&
+        _gameResultTitle != null &&
+        _resultVisible &&
+        _onlineMatch?.isTournamentMatch != true;
     return PopScope(
       canPop:
           !dismissResultFirst &&
+          !tournamentGuard &&
           (_gameMode != GameMode.computer ||
               _allowComputerExit ||
               _draftConflict),
@@ -1186,6 +1233,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         if (didPop) return;
         if (dismissResultFirst) {
           setState(() => _resultVisible = false);
+          return;
+        }
+        if (tournamentGuard) {
+          unawaited(_confirmTournamentExit());
           return;
         }
         unawaited(_pauseComputerAndLeave());
@@ -1219,6 +1270,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _leaveGame() {
+    if (_onlineMatch?.isTournamentMatch == true &&
+        _onlineMatch?.isActive == true) {
+      unawaited(_confirmTournamentExit());
+      return;
+    }
     if (_gameMode == GameMode.computer) {
       unawaited(_pauseComputerAndLeave());
     } else {
@@ -1489,7 +1545,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       puzzleComplete:
                           _gameMode == GameMode.puzzle &&
                           _gameResultTitle == 'Puzzle complete',
-                      onNextPuzzle: _startNextPuzzle,
+                      onNextPuzzle: _startGameAfterResult,
                       onBackToAcademy: () => Navigator.of(context).pop(),
                     );
               final bool yourTurn = switch (_gameMode) {
@@ -1872,13 +1928,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 ? _onlineMatch?.coinsEarned
                                 : null,
                             onNewGame: _startGameAfterResult,
-                            newGameLabel: _gameMode == GameMode.puzzle
+                            newGameLabel:
+                                _onlineMatch?.isTournamentMatch == true
+                                ? UiCopy.text('Return to tournament')
+                                : _gameMode == GameMode.puzzle
                                 ? coachExtraText(
                                     'nextPuzzle',
                                     _coachLanguageCode,
                                   )
                                 : null,
-                            onRematch: _gameMode == GameMode.online
+                            onRematch:
+                                _gameMode == GameMode.online &&
+                                    _onlineMatch?.isTournamentMatch != true
                                 ? () async {
                                     await _showPostMatchAdIfEligible();
                                     await _maybeRequestStoreReview();
@@ -1963,6 +2024,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             winnerAtTop: true,
                             title: _resultDisplayTitle(),
                             showTitle: false,
+                          ),
+                        ),
+                      if (_gameResultTitle == 'Draw' && !_resultVisible)
+                        Positioned(
+                          top: wide ? wideHeaderHeight + 8 : 8,
+                          left: 12,
+                          right: wide ? widePanelWidth + 50 : 12,
+                          child: DrawResultBanner(
+                            reason: _gameResultDetail ?? '',
+                            onViewResult: () =>
+                                setState(() => _resultVisible = true),
                           ),
                         ),
                       if (_moveQualityText != null &&
@@ -4310,6 +4382,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _confirmNewGame() async {
+    if (_onlineMatch?.isTournamentMatch == true) {
+      _leaveGame();
+      return;
+    }
     if (_gameResultTitle != null && !_isTacticsMode) {
       await _startGameAfterResult();
       return;
@@ -4486,7 +4562,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             ? null
                             : _startGameAfterResult,
                         child: Text(
-                          text('New game'),
+                          _onlineMatch?.isTournamentMatch == true
+                              ? UiCopy.text('Return to tournament')
+                              : text('New game'),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -4517,6 +4595,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startGameAfterResult() async {
+    if (_onlineMatch?.isTournamentMatch == true) {
+      Navigator.of(context).maybePop();
+      return;
+    }
     if (_postGameActionInFlight) return;
     setState(() => _postGameActionInFlight = true);
     _resultCelebrationTimer?.cancel();
@@ -4546,6 +4628,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _resultSaved = true;
+    if (!widget.spectatorMode &&
+        _gameMode == GameMode.puzzle &&
+        _gameResultTitle == 'Puzzle complete') {
+      final attempt = 'puzzle:$_draftId';
+      unawaited(
+        PostMatchAdService.instance.recordPuzzleCompletion(attempt).then((due) {
+          if (due && mounted && attempt == 'puzzle:$_draftId') {
+            unawaited(PostMatchAdService.instance.prepareForMatchResult());
+          }
+        }),
+      );
+    }
     if (!widget.spectatorMode &&
         (_gameMode == GameMode.computer ||
             _gameMode == GameMode.online ||
@@ -4637,6 +4731,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _showPostMatchAdIfEligible({bool puzzleRetry = false}) async {
     if (_gameResultTitle == null || widget.spectatorMode) return;
+    if (_gameMode == GameMode.puzzle && _gameResultTitle == 'Puzzle complete') {
+      final attempt = 'puzzle:$_draftId';
+      if (await PostMatchAdService.instance.recordPuzzleCompletion(attempt) &&
+          mounted) {
+        await PostMatchAdService.instance.showAfterMatch(attempt);
+      }
+      return;
+    }
     if (_gameMode != GameMode.computer &&
         _gameMode != GameMode.online &&
         !(puzzleRetry && _isTacticsMode && _puzzleAttemptWasMissed)) {
@@ -5541,6 +5643,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!match.isActive) {
       return 'Room ${match.roomCode}: waiting for your opponent.';
     }
+    if (match.awaitingTournamentPlayers) {
+      return UiCopy.text(
+        'Waiting for both players. The chess clock has not started.',
+      );
+    }
     if (match.opponentDisconnected) {
       return 'Opponent left. You win in ${match.disconnectSecondsRemaining}s if they do not reconnect.';
     }
@@ -6143,7 +6250,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // The server result is stored in chess colour order (White-Black), while
     // this dialog is explicitly written from the signed-in player's view.
     // Keep both score lines in the same player-first perspective.
-    return '${match.perspectiveScoreLabel} • $reason$ratingText$coinText';
+    return '$reason$ratingText$coinText';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {

@@ -190,6 +190,8 @@ final class OnlineDtos {
         private static Instant disconnectDeadline(OnlineMatch match) {
             Instant disconnectedAt = match.whiteDisconnectedAt != null
                     ? match.whiteDisconnectedAt : match.blackDisconnectedAt;
+            if (disconnectedAt != null && match.tournamentName != null && match.turnStartedAt == null
+                    && match.status == OnlineMatchStatus.ACTIVE) disconnectedAt = match.startedAt;
             return disconnectedAt == null
                     ? null : disconnectedAt.plus(OnlineMatchService.disconnectGrace(match));
         }

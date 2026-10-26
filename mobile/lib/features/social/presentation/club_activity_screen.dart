@@ -1,4 +1,5 @@
 import 'club_social_dialog.dart';
+import '../../../core/app_ui_localizations.dart';
 import '../../../core/club_social_localizations.dart';
 import 'club_streak_card.dart';
 export 'club_streak_card.dart';
@@ -507,8 +508,8 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
                             clubId: widget.club.id,
                           ),
                         );
-                        if (sent == true) {
-                          _message(clubSocialText('outgoing', language));
+                        if (sent == true && context.mounted) {
+                          _message(uiText(context, 'Invitation requested.'));
                         }
                       },
                     ),

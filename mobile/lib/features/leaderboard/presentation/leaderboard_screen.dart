@@ -35,7 +35,7 @@ class LeaderboardScreen extends StatefulWidget {
   final VoidCallback? onProfile;
   final VoidCallback? onCommunity;
   final VoidCallback? onCollection;
-  final ValueChanged<OnlineMatchDto>? onOpenMatch;
+  final Future<void> Function(OnlineMatchDto)? onOpenMatch;
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -149,9 +149,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => SocialHubScreen(
-                  onOpenMatch: (OnlineMatchDto match) {
-                    Navigator.of(context).pop();
-                    widget.onOpenMatch?.call(match);
+                  onOpenMatch: (OnlineMatchDto match) async {
+                    await widget.onOpenMatch?.call(match);
                   },
                 ),
               ),

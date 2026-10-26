@@ -315,11 +315,65 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void tournamentWaitsForBothPlayersWithoutSpendingClock() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.turnStartedAt = null;
+        match.startedAt = java.time.Instant.now().minusSeconds(60);
+        match.whiteDisconnectedAt = match.startedAt;
+        match.blackDisconnectedAt = match.startedAt;
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+        long whiteClock = match.whiteTimeMs;
+        service.markConnected(match.id, white.id());
+        assertNull(match.turnStartedAt);
+        assertThrows(OnlineMatchException.class, () -> service.move(white, match.id, "e2e4", 0));
+        assertEquals(whiteClock, service.get(white, match.id).whiteTimeMs());
+        service.markConnected(match.id, black.id());
+        assertNotNull(match.turnStartedAt);
+        assertEquals(whiteClock, match.whiteTimeMs);
+    }
+
+    @Test
+    void tournamentCheckInDeadlineDoesNotRestartOnReconnection() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.turnStartedAt = null;
+        match.startedAt = java.time.Instant.now().minusSeconds(301);
+        match.whiteDisconnectedAt = null;
+        match.blackDisconnectedAt = java.time.Instant.now();
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+        service.markConnected(match.id, black.id());
+        assertEquals(OnlineMatchStatus.FINISHED, match.status);
+        assertEquals("1-0", match.result);
+        org.mockito.Mockito.verify(ratings, org.mockito.Mockito.never()).settle(match);
+    }
+
+    @Test
+    void tournamentDoesNotForfeitAfterFortyFiveSeconds() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
+        service.finishExpiredDisconnects();
+        assertEquals(OnlineMatchStatus.ACTIVE, match.status);
+    }
+
+    @Test
+    void circuitScheduleUsesCityEveningAcrossDaylightSaving() {
+        var next = TournamentService.nextEveningStart("HYDERABAD_ROYAL",
+            java.time.Instant.parse("2026-10-20T19:00:00Z"), 7, java.time.Instant.parse("2026-10-21T00:00:00Z"));
+        assertEquals(java.time.Instant.parse("2026-10-28T13:30:00Z"), next);
+        var london = TournamentService.nextEveningStart("LONDON_CLASSIC",
+            java.time.Instant.parse("2026-10-20T18:00:00Z"), 7, java.time.Instant.parse("2026-10-21T00:00:00Z"));
+        assertEquals(java.time.Instant.parse("2026-10-27T19:00:00Z"), london);
+    }
+
+    @Test
     void presentTournamentPlayerReceivesWalkoverAfterAttendanceWindow() {
         OnlineMatch match = activeMatch();
         match.tournamentName = "Hyderabad Royal Cup";
         match.whiteDisconnectedAt = null;
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(121);
         when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
 
         service.finishExpiredDisconnects();
@@ -333,7 +387,7 @@ class OnlineMatchServiceTest {
     void pollingTournamentMatchAtZeroImmediatelyAwardsWalkover() {
         OnlineMatch match = activeMatch();
         match.tournamentName = "Hyderabad Royal Cup";
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(121);
         when(repository.lockById(match.id)).thenReturn(Optional.of(match));
 
         OnlineDtos.MatchDto result = service.get(white, match.id);
@@ -364,8 +418,8 @@ class OnlineMatchServiceTest {
     void bothAbsentTournamentPlayersAreDoubleForfeited() {
         OnlineMatch match = activeMatch();
         match.tournamentName = "Hyderabad Royal Cup";
-        match.whiteDisconnectedAt = java.time.Instant.now().minusSeconds(46);
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        match.whiteDisconnectedAt = java.time.Instant.now().minusSeconds(121);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(121);
         when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
 
         service.finishExpiredDisconnects();

@@ -8,6 +8,27 @@ import 'package:http_parser/http_parser.dart';
 import '../../../core/config/app_config.dart';
 import 'social_api.dart';
 
+class ClubInvitationDto {
+  const ClubInvitationDto({
+    required this.id,
+    required this.clubId,
+    required this.clubName,
+    required this.inviterName,
+    required this.expiresAt,
+  });
+  final String id, clubId, clubName, inviterName;
+  final DateTime? expiresAt;
+  factory ClubInvitationDto.fromJson(Map<String, dynamic> json) =>
+      ClubInvitationDto(
+        id: json['id'] as String,
+        clubId: json['clubId'] as String,
+        clubName: json['clubName'] as String,
+        inviterName: json['inviterName'] as String,
+        expiresAt: DateTime.tryParse(json['expiresAt'] as String? ?? '')
+            ?.toLocal(),
+      );
+}
+
 class ClubDto {
   const ClubDto({
     required this.id,
@@ -432,6 +453,33 @@ class CommunityApi {
       'POST',
       '/api/v1/community/clubs/$clubId/invites',
       body: {'identity': identity},
+    );
+  }
+
+  Future<List<ClubInvitationDto>> clubInvitations(String token) async {
+    final data = await _request(
+      token,
+      'GET',
+      '/api/v1/community/clubs/invitations',
+    );
+    return (data['invitations'] as List? ?? [])
+        .map(
+          (v) =>
+              ClubInvitationDto.fromJson(Map<String, dynamic>.from(v as Map)),
+        )
+        .toList();
+  }
+
+  Future<void> respondToClubInvitation(
+    String token,
+    String id, {
+    required bool accept,
+  }) async {
+    await _request(
+      token,
+      'POST',
+      '/api/v1/community/clubs/invitations/$id/respond',
+      body: {'accept': accept},
     );
   }
 

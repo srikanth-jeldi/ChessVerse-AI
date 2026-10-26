@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_ui_localizations.dart';
+
 import '../../../core/club_localizations.dart';
 import '../../../core/club_social_localizations.dart';
 import '../data/community_api.dart';
@@ -55,8 +57,8 @@ class _ClubSocialDialogState extends State<ClubSocialDialog> {
         );
       }
       if (mounted) Navigator.pop(context, result);
-    } on SocialException {
-      if (mounted) setState(() => _error = clubText('error', widget.language));
+    } on SocialException catch (error) {
+      if (mounted) setState(() => _error = UiCopy.text(error.message));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -73,9 +75,20 @@ class _ClubSocialDialogState extends State<ClubSocialDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (widget.clubId != null) ...[
+            const UiText(
+              'Invite anyone by email, even if they do not have ChessVerseAI yet. They sign in with that email and accept in Community > Clubs.',
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _identity,
             enabled: !_busy,
+            autocorrect: widget.clubId == null,
+            enableSuggestions: widget.clubId == null,
+            keyboardType: widget.clubId == null
+                ? TextInputType.text
+                : TextInputType.emailAddress,
             maxLength: widget.clubId == null ? 80 : 254,
             decoration: InputDecoration(
               label: Text(s(widget.clubId == null ? 'name' : 'identity')),

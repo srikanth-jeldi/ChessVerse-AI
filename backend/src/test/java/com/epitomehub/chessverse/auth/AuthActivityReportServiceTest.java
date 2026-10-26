@@ -17,6 +17,27 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 class AuthActivityReportServiceTest {
     @Test
+    void facebookWithoutEmailIsReportedAsSuccessfulLoginNotInvalidContact() throws Exception {
+        var service = new AuthActivityReportService(mock(JdbcTemplate.class),
+                mock(AuthActivityEventRepository.class), mock(JavaMailSender.class),
+                "from@example.com", "owner@example.com", true);
+        var row = new AuthActivityReportService.AuthActivityRow(java.util.UUID.randomUUID(),
+                java.sql.Timestamp.from(java.time.Instant.now()), "LOGIN", "FACEBOOK",
+                "facebook_123@identity.chessverse.invalid", "facebook_123", "Player", true,
+                "Test device", "Android", "Unknown", "UNKNOWN", "IN", "1.3.48", "test", false);
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(service.workbook(java.util.List.of(row))))) {
+            var sheet = workbook.getSheet("Login activity");
+            assertThat(sheet.getRow(1).getCell(1).getStringCellValue()).isEqualTo("LOGIN");
+            assertThat(sheet.getRow(1).getCell(3).getStringCellValue()).isEmpty();
+            assertThat(sheet.getRow(1).getCell(17).getStringCellValue()).isEqualTo("Not shared by Facebook");
+        }
+        assertThat(AuthActivityReportService.reportEmail("real@example.com")).isEqualTo("real@example.com");
+        assertThat(AuthActivityReportService.emailAvailability("real@example.com", "FACEBOOK")).isEqualTo("Provided");
+        assertThat(AuthActivityReportService.emailAvailability(null, "GUEST")).isEqualTo("Not provided");
+    }
+
+    @Test
     void emptyPendingRowsNeverCreateOrSendMail() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         JavaMailSender sender = mock(JavaMailSender.class);

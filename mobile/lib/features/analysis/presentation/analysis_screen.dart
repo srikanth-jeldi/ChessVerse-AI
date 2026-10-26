@@ -1364,7 +1364,7 @@ class _PremiumGameCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: _StatusPill(
+                  child: AnalysisReportStatus(
                     game.moveReviews.isEmpty
                         ? _d(context, 'latestEmpty')
                         : _d(context, 'latestReport'),
@@ -1384,10 +1384,13 @@ class _PremiumGameCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    _StatusPill(
-                      game.moveReviews.isEmpty
-                          ? _d(context, 'latestEmpty')
-                          : _d(context, 'latestReport'),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: AnalysisReportStatus(
+                        game.moveReviews.isEmpty
+                            ? _d(context, 'latestEmpty')
+                            : _d(context, 'latestReport'),
+                      ),
                     ),
                   ],
                 ),
@@ -1401,32 +1404,34 @@ class _PremiumGameCard extends StatelessWidget {
                     '${game.playedAt.day}/${game.playedAt.month}/${game.playedAt.year}',
                   ),
                   _Meta(Icons.bolt_rounded, game.mode),
-                  _Meta(
-                    Icons.query_stats_rounded,
-                    '${report.accuracy}% ${_d(context, 'accuracy')}',
-                  ),
+                  if (game.moveReviews.isNotEmpty)
+                    _Meta(
+                      Icons.query_stats_rounded,
+                      '${report.accuracy}% ${_d(context, 'accuracy')}',
+                    ),
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                narrative(report.headline),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFFB7CCE3)),
-              ),
+              if (game.moveReviews.isNotEmpty)
+                Text(
+                  narrative(report.headline),
+                  style: const TextStyle(color: Color(0xFFB7CCE3)),
+                ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: <Widget>[
-                  _OutlineTag(
-                    Icons.lightbulb_rounded,
-                    '${game.moveReviews.length} ${_d(context, 'movesReviewed')}',
-                  ),
-                  _OutlineTag(
-                    Icons.warning_amber_rounded,
-                    '$mistakes ${CoachLocalizations(_AnalysisLocale.of(context)).text('trainMistakes')}',
-                  ),
+                  if (game.moveReviews.isNotEmpty)
+                    _OutlineTag(
+                      Icons.lightbulb_rounded,
+                      '${game.moveReviews.length} ${_d(context, 'movesReviewed')}',
+                    ),
+                  if (game.moveReviews.isNotEmpty)
+                    _OutlineTag(
+                      Icons.warning_amber_rounded,
+                      '$mistakes ${CoachLocalizations(_AnalysisLocale.of(context)).text('trainMistakes')}',
+                    ),
                   FilledButton.icon(
                     onPressed: onReview,
                     icon: const Icon(Icons.arrow_forward_rounded),
@@ -1534,23 +1539,24 @@ class _Signal extends StatelessWidget {
   );
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill(this.label);
+class AnalysisReportStatus extends StatelessWidget {
+  const AnalysisReportStatus(this.label, {super.key});
   final String label;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     decoration: BoxDecoration(
       color: const Color(0x3312D69C),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: const Color(0xFF3DD7A7)),
     ),
     child: Text(
       label,
       style: const TextStyle(
-        color: Color(0xFF62E6BC),
-        fontSize: 9,
-        fontWeight: FontWeight.w900,
+        color: Color(0xFFB9FFE6),
+        fontSize: 16,
+        height: 1.4,
+        fontWeight: FontWeight.w600,
       ),
     ),
   );

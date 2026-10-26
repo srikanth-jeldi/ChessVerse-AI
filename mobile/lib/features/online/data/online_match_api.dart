@@ -100,7 +100,8 @@ class OnlineMatchDto {
   bool get isActive => status == 'ACTIVE';
   int get plyCount => moves.length;
   bool get whiteToMove => activeColor == 'WHITE';
-  bool get isYourTurn => isActive && activeColor == yourColor;
+  bool get awaitingTournamentPlayers => isTournamentMatch && isActive && turnStartedAt == null;
+  bool get isYourTurn => isActive && !awaitingTournamentPlayers && activeColor == yourColor;
   String get scoreLabel => switch (result) {
     '1-0' => '1 - 0',
     '0-1' => '0 - 1',
@@ -127,7 +128,7 @@ class OnlineMatchDto {
     final DateTime reference = serverNow ?? DateTime.now().toUtc();
     if (deadline == null) return 0;
     return ((deadline.difference(reference).inMilliseconds + 999) ~/ 1000)
-        .clamp(0, 45);
+        .clamp(0, isTournamentMatch ? 300 : 45);
   }
 
   factory OnlineMatchDto.fromJson(Map<String, dynamic> json) {

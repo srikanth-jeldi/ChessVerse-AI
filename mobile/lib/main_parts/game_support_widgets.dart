@@ -1,5 +1,85 @@
 part of '../main.dart';
 
+/// A persistent terminal state, separate from temporary move feedback.
+class DrawResultBanner extends StatelessWidget {
+  const DrawResultBanner({
+    super.key,
+    required this.reason,
+    required this.onViewResult,
+  });
+
+  final String reason;
+  final VoidCallback onViewResult;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Material(
+      color: const Color(0xFF102B3E),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFFFD166)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onViewResult,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.handshake_outlined, color: Color(0xFFFFD166)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Wrap(
+                      spacing: 12,
+                      children: const <Widget>[
+                        UiText(
+                          'Draw',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '½ – ½',
+                          style: TextStyle(
+                            color: Color(0xFFFFD166),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (reason.isNotEmpty)
+                      UiText(
+                        reason,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    const UiText(
+                      'View result',
+                      style: TextStyle(color: Color(0xFFFFD166), fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class MoveHistorySheet extends StatelessWidget {
   const MoveHistorySheet({required this.moves, super.key});
 
@@ -666,7 +746,7 @@ class OnlineReconnectCountdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool finalising = secondsRemaining <= 0;
     final String countdown =
-        '00:${secondsRemaining.clamp(0, 60).toString().padLeft(2, '0')}';
+        '${(secondsRemaining.clamp(0, 300) ~/ 60).toString().padLeft(2, '0')}:${(secondsRemaining.clamp(0, 300) % 60).toString().padLeft(2, '0')}';
     return IgnorePointer(
       child: Center(
         child: Semantics(

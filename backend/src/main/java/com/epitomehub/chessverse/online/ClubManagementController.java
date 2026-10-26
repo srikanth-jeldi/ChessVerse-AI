@@ -14,8 +14,9 @@ class ClubManagementController {
     private final PlayerAuthenticationService auth;
     private final ClubManagementService clubs;
     private final SocialService social;
-    ClubManagementController(PlayerAuthenticationService auth, ClubManagementService clubs, SocialService social) {
-        this.auth = auth; this.clubs = clubs; this.social = social;
+    private final ClubEmailInvitationService emailInvitations;
+    ClubManagementController(PlayerAuthenticationService auth, ClubManagementService clubs, SocialService social, ClubEmailInvitationService emailInvitations) {
+        this.auth = auth; this.clubs = clubs; this.social = social; this.emailInvitations = emailInvitations;
     }
     record CreateRequest(@NotBlank @Size(max=80) String name, @Size(max=240) String description) {}
     record InviteRequest(@NotBlank @Size(max=254) String identity) {}
@@ -26,8 +27,23 @@ class ClubManagementController {
     @PostMapping("/{clubId}/invites")
     Map<String, String> invite(@RequestHeader("Authorization") String token, @PathVariable UUID clubId,
                               @Valid @RequestBody InviteRequest request) {
-        clubs.invite(auth.requireBearer(token), clubId, request.identity());
+        var player = auth.requireBearer(token);
+        if (request.identity().trim().contains("@") && !request.identity().trim().startsWith("@")) {
+            emailInvitations.invite(player, clubId, request.identity());
+            return Map.of("status", "queued");
+        }
+        clubs.invite(player, clubId, request.identity());
         return Map.of("status", "sent");
+    }
+    @GetMapping("/invitations")
+    Map<String, Object> invitations(@RequestHeader("Authorization") String token) {
+        return Map.of("invitations", emailInvitations.incoming(auth.requireBearer(token)));
+    }
+    record RespondInvitation(boolean accept) {}
+    @PostMapping("/invitations/{id}/respond")
+    Map<String, Object> respondInvitation(@RequestHeader("Authorization") String token, @PathVariable UUID id,
+                                         @RequestBody RespondInvitation request) {
+        return Map.of("clubId", emailInvitations.respond(auth.requireBearer(token), id, request.accept()));
     }
     @GetMapping("/{clubId}/challenges")
     Map<String, Object> challenges(@RequestHeader("Authorization") String token, @PathVariable UUID clubId) {

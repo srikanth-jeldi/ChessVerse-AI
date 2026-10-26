@@ -48,6 +48,30 @@ class PostMatchAdService {
   bool _stateLoaded = false;
   final AppPreferences _preferences = const AppPreferences();
   final Set<String> _handledMatches = <String>{};
+  final Map<String, Future<bool>> _puzzleCompletions = {};
+  Future<void> _puzzleQueue = Future<void>.value();
+
+  /// Count each solved attempt once, persist across launches, and offer an ad
+  /// only at every third completion. Display still obeys the shared ad caps.
+  Future<bool> recordPuzzleCompletion(String attemptId) =>
+      _puzzleCompletions.putIfAbsent(attemptId, () {
+        final result = Completer<bool>();
+        _puzzleQueue = _puzzleQueue.then((_) async {
+          try {
+            final raw = await _preferences.readString(
+              'ads.puzzle.completions',
+              fallback: '0',
+            );
+            final count = ((int.tryParse(raw) ?? 0) % 3 + 1) % 3;
+            await _preferences.writeString('ads.puzzle.completions', '$count');
+            result.complete(count == 0);
+          } catch (_) {
+            // Storage failure must never prevent the next puzzle.
+            result.complete(false);
+          }
+        });
+        return result.future;
+      });
 
   bool get supported =>
       AdSdkInitializer.supported &&

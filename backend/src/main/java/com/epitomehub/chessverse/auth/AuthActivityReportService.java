@@ -159,7 +159,8 @@ class AuthActivityReportService {
             String[] headers = {"Time (IST)", "Event", "Method", "Email", "Username", "@Handle",
                     "Display name", "Verified", "New device", "Device manufacturer/model",
                     "Platform / OS / browser", "App version", "Reported country/region (unverified)",
-                    "Installation fingerprint", "Device region (locale)", "Country source", "Client type"};
+                    "Installation fingerprint", "Device region (locale)", "Country source", "Client type",
+                    "Email availability"};
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             CellStyle headerStyle = workbook.createCellStyle();
@@ -173,11 +174,12 @@ class AuthActivityReportService {
             for (AuthActivityRow value : rows) {
                 Row row = sheet.createRow(index++);
                 String[] cells = {REPORT_TIME.format(value.createdAt().toInstant()), value.eventType(),
-                        value.authMethod(), value.email(), value.username(), "@" + value.username(),
+                        value.authMethod(), reportEmail(value.email()), value.username(), "@" + value.username(),
                         value.displayName(), value.verified() ? "Yes" : "No",
                         value.newDevice() ? "Yes" : "No", value.deviceName(), value.clientPlatform(),
                         value.appVersion(), value.countryCode(), value.installationFingerprint(),
-                        value.deviceRegion(), value.countrySource(), clientType(value.clientPlatform(), value.deviceName())};
+                        value.deviceRegion(), value.countrySource(), clientType(value.clientPlatform(), value.deviceName()),
+                        emailAvailability(value.email(), value.authMethod())};
                 for (int column = 0; column < cells.length; column++) {
                     row.createCell(column).setCellValue(cells[column] == null ? "" : cells[column]);
                 }
@@ -189,6 +191,18 @@ class AuthActivityReportService {
             workbook.write(output);
             return output.toByteArray();
         }
+    }
+
+    // OAuth can authenticate a player without providing a deliverable email.
+    // Keep the internal identity in storage, never present it as contact data.
+    static String reportEmail(String email) {
+        if (email == null || email.trim().toLowerCase(java.util.Locale.ROOT).endsWith(".invalid")) return "";
+        return email;
+    }
+
+    static String emailAvailability(String email, String method) {
+        if (!reportEmail(email).isBlank()) return "Provided";
+        return "facebook".equalsIgnoreCase(method) ? "Not shared by Facebook" : "Not provided";
     }
 
     // Client-reported metadata describes the client; it is not verified identity.

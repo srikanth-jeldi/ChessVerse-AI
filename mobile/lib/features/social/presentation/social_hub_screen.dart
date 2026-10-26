@@ -1,6 +1,7 @@
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'club_social_dialog.dart';
+import 'club_invitations_panel.dart';
 import '../../../core/club_social_localizations.dart';
 
 import 'dart:async';
@@ -36,7 +37,7 @@ class SocialHubScreen extends StatefulWidget {
     this.initialSection = 0,
     super.key,
   });
-  final ValueChanged<OnlineMatchDto>? onOpenMatch;
+  final Future<void> Function(OnlineMatchDto)? onOpenMatch;
   final SocialHubDto? previewHub;
   final int initialSection;
   @override
@@ -970,7 +971,7 @@ class _CommunitySection extends StatelessWidget {
   final CommunityApi api;
   final String token;
   final VoidCallback onFindFriends;
-  final ValueChanged<OnlineMatchDto>? onOpenMatch;
+  final Future<void> Function(OnlineMatchDto)? onOpenMatch;
   @override
   Widget build(BuildContext context) {
     if (section == 2) {
@@ -991,7 +992,7 @@ class _CommunitySection extends StatelessWidget {
                     token,
                     matchId,
                   );
-                  onOpenMatch?.call(match);
+                  await onOpenMatch?.call(match);
                 },
               ),
             ),
@@ -1079,6 +1080,11 @@ class _CommunitySection extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   if (section == 1) ...<Widget>[
+                    ClubInvitationsPanel(
+                      token: token,
+                      api: api,
+                      onChanged: onRefresh,
+                    ),
                     FilledButton.icon(
                       key: const ValueKey('create-own-club'),
                       icon: const Icon(Icons.group_add),

@@ -174,7 +174,7 @@ void main() {
     for (final path in languages) {
       FlutterSecureStorage.setMockInitialValues({});
       final code = path.split('/').last.split('.').first;
-      debugPrint('Guest layout: ' + code);
+      debugPrint('Guest layout: $code');
       final copy = jsonDecode(
         (await tester.runAsync(() => rootBundle.loadString(path)))!,
       ) as Map;
