@@ -7,7 +7,7 @@ class LiveMoveVoice {
   bool enabled = false;
 
   static String? phrase(String classification) => switch (classification) {
-    'Blunder' => 'Oh, careful! That was a big mistake. Take a breath; keep looking for a way back.',
+    'Blunder' => 'Oh, careful! That was a big mistake. Stay calm and focus on your next move.',
     'Mistake' =>
       'Careful, that helps your opponent. Stay calm and look for a safer plan.',
     'Inaccuracy' => 'Almost! There was a stronger move. Keep an eye on your opponent’s threats.',
