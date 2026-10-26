@@ -11,6 +11,21 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class TournamentEveningScheduleTest {
+    @Test void reminderKeyStaysStableAsTheEventApproaches() {
+        var db = new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=PostgreSQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1","sa",""));
+        db.execute("create table chess_tournament(id uuid primary key,name varchar(100),series_code varchar(32),starts_at timestamp with time zone,ends_at timestamp with time zone,status varchar(16))");
+        db.execute("create table chess_tournament_entry(tournament_id uuid,player_id uuid,active boolean)");
+        var notifications=mock(PlayerNotificationService.class);
+        var service=new TournamentService(db,mock(OnlineMatchRepository.class),mock(EconomyService.class),notifications);
+        UUID event=UUID.randomUUID(), player=UUID.randomUUID();
+        Instant start=Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        db.update("insert into chess_tournament values(?,?,null,?,?,'OPEN')",event,"Club Cup",Timestamp.from(start),Timestamp.from(start.plusSeconds(7200)));
+        db.update("insert into chess_tournament_entry values(?,?,true)",event,player);
+        service.sendDueReminders();
+        service.sendDueReminders();
+        verify(notifications,times(2)).createOnce(eq(player),eq("TOURNAMENT_REMINDER"),
+                eq("tournament:"+event+":start:"+start),anyString(),anyString(),eq("TOURNAMENT"),eq(event));
+    }
     @Test void movesOnlyUpcomingOpenCityEventsAndNotifiesActiveEntrantsOnce() {
         var db = new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=PostgreSQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1","sa",""));
         db.execute("create table chess_tournament(id uuid primary key,name varchar(100),series_code varchar(32),starts_at timestamp with time zone,ends_at timestamp with time zone,status varchar(16))");

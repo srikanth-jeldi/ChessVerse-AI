@@ -40,7 +40,6 @@ class TournamentService {
         rescheduleUpcomingEvenings();
         Instant now = Instant.now();
         Instant cutoff = now.plus(java.time.Duration.ofHours(2));
-        long slot = now.getEpochSecond() / 1800;
         jdbc.query("""
                 select t.id,t.name,t.starts_at,e.player_id
                 from chess_tournament t
@@ -52,7 +51,7 @@ class TournamentService {
             long minutes = Math.max(1, java.time.Duration.between(now,
                     rs.getTimestamp("starts_at").toInstant()).toMinutes());
             notifications.createOnce(playerId, "TOURNAMENT_REMINDER",
-                    "tournament:" + tournamentId + ":slot:" + slot,
+                    "tournament:" + tournamentId + ":start:" + rs.getTimestamp("starts_at").toInstant(),
                     rs.getString("name") + " starts soon",
                     "Your tournament starts in about " + minutes + " minutes. Open your bracket and be ready.",
                     "TOURNAMENT", tournamentId);

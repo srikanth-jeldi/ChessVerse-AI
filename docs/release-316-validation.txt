@@ -1,0 +1,16 @@
+Release 316 / 1.3.49
+Source commit: ff28edcfa34644d383c2f69a6fb3296b1aac83e3
+Features: external email club invitations with explicit verified-email acceptance, seven-day expiry, decline cooldown, duplicate protection and durable mail retries; explicit tournament entry/resume and reconnect grace; upcoming city events normalized to 7 PM with active-entrant notifications; persistent draw indication; readable analysis status and trophy cards; Facebook non-shared email export handling; interstitial eligibility on every third solved puzzle when continuing, with shared cooldown and availability checks.
+Backend: 65 tests exercised, one initial timestamp precision assertion corrected; targeted rerun passed (3 tests). No remaining failures in tested classes.
+Flutter: 13 combined UI tests and 8 additional puzzle cadence/online lifecycle tests passed. Invite and tournament layout tests exercise all 34 languages with narrow screens and large text.
+Scoped analyzer passed before puzzle change. Full analyzer found one unnecessary non-null assertion and two style infos; the two style issues have been corrected. No compile errors reported.
+Not a claim of exhaustive real-device coverage or an ANR root-cause fix. New Itel background binder ANR remains unconfirmed.
+Live email arrival/acceptance with a new account has not yet been verified.
+Signed AAB verified; build 1.3.49 / 316. SHA256: 96D74CCC0258D207330E1B78C8CF9CDFD9E47AD25380C479E547988506741FFA
+Native libraries and all baseline asset paths preserved, 34 translation catalogs retained. Bundletool maximum compressed download estimates: ARMv7 24,582,284; ARM64 24,823,099; x86_64 24,999,244 bytes. All under 25,000,000 bytes; x86_64 headroom only 756 bytes. Play Console delivery estimates still require upload confirmation.
+Production deployment ff28edcf succeeded: https://github.com/srikanth-jeldi/ChessVerse-AI/actions/runs/40303491527
+Health/readiness UP. Live invitation endpoint returned correctly. Upcoming Hyderabad/Tokyo/Dubai/London/New York start times verified at city-local 7 PM. Notification receipt on individual devices is not verified.
+Temporary guest used for read-only API smoke test was deleted after testing.
+Puzzle ad analyzer: no issues. Shared five-minute cooldown and daily cap remain; no-fill never blocks the next puzzle.
+Device: Samsung SM-F415F build 315 was detected. Pairing/connect succeeded repeatedly but wireless ports disconnected. Build 316 installation did not complete; no real-device QA pass claimed.
+Play Store upload/rollout not performed. External invite email delivery not yet end-to-end verified.

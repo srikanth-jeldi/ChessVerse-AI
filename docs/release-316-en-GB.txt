@@ -1,0 +1,7 @@
+<en-GB>
+• Invite friends to clubs by email, even before they create an account.
+• Clearer tournament entry and resume controls, improved reconnect handling and city-local evening schedules.
+• Clear draw results, more readable analysis reports and improved trophy displays.
+• Puzzle ads are offered after every three completed puzzles when you continue, subject to availability and cooldowns.
+• Improved layouts and translations across 34 languages.
+</en-GB>
