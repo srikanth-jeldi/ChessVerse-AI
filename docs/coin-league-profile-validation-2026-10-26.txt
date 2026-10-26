@@ -1,3 +1,5 @@
+Historical pre-release implementation notes. For final deployment/build status see release-318-validation.txt.
+
 Coin league / profile upload / matchmaking - 2026-10-26
 
 Implementation (not deployed, no production AAB generated for these changes):
@@ -25,3 +27,4 @@ Rollout remaining:
 - Review and deploy backend with V92 migration before distributing the mobile update, otherwise /leaderboard/coins will be unavailable.
 - Build/release next AAB and run phone photo upload + new coin-screen smoke tests against deployed backend.
 - No Git push or Play Store submission performed in this change batch.
+

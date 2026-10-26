@@ -1,0 +1,43 @@
+ChessVerseAI 1.3.51 (318) - 2026-10-26
+
+Source: 1d21d01a. Backend deployment GitHub run 40354415131 succeeded.
+Profile redesigned with prominent camera/photo and edit actions, full display name,
+clear progress sections. Guest and game-opened profiles can upload photos.
+Device-decodable image files are normalized to PNG, longest edge 512 pixels;
+20 MB / 40 megapixel input bounds. Unsupported formats show an error.
+Existing avatar survives failed replacement.
+
+Weekly/Overall net game coin rankings, separate ELO view, 500/300/200 weekly
+prizes, explicit eligibility rules and duplicate payout protection.
+V92 deployed. Live authenticated Weekly and Overall API smoke tests passed;
+disposable test account deleted. First prize week begins 2026-11-02 India time,
+first eligible settlement after 2026-11-09 00:00 IST (hourly scheduler).
+No live payout simulation or concurrent PostgreSQL payout integration test run.
+
+Matchmaking player-card overflow fixed, rotating search arc added.
+Single-line action labels and home TRAIN layout fixed; tournament bottom action
+reserves space so it cannot cover the green fair-play information card.
+
+Validation:
+- 823 Flutter tests passed (34-language initial-screen matrix, loaded coin
+  rankings, photo codec, tournament layout cases).
+- Final profile status translations: another 34 profile layout tests passed.
+- Two matchmaking tests passed, including enlarged text regression.
+- Flutter analyzer: no issues.
+- Backend full suite: 309 tests, no assertion failures; one Windows Java
+  loopback environment error. All five tests in the affected class passed on
+  rerun with a short Java temporary directory. No application change required.
+- Signed production AAB version, AdMob app ID and signature verified.
+- All 290 baseline asset/native paths and 34 catalogs preserved; original
+  catalog values, fonts and audio preserved.
+- Bundletool maximum compressed download estimates (bytes):
+  armeabi-v7a 24,495,805; arm64-v8a 24,744,634; x86_64 24,918,891.
+  All below 25,000,000 bytes. Play Store final delivery size may differ.
+- Dart symbol files and SHA256 stored alongside the AAB.
+
+Limits: phone currently absent from ADB. Latest profile and coin-ranking screens
+have not been tested on the real device. Earlier TRAIN device check is not a
+substitute. Automated layout tests do not establish that every populated screen,
+keyboard or error state is perfect. Translations are machine-assisted.
+This release does not establish resolution of the prior native ANR issue.
+No Play Console upload or rollout performed.
