@@ -1,0 +1,5 @@
+<en-GB>
+Fixed mirrored chessboards and misplaced move animations in Arabic, Hebrew and other right-to-left languages.
+Pieces, move trails and board taps now stay aligned for both White and Black orientations.
+Corrected board direction in analysis previews and blindfold training while keeping translated menus right-to-left.
+</en-GB>

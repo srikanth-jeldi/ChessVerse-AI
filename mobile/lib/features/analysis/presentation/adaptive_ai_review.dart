@@ -3689,7 +3689,12 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.ltr,
+    child: _buildBoard(context),
+  );
+
+  Widget _buildBoard(BuildContext context) {
     final Map<String, String> pieces = _fenPieces(widget.fen);
     final List<AiBoardAnnotation> visibleAnnotations = _mergeCoachAnnotations(
       <AiBoardAnnotation>[...widget.annotations, ..._candidateAnnotations],

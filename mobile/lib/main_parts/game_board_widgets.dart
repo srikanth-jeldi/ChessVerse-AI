@@ -709,7 +709,14 @@ class _ChessBoardState extends State<ChessBoard> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Directionality(
+    // Chess files/ranks are spatial coordinates, not reading order. RTL must
+    // not mirror the grid independently of the move and arrow overlays.
+    textDirection: TextDirection.ltr,
+    child: _buildBoard(context),
+  );
+
+  Widget _buildBoard(BuildContext context) {
     final Map<String, ChessPiece> pieces = widget.pieces;
     final String? selectedSquare = widget.selectedSquare;
     final Set<String> legalTargets = widget.legalTargets;

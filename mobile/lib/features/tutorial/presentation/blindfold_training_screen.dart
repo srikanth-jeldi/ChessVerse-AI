@@ -302,7 +302,12 @@ class _CoordinateBoard extends StatelessWidget {
   final bool revealPieces;
 
   @override
-  Widget build(BuildContext context) => AspectRatio(
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.ltr,
+    child: _buildBoard(context),
+  );
+
+  Widget _buildBoard(BuildContext context) => AspectRatio(
     aspectRatio: 1,
     child: ClipRRect(
       borderRadius: BorderRadius.circular(18),
