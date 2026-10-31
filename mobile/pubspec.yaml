@@ -44,7 +44,7 @@ dependencies:
   cryptography: ^2.7.0
   package_info_plus: ^10.2.1
   share_plus: ^13.3.1
-  device_info_plus: ^13.2.0
+  device_info_plus: ^13.3.0
   url_launcher: ^6.3.2
 
 # Gradle-only patches; runtime sources and licenses are retained verbatim.
