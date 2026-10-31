@@ -55,6 +55,20 @@ class ProductAnalyticsControllerTest {
     }
 
     @Test
+    void acceptsDailyPlayFeatureEventsWithExistingSession() throws Exception {
+        String token=guest();
+        for(String name:java.util.List.of("game_first_move","game_completed","puzzle_first_move",
+                "puzzle_completed","imported_review_viewed","saved_review_viewed","mistake_bank_viewed",
+                "mistake_practice_completed","club_puzzle_completed","chat_opened","chat_message_sent","ai_coach_question","feature_opened")) {
+            mvc.perform(post("/api/v1/analytics/events")
+                .header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\""+UUID.randomUUID()+"\",\"name\":\""+name+"\",\"context\":\"ai\"}"))
+                .andExpect(status().isOk());
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(13,db.queryForObject("select count(*) from product_analytics_event",Integer.class));
+    }
+
+    @Test
     void eventIngestionIsAuthenticatedValidatedAndIdempotent() throws Exception {
         String token = guest();
         String id = UUID.randomUUID().toString();

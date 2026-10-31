@@ -35,7 +35,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProductAnalyticsController {
     private static final String EVENT_PATTERN =
             "session_started|game_started|game_completed|rewarded_ad_started|rewarded_ad_completed|"
-            + "rewarded_ad_dismissed|review_opened|share_completed|tournament_joined|subscription_viewed";
+            + "rewarded_ad_dismissed|review_opened|share_completed|tournament_joined|subscription_viewed|"
+            + "club_puzzle_viewed|club_puzzle_completed|club_puzzle_hint|club_puzzle_solution_viewed|"
+            + "game_first_move|import_completed|imported_review_viewed|saved_review_viewed|puzzles_viewed|"
+            + "puzzle_first_move|puzzle_completed|mistake_bank_viewed|mistake_practice_started|mistake_practice_completed|"
+            + "chat_opened|chat_message_sent|ai_coach_question|feature_opened";
 
     public record EventInput(@NotNull UUID id,
             @NotNull @Pattern(regexp = EVENT_PATTERN) String name,

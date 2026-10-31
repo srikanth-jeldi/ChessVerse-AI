@@ -1,0 +1,24 @@
+Daily play report — 2026-10-31
+
+Implemented locally; recipient/export approved by user; rollout in progress.
+Proposed recipient: existing login report recipient (default chessverseai@gmail.com).
+Excel sheets: Summary, Player activity and Feature breakdown.
+Columns: account ID, display name, username, email if available, first/last activity IST,
+session, game start, first move, completion, puzzle, review and Mistake Bank event counts.
+No passwords, OTPs, tokens, IPs or chess positions are exported.
+
+First attempt 09:00 IST for the previous full calendar day; hourly retry if unsent.
+Database date lock/sent marker suppress normal duplicate sends. SMTP success followed by
+a crash before DB commit can still duplicate delivery. Prolonged downtime is not backfilled.
+Empty days produce no email. Login reports remain unchanged.
+
+Existing saved sessions are sufficient. Actual first-move events are distinguished from
+opening a game. These are client event counts, not unique matches or measured play time.
+Offline/expired-session/failed transport events may be missing; older builds only supply
+their existing events. No historical backfill. Synthetic .invalid emails are omitted.
+
+Deployment order: backend V94/event allowlist, then mobile release for expanded telemetry.
+Set chessverse.play-report.recipient explicitly and enable chessverse.play-report.enabled
+only after approval, on the intended reporting instance.
+Chat activity records opens and successful messages, never message content. Additional feature navigation counts are included. Delivery follows the auth-report enabled flag unless explicitly overridden.
+
