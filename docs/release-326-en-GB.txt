@@ -1,0 +1,6 @@
+<en-GB>
+Daily challenge reviews now preserve the original board position. Older challenge entries without a reliable starting position are removed from My Games.
+Cloud-saved games retain their starting positions.
+Set Up Board now limits pieces to a standard set for each side, with clear remaining counts and improved pawn placement checks.
+Improved black king visibility in Set Up Board and tested multilingual layouts.
+</en-GB>

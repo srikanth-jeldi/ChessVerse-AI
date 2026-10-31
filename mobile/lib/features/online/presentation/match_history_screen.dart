@@ -101,6 +101,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               playedAt: d.updatedAt,
               whitePlayer: d.whiteName,
               blackPlayer: d.blackName,
+              initialFen: d.state['initialFen'] as String?,
               playerOutcome: d.state['outcome'] as String?,
               moveReviews: (d.state['reviews'] as List? ?? [])
                   .map(
@@ -525,7 +526,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ..._cloudGames,
       ..._onlineGames.map(_onlineAsSavedGame),
     ]) {
-      if (LocalGameArchive.isPuzzleSession(game)) continue;
+      if (LocalGameArchive.excludeFromSavedGames(game)) continue;
       unique.putIfAbsent(_gameFingerprint(game), () => game);
     }
     return unique.values.toList(growable: false);

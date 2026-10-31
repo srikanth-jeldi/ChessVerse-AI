@@ -414,6 +414,18 @@ class LocalGameArchive {
   static bool isPuzzleSession(SavedGameRecord game) =>
       game.mode.trim().toLowerCase() == 'puzzle academy';
 
+  /// Older daily challenges saved moves without their custom starting board.
+  /// Replaying these from the normal army invents a game that never happened.
+  static bool excludeFromSavedGames(SavedGameRecord game) {
+    if (isPuzzleSession(game)) return true;
+    final mode = game.mode.trim().toLowerCase();
+    if (mode != 'daily checkmate' && mode != 'daily challenge') return false;
+    final placement = game.initialFen?.trim().split(' ').first;
+    return placement == null ||
+        placement.isEmpty ||
+        placement == 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+  }
+
   static Map<String, int> get cloudWeaknessScores =>
       Map<String, int>.unmodifiable(_cloudWeaknessScores);
 
@@ -450,9 +462,9 @@ class LocalGameArchive {
           ..clear()
           ..addAll(decoded)
           // Puzzle attempts are practice activity, not reviewable saved games.
-          ..removeWhere(isPuzzleSession);
+          ..removeWhere(excludeFromSavedGames);
         // Avoid encrypting and rewriting an unchanged archive on every launch.
-        if (decoded.any(isPuzzleSession)) {
+        if (decoded.any(excludeFromSavedGames)) {
           unawaited(_persistGames());
         }
       } on Object {
@@ -572,7 +584,7 @@ class LocalGameArchive {
   }
 
   static void addGame(SavedGameRecord record) {
-    if (isPuzzleSession(record)) return;
+    if (excludeFromSavedGames(record)) return;
     _games.insert(0, record);
     unawaited(_persistGames());
     _notifyCloudChange();
@@ -698,7 +710,7 @@ class LocalGameArchive {
     }
     var changed = false;
     for (final game in restored) {
-      if (isPuzzleSession(game)) continue;
+      if (excludeFromSavedGames(game)) continue;
       final index = _games.indexWhere(
         (local) => local.playedAt.isAtSameMomentAs(game.playedAt),
       );

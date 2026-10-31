@@ -54,6 +54,18 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
   String? _brush = 'wQ';
   bool _humanWhite = true;
   bool _whiteToMove = true;
+  static const _limits = {'K': 1, 'Q': 1, 'R': 2, 'B': 2, 'N': 2, 'P': 8};
+  int _remaining(String piece) =>
+      _limits[piece[1]]! -
+      _pieces.values.where((value) => value == piece).length;
+
+  Widget _pieceImage(String piece) {
+    final image = Image.asset(_asset(piece), fit: BoxFit.contain);
+    // The black king artwork has a much narrower silhouette inside the same
+    // transparent canvas. Match the white king's visible width, not its height.
+    return piece == 'bK' ? Transform.scale(scaleX: 1.65, child: image) : image;
+  }
+
   PositionSetup get _setup => PositionSetup(
     pieces: Map<String, String>.unmodifiable(_pieces),
     humanWhite: _humanWhite,
@@ -77,20 +89,54 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
   ];
 
   void _tapSquare(String square) {
+    final piece = _brush;
+    if (piece != null && _pieces[square] == piece) return;
+    if (piece != null && _remaining(piece) <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.block, color: Colors.white),
+              const SizedBox(width: 12),
+              SizedBox(width: 32, height: 32, child: _pieceImage(piece)),
+              const SizedBox(width: 12),
+              Text(
+                '0 / ${_limits[piece[1]]}',
+                textDirection: TextDirection.ltr,
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+    if (piece != null &&
+        piece.endsWith('P') &&
+        (square.endsWith('1') || square.endsWith('8'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: UiText('Pawns cannot start on the first or eighth rank.'),
+        ),
+      );
+      return;
+    }
     setState(() {
       if (_brush == null) {
         _pieces.remove(square);
         return;
       }
       final String piece = _brush!;
-      if (piece.endsWith('K')) {
-        _pieces.removeWhere((_, value) => value == piece);
-      }
       _pieces[square] = piece;
     });
   }
 
   String? _validationError() {
+    for (final piece in _palette.whereType<String>()) {
+      if (_remaining(piece) < 0) {
+        return '${piece.startsWith('w') ? '♔' : '♚'} '
+            '${piece[1]}: ${_limits[piece[1]]}';
+      }
+    }
     if (_pieces.values.where((p) => p == 'wK').length != 1 ||
         _pieces.values.where((p) => p == 'bK').length != 1) {
       return 'Place exactly one white king and one black king.';
@@ -252,10 +298,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
                         Positioned.fill(
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Image.asset(
-                              _asset(piece),
-                              fit: BoxFit.contain,
-                            ),
+                            child: _pieceImage(piece),
                           ),
                         ),
                       Positioned(
@@ -313,14 +356,15 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
           children: _palette.map((String? piece) {
             final bool selected = _brush == piece;
             final bool blackPiece = piece?.startsWith('b') ?? false;
+            final bool available = piece == null || _remaining(piece) > 0;
             return InkWell(
               key: ValueKey<String>('palette-${piece ?? 'erase'}'),
-              onTap: () => setState(() => _brush = piece),
+              onTap: available ? () => setState(() => _brush = piece) : null,
               borderRadius: BorderRadius.circular(14),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 width: 54,
-                height: 54,
+                height: 80,
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: selected
@@ -345,7 +389,31 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
                         Icons.auto_fix_off_rounded,
                         color: Color(0xFFE57373),
                       )
-                    : Image.asset(_asset(piece), fit: BoxFit.contain),
+                    : Opacity(
+                        opacity: available ? 1 : 0.45,
+                        child: Column(
+                          children: [
+                            Expanded(child: _pieceImage(piece)),
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${_remaining(piece)} / ${_limits[piece[1]]}',
+                                key: ValueKey('remaining-$piece'),
+                                textDirection: TextDirection.ltr,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: blackPiece
+                                      ? const Color(0xFF071625)
+                                      : Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               ),
             );
           }).toList(),
