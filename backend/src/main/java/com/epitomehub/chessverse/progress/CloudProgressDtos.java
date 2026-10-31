@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 final class CloudProgressDtos {
     private CloudProgressDtos() {
@@ -29,7 +30,8 @@ final class CloudProgressDtos {
             Instant lastDailyCompletedAt,
             @Size(max = 150) List<@Pattern(regexp = "^(easy|medium|hard)-[0-9]{1,3}$") String> completedPuzzleIds,
             @Size(max = 400) List<@Size(min = 1, max = 64) String> completedDailyChallengeIds,
-            @Size(max = 64) List<@Pattern(regexp = "^[a-z0-9-]{1,64}$") String> completedAcademyLessonIds) {
+            @Size(max = 64) List<@Pattern(regexp = "^[a-z0-9-]{1,64}$") String> completedAcademyLessonIds,
+            @Size(max = 7) Map<@Size(max = 64) String, @Size(max = 24) List<@Pattern(regexp = "^[a-h][1-8][a-h][1-8][qrbn]?$") String>> dailyCompletionMoves) {
     }
 
     record ProgressResponse(

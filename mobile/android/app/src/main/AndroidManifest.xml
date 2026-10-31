@@ -58,6 +58,12 @@
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id"/>
+        <!-- Facebook is used for sign-in, not automatic install attribution.
+             Its automatic event flush can invoke InstallReferrer on the main
+             thread (observed binder ANR). Keep login initialization enabled. -->
+        <meta-data
+            android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
+            android:value="false"/>
         <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="@string/facebook_client_token"/>

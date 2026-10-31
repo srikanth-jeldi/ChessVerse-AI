@@ -274,8 +274,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('TOURNAMENT BRACKET'), findsOneWidget);
-      expect(find.text('OPENING ROUND'), findsOneWidget);
-      expect(find.text('QUARTERFINAL'), findsOneWidget);
+      expect(find.text('FINAL'), findsOneWidget);
+      expect(find.text('SEMIFINAL'), findsOneWidget);
       expect(find.text('Arjun'), findsNWidgets(3));
       expect(find.text('BYE · Advances automatically'), findsOneWidget);
       expect(find.text('TBD'), findsNothing);

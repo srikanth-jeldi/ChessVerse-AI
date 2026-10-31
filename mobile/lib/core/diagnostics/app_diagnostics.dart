@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'firebase_bootstrap.dart';
@@ -13,8 +14,13 @@ abstract final class AppDiagnostics {
   static const int _maximumEntries = 80;
   static final List<String> _entries = <String>[];
   static bool _crashlyticsReady = false;
+  static _RuntimeLifecycleObserver? _lifecycleObserver;
 
   static Future<void> initialize() async {
+    if (_lifecycleObserver == null) {
+      _lifecycleObserver = _RuntimeLifecycleObserver();
+      WidgetsBinding.instance.addObserver(_lifecycleObserver!);
+    }
     if (!kIsWeb) {
       try {
         await FirebaseBootstrap.ensureReady();
@@ -57,6 +63,22 @@ abstract final class AppDiagnostics {
       return true;
     };
     log('diagnostics_initialized');
+    _lifecycleObserver?.didChangeAppLifecycleState(
+      WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed,
+    );
+  }
+
+  static Future<void> _recordLifecycle(AppLifecycleState state) async {
+    log('app_lifecycle', {'state': state.name});
+    if (!_crashlyticsReady) return;
+    try {
+      await FirebaseCrashlytics.instance.setCustomKey(
+        'app_lifecycle',
+        state.name,
+      );
+    } on Object {
+      // Optional diagnostics must not interrupt lifecycle transitions.
+    }
   }
 
   static void log(String event, [Map<String, Object?> data = const {}]) {
@@ -208,5 +230,17 @@ abstract final class AppDiagnostics {
       if (candidate.isNotEmpty && candidate != 'null') return candidate;
     }
     return '';
+  }
+}
+
+class _RuntimeLifecycleObserver extends WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    unawaited(AppDiagnostics._recordLifecycle(state));
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    AppDiagnostics.log('system_memory_pressure');
   }
 }

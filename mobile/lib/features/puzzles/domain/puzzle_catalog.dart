@@ -131,3 +131,15 @@ class PuzzleCatalog {
     return <ChessPuzzle>[...focused, ...mixed];
   }
 }
+
+/// Stable daily selection from real forcing mate positions; no repeated queen-lift template.
+ChessPuzzle dailyPuzzleForDate(DateTime date, {bool hard = false}) {
+  final candidates = PuzzleCatalog.all.where((p) =>
+    p.difficulty == (hard ? PuzzleDifficulty.hard : PuzzleDifficulty.medium) &&
+    p.fen.split(' ')[1] == 'w' && p.themes.contains('mate') &&
+    p.playerMoveGoal >= 3 && p.fen.split(' ')[2] == '-' && p.fen.split(' ')[3] == '-' &&
+    p.solution.every((m) => m.length == 4 && !['e1g1','e1c1','e8g8','e8c8'].contains(m))).toList(growable: false);
+  final utc = date.toUtc();
+  final day = DateTime.utc(utc.year, utc.month, utc.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+  return candidates[day % candidates.length];
+}

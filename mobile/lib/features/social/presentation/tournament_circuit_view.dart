@@ -1,3 +1,5 @@
+import '../../../core/widgets/player_avatar.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -147,6 +149,33 @@ class TournamentCircuitView extends StatelessWidget {
             SliverToBoxAdapter(child: _CircuitProgress(points: circuitPoints)),
             if (champions.isNotEmpty)
               SliverToBoxAdapter(child: _WeeklyChampions(events: champions)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ExpansionTile(
+                  title: const UiText('Past tournaments · results'),
+                  children: [
+                    for (final event
+                        in (tournaments
+                            .where((e) => e.status == 'FINISHED')
+                            .toList()
+                          ..sort(
+                            (a, b) => (b.startsAt ?? DateTime(2000)).compareTo(
+                              a.startsAt ?? DateTime(2000),
+                            ),
+                          )))
+                      ListTile(
+                        title: Text(event.name),
+                        subtitle: Text(
+                          '${event.startsAt?.toLocal().toString().split(' ').first ?? ''} · ${event.players}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => onOpen(event),
+                      ),
+                  ],
+                ),
+              ),
+            ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 148),
               sliver: SliverLayoutBuilder(
@@ -813,20 +842,11 @@ class _WeeklyChampions extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               children: <Widget>[
-                CircleAvatar(
+                PlayerAvatar(
+                  photoUrl: champion.photoUrl,
+                  name: champion.name,
                   radius: 19,
                   backgroundColor: const Color(0xFF17364B),
-                  backgroundImage: champion.photoUrl == null
-                      ? null
-                      : NetworkImage(champion.photoUrl!),
-                  child: champion.photoUrl == null
-                      ? Text(
-                          champion.name.isEmpty
-                              ? '?'
-                              : champion.name[0].toUpperCase(),
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        )
-                      : null,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

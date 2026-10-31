@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
+import '../../../core/analytics/app_analytics.dart';
 import '../../../core/app_language.dart';
 
 class AiCoachAnswer {
@@ -28,34 +29,38 @@ class AiCoachAnswer {
   final int conversationTurns;
 
   factory AiCoachAnswer.fromJson(Map<String, dynamic> json) => AiCoachAnswer(
-        interactionId: json['interactionId'] as String,
-        answer: json['answer'] as String,
-        remainingToday: (json['remainingToday'] as num).toInt(),
-        cacheHit: json['cacheHit'] as bool? ?? false,
-        sessionId: json['sessionId'] as String,
-        comparisons: (json['comparisons'] as List<dynamic>? ?? <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .map(AiCandidateComparison.fromJson)
-            .toList(growable: false),
-        annotations: (json['annotations'] as List<dynamic>? ?? <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .map(AiBoardAnnotation.fromJson)
-            .toList(growable: false),
-        conversationTurns: (json['conversationTurns'] as num?)?.toInt() ?? 1,
-      );
+    interactionId: json['interactionId'] as String,
+    answer: json['answer'] as String,
+    remainingToday: (json['remainingToday'] as num).toInt(),
+    cacheHit: json['cacheHit'] as bool? ?? false,
+    sessionId: json['sessionId'] as String,
+    comparisons: (json['comparisons'] as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(AiCandidateComparison.fromJson)
+        .toList(growable: false),
+    annotations: (json['annotations'] as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(AiBoardAnnotation.fromJson)
+        .toList(growable: false),
+    conversationTurns: (json['conversationTurns'] as num?)?.toInt() ?? 1,
+  );
 }
 
 class AiCandidateComparison {
   const AiCandidateComparison(
-      this.move, this.classification, this.centipawnLoss);
+    this.move,
+    this.classification,
+    this.centipawnLoss,
+  );
   final String move;
   final String classification;
   final int centipawnLoss;
   factory AiCandidateComparison.fromJson(Map<String, dynamic> json) =>
       AiCandidateComparison(
-          json['move'] as String,
-          json['classification'] as String,
-          (json['centipawnLoss'] as num).toInt());
+        json['move'] as String,
+        json['classification'] as String,
+        (json['centipawnLoss'] as num).toInt(),
+      );
 }
 
 class AiBoardAnnotation {
@@ -65,8 +70,12 @@ class AiBoardAnnotation {
   final String kind;
   final String label;
   factory AiBoardAnnotation.fromJson(Map<String, dynamic> json) =>
-      AiBoardAnnotation(json['from'] as String, json['to'] as String,
-          json['kind'] as String, json['label'] as String);
+      AiBoardAnnotation(
+        json['from'] as String,
+        json['to'] as String,
+        json['kind'] as String,
+        json['label'] as String,
+      );
 }
 
 class AiCoachImpact {
@@ -86,13 +95,13 @@ class AiCoachImpact {
   final String evidenceMessage;
 
   factory AiCoachImpact.fromJson(Map<String, dynamic> json) => AiCoachImpact(
-        analyzedGames: (json['analyzedGames'] as num).toInt(),
-        measuredMoves: (json['measuredMoves'] as num).toInt(),
-        improvementPercent: (json['improvementPercent'] as num).toInt(),
-        helpfulPercent: (json['helpfulPercent'] as num).toInt(),
-        enoughEvidence: json['enoughEvidence'] as bool,
-        evidenceMessage: json['evidenceMessage'] as String,
-      );
+    analyzedGames: (json['analyzedGames'] as num).toInt(),
+    measuredMoves: (json['measuredMoves'] as num).toInt(),
+    improvementPercent: (json['improvementPercent'] as num).toInt(),
+    helpfulPercent: (json['helpfulPercent'] as num).toInt(),
+    enoughEvidence: json['enoughEvidence'] as bool,
+    evidenceMessage: json['evidenceMessage'] as String,
+  );
 }
 
 class AiCoachApi {
@@ -130,11 +139,20 @@ class AiCoachApi {
           .timeout(const Duration(seconds: 20));
       final Object? decoded = jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiCoachApiException(decoded is Map<String, dynamic>
-            ? decoded['message'] as String? ?? 'AI Coach could not answer.'
-            : 'AI Coach could not answer.');
+        throw AiCoachApiException(
+          decoded is Map<String, dynamic>
+              ? decoded['message'] as String? ?? 'AI Coach could not answer.'
+              : 'AI Coach could not answer.',
+        );
       }
-      return AiCoachAnswer.fromJson(decoded! as Map<String, dynamic>);
+      final answer = AiCoachAnswer.fromJson(decoded! as Map<String, dynamic>);
+      unawaited(
+        AppAnalytics.logFeature(
+          FeatureEvent.ai_coach_question,
+          mode: 'ai_coach',
+        ),
+      );
+      return answer;
     } on TimeoutException {
       throw const AiCoachApiException('AI Coach took too long. Try again.');
     } on AiCoachApiException {
@@ -145,11 +163,15 @@ class AiCoachApi {
   }
 
   Future<void> feedback(
-      String token, String interactionId, bool helpful) async {
+    String token,
+    String interactionId,
+    bool helpful,
+  ) async {
     final http.Response response = await http
         .patch(
           Uri.parse(
-              '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/feedback'),
+            '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/feedback',
+          ),
           headers: <String, String>{
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -175,7 +197,8 @@ class AiCoachApi {
     final http.Response response = await http
         .post(
           Uri.parse(
-              '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/outcome'),
+            '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/outcome',
+          ),
           headers: <String, String>{
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -194,21 +217,25 @@ class AiCoachApi {
         .timeout(const Duration(seconds: 10));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const AiCoachApiException(
-          'Coach recommendation outcome could not be saved.');
+        'Coach recommendation outcome could not be saved.',
+      );
     }
   }
 
   Future<AiCoachImpact> impact(String token) async {
-    final http.Response response = await http.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/coach/impact'),
-      headers: <String, String>{'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 15));
+    final http.Response response = await http
+        .get(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/v1/coach/impact'),
+          headers: <String, String>{'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 15));
     final Object? decoded = jsonDecode(response.body);
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         decoded is! Map<String, dynamic>) {
       throw const AiCoachApiException(
-          'AI improvement evidence is unavailable.');
+        'AI improvement evidence is unavailable.',
+      );
     }
     return AiCoachImpact.fromJson(decoded);
   }

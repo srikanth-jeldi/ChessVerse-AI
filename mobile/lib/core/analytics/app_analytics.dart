@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../config/app_config.dart';
+import '../../features/auth/data/auth_session_store.dart';
 import '../diagnostics/firebase_bootstrap.dart';
 
 /// Privacy-safe product analytics for the release funnel.
@@ -57,8 +58,24 @@ abstract final class AppAnalytics {
       }
       return;
     }
-    if (!_ready) return;
-    await _safeLog(event.name, parameters);
+    await Future.wait<void>([
+      if (_ready) _safeLog(event.name, parameters),
+      if (!kDebugMode) _logFeatureToServer(event, mode ?? format ?? 'unknown'),
+    ]);
+  }
+
+  static Future<void> _logFeatureToServer(
+    FeatureEvent event,
+    String context,
+  ) async {
+    try {
+      final session = await const AuthSessionStore().read();
+      if (session != null && !session.isExpired) {
+        await _safeServerLog(session.token, event.name, _safeEnum(context));
+      }
+    } on Object {
+      // Reporting must not interrupt play, including while offline.
+    }
   }
 
   static Future<void> initialize() async {
@@ -163,6 +180,10 @@ abstract final class AppAnalytics {
 // Names are the reporting contract in Firebase/GA4.
 // ignore_for_file: constant_identifier_names
 enum FeatureEvent {
+  chat_opened,
+  chat_message_sent,
+  ai_coach_question,
+  feature_opened,
   club_puzzle_viewed,
   club_puzzle_completed,
   club_puzzle_hint,
@@ -184,10 +205,16 @@ enum FeatureEvent {
 /// visit may emit again, allowing daily unique players to include resumed play.
 class PlayActivityTracker {
   bool _played = false;
+  DateTime? _playedDay;
 
-  bool acceptHumanMove() {
-    if (_played) return false;
+  bool acceptHumanMove({DateTime? at}) {
+    final now = (at ?? DateTime.now()).toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    );
+    final day = DateTime.utc(now.year, now.month, now.day);
+    if (_played && _playedDay == day) return false;
     _played = true;
+    _playedDay = day;
     return true;
   }
 

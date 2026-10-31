@@ -1,0 +1,30 @@
+31 October 2026 - release 325 investigation
+
+Firebase 54ff80ff51ece64bb839767d5fe36518:
+1 non-fatal / 1 user, 1.3.57 (324), Infinix X6725 Android 15.
+30 October 19:18:20: SocketException, network unreachable (errno 101),
+lh3.googleusercontent.com:443 while Flutter loads a remote image.
+Social, tournament and match-history avatars lacked error recovery.
+Added foreground-image error handling with visible initials fallback. Invalid
+and missing URLs use initials. No global error suppression was introduced.
+Offline image listener and invalid-URL widget regressions passed (2 tests).
+
+Play filter versionCode=324, isUserPerceived=true, last 7 days:
+1 issue / 1 event / 1 user: 6eaac4dffd29698f1502d695cbff2359.
+Google Play Games on PC, Android 14, no-focused-window ANR.
+Main thread: ART NewLocalRef -> Flutter platform-message dispatch.
+Matched local build324 x64 symbol Build ID: 26b9e371ffff0ee4d5a4b54e790b1539.
+Decoded offsets with NDK llvm-addr2line:
+0xa93e91 StartupSystemUi.configure, startup_system_ui.dart:18
+0x54bb2e main post-frame callback, main.dart:203
+0xb1dd7a MethodChannel._invokeMethod
+0xa5437e MethodChannel.invokeMethod
+This identifies the sampled optional sdkInt startup query. It does not prove
+why ART was paused or that all underlying native stalls have been resolved.
+Removed optional Android startup window styling and its sdkInt channel call;
+activity theme/target-SDK window policy remains responsible for Android insets.
+Other platform styling is retained. Requires PC/release validation and rollout
+telemetry; do not mark the issue resolved merely because this code changed.
+
+The supplied Play filter excludes other versions and non-user-perceived
+events. Prior vendor GPU and unknown native ANRs remain unconfirmed.

@@ -33,8 +33,7 @@ void main() {
       'Android $api does not reconfigure the enforced window mode',
       () async {
         messenger.setMockMethodCallHandler(runtime, (call) async {
-          expect(call.method, 'sdkInt');
-          return api;
+          fail('Android startup must not cross the runtime channel');
         });
         await StartupSystemUi.configure();
         expect(windowCalls, isEmpty);
@@ -42,11 +41,10 @@ void main() {
     );
   }
 
-  test('Android 14 preserves explicit edge-to-edge styling', () async {
-    messenger.setMockMethodCallHandler(runtime, (_) async => 34);
+  test('Android 14 leaves window styling to the activity', () async {
+    messenger.setMockMethodCallHandler(runtime, (_) async => fail('No startup JNI query'));
     await StartupSystemUi.configure();
-    expect(windowCalls.single.method, 'SystemChrome.setEnabledSystemUIMode');
-    expect(windowCalls.single.arguments, 'SystemUiMode.edgeToEdge');
+    expect(windowCalls, isEmpty);
   });
 
   test('missing native implementation leaves window unchanged', () async {

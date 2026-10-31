@@ -275,7 +275,51 @@ int dailyStreakAfterCompletion({
   return 1;
 }
 
+/// Daily puzzle calendar is UTC, matching the server and all signed-in devices.
+DateTime dailyPuzzleDay(DateTime time) {
+  final utc = time.toUtc();
+  return DateTime.utc(utc.year, utc.month, utc.day);
+}
+
+int dailyPuzzleRewardCoins(int streak) => streak <= 0 ? 0 : 10 + ((streak - 1) % 7) * 5;
+
+int dailyPuzzleStreakFromIds(Iterable<String> ids, DateTime now) {
+  final today = dailyPuzzleDay(now);
+  final days = ids.map((id) => id.length >= 10 ? DateTime.tryParse(id.substring(0, 10)) : null)
+      .whereType<DateTime>().map((d) => DateTime.utc(d.year, d.month, d.day))
+      .where((d) => !d.isAfter(today)).toSet();
+  var day = days.contains(today) ? today : today.subtract(const Duration(days: 1));
+  var streak = 0;
+  while (days.contains(day)) {
+    streak++;
+    day = day.subtract(const Duration(days: 1));
+  }
+  return streak;
+}
+
 int dailyStreakBonusCoins(int streak) => (streak.clamp(0, 3650) ~/ 7) * 100;
+
+/// Local activity estimate only; the server wallet is authoritative for credit.
+int dailyPuzzleActivityCoins(Iterable<String> ids, DateTime now) {
+  final dated = <DateTime, bool>{};
+  for (final id in ids) {
+    if (id.length < 10) continue;
+    final date = DateTime.tryParse(id.substring(0, 10));
+    if (date == null) continue;
+    final day = DateTime.utc(date.year, date.month, date.day);
+    if (day.isAfter(dailyPuzzleDay(now))) continue;
+    dated[day] = (dated[day] ?? false) || id.contains('-v8-');
+  }
+  final days = dated.keys.toList()..sort();
+  DateTime? previous;
+  var streak = 0, total = 0;
+  for (final day in days) {
+    streak = previous != null && day.difference(previous).inDays == 1 ? streak + 1 : 1;
+    total += dated[day]! ? dailyPuzzleRewardCoins(streak) : 35;
+    previous = day;
+  }
+  return total;
+}
 
 class RewardBadge {
   const RewardBadge({
@@ -333,6 +377,8 @@ class LocalGameArchive {
       'chessverse_completed_daily_challenges';
   static const String _lastDailyCompletionKey =
       'chessverse_last_daily_completion_utc';
+  static const String _dailyProofKey = 'chessverse_daily_proofs_v1';
+  static final Map<String, List<String>> _dailyProofs = {};
   static const String _dailyStreakKey = 'chessverse_daily_streak';
   static const String _completedPuzzlesKey =
       'chessverse_completed_independent_puzzles';
@@ -379,6 +425,7 @@ class LocalGameArchive {
       _completedDailyKey,
       _lastDailyCompletionKey,
       _dailyStreakKey,
+      _dailyProofKey,
       _completedPuzzlesKey,
       _profileCountryKey,
       _profileUsernameKey,
@@ -412,6 +459,7 @@ class LocalGameArchive {
         if (generation != _archiveGeneration) return;
         // Ignore a legacy or partially written archive and start clean.
         _games.clear();
+    _dailyProofs.clear();
       }
     }
     final String? raw = values[_completedDailyKey];
@@ -428,6 +476,13 @@ class LocalGameArchive {
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
+    final proofRaw = values[_dailyProofKey];
+    if (proofRaw != null) {
+      try {
+        final decoded = jsonDecode(proofRaw) as Map<String, dynamic>;
+        decoded.forEach((key, value) { if (value is List) _dailyProofs[key] = value.whereType<String>().toList(); });
+      } catch (_) { /* A corrupt pending proof must not prevent archive loading. */ }
+    }
     _dailyStreak = int.tryParse(values[_dailyStreakKey] ?? '') ?? 0;
     final String? puzzlesRaw = values[_completedPuzzlesKey];
     if (puzzlesRaw != null && puzzlesRaw.trim().isNotEmpty) {
@@ -482,6 +537,7 @@ class LocalGameArchive {
         _completedDailyKey,
         _lastDailyCompletionKey,
         _dailyStreakKey,
+      _dailyProofKey,
         _completedPuzzlesKey,
         _profileCountryKey,
         _profileLevelKey,
@@ -499,6 +555,7 @@ class LocalGameArchive {
   static void _resetMemory() {
     _archiveGeneration++;
     _games.clear();
+    _dailyProofs.clear();
     _cloudWeaknessScores.clear();
     _completedDailyChallengeIds.clear();
     _completedPuzzleIds.clear();
@@ -688,34 +745,28 @@ class LocalGameArchive {
     if (completedAt == null) {
       return false;
     }
-    final Duration elapsed = now.toUtc().difference(completedAt);
-    return !elapsed.isNegative && elapsed < dailyChallengeLockDuration;
+    return dailyPuzzleDay(completedAt) == dailyPuzzleDay(now);
   }
 
-  static Duration get dailyChallengeRemaining {
-    return dailyChallengeRemainingAt(DateTime.now());
-  }
+  static Duration get dailyChallengeRemaining => dailyChallengeRemainingAt(DateTime.now());
 
   static Duration dailyChallengeRemainingAt(DateTime now) {
-    final DateTime? completedAt = _lastDailyCompletedAt;
-    if (completedAt == null) {
-      return Duration.zero;
-    }
-    final Duration remaining = completedAt
-        .add(dailyChallengeLockDuration)
-        .difference(now.toUtc());
-    return remaining.isNegative ? Duration.zero : remaining;
+    if (!isDailyChallengeLockedAt(now)) return Duration.zero;
+    return dailyPuzzleDay(now).add(const Duration(days: 1)).difference(now.toUtc());
   }
 
-  static void markDailyChallengeComplete(String challengeId) {
+  static void markDailyChallengeComplete(String challengeId, {List<String> moves = const []}) {
+    if (isDailyChallengeLocked) return;
+    if (moves.isNotEmpty) {
+      _dailyProofs[challengeId] = moves.map((m) => m.replaceAll(' x ', '').trim().toLowerCase()).toList();
+      final keys = _dailyProofs.keys.toList()..sort();
+      for (final key in keys.take((keys.length - 7).clamp(0, 7))) { _dailyProofs.remove(key); }
+      unawaited(_storage.write(key: _dailyProofKey, value: jsonEncode(_dailyProofs)));
+    }
     if (_completedDailyChallengeIds.add(challengeId)) {
       _dailySolved++;
       final DateTime now = DateTime.now().toUtc();
-      _dailyStreak = dailyStreakAfterCompletion(
-        currentStreak: _dailyStreak,
-        previousCompletion: _lastDailyCompletedAt,
-        completion: now,
-      );
+      _dailyStreak = dailyPuzzleStreakFromIds(_completedDailyChallengeIds, now);
       unawaited(
         _storage.write(
           key: _completedDailyKey,
@@ -769,6 +820,7 @@ class LocalGameArchive {
         _completedDailyKey,
         _lastDailyCompletionKey,
         _dailyStreakKey,
+      _dailyProofKey,
         _completedPuzzlesKey,
         _profileCountryKey,
         _profileLevelKey,
@@ -847,6 +899,7 @@ class LocalGameArchive {
       'avatar': _profileAvatar,
       'profileUpdatedAt': _profileUpdatedAt?.toIso8601String(),
       'dailyStreak': _dailyStreak,
+      'dailyCompletionMoves': _dailyProofs,
       'openingWeakness': weaknesses['opening'] ?? 0,
       'kingSafetyWeakness': weaknesses['kingSafety'] ?? 0,
       'hangingPiecesWeakness': weaknesses['hangingPieces'] ?? 0,
@@ -924,10 +977,7 @@ class LocalGameArchive {
       _completedAcademyLessonIds.addAll(academy.whereType<String>());
       _puzzlesSolved = _completedPuzzleIds.length;
       _dailySolved = _completedDailyChallengeIds.length;
-      _dailyStreak = mathMax(
-        _dailyStreak,
-        (cloud['dailyStreak'] as num?)?.toInt() ?? 0,
-      );
+      _dailyStreak = dailyPuzzleStreakFromIds(_completedDailyChallengeIds, DateTime.now());
       for (final String key in <String>[
         'opening',
         'kingSafety',
@@ -1040,7 +1090,7 @@ class LocalGameArchive {
       losses: losses,
       dailySolved: _dailySolved,
       puzzlesSolved: _puzzlesSolved,
-      dailyStreak: _dailyStreak,
+      dailyStreak: dailyPuzzleStreakFromIds(_completedDailyChallengeIds, DateTime.now()),
     );
   }
 
@@ -1059,10 +1109,8 @@ class LocalGameArchive {
     final int coins =
         (localStats.gamesPlayed * 8) +
         (localStats.wins * 18) +
-        (localStats.dailySolved * 35) +
-        (localStats.puzzlesSolved * 12) +
-        (localStats.dailyStreak * 10) +
-        dailyStreakBonusCoins(localStats.dailyStreak);
+        dailyPuzzleActivityCoins(_completedDailyChallengeIds, DateTime.now()) +
+        (localStats.puzzlesSolved * 12);
     final int reviewedGames = _games
         .where((SavedGameRecord game) => game.moveReviews.isNotEmpty)
         .length;

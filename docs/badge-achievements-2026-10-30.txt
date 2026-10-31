@@ -1,0 +1,18 @@
+Collection badge update — 2026-10-30
+
+Implemented locally (not deployed):
+- Achievement requirements: Academy Scout 1 Academy lesson; Puzzle Hunter 25 distinct puzzles; Tactical Eye 20 medium/hard puzzles; Opening Sage 5 opening lessons; Streak Flame 7 consecutive dated daily challenges; Checkmate Crown 10 server-recorded online checkmate wins.
+- Royal Master and Blitz Charger remain decorative purchases, with no rating/coin benefit promised.
+- Existing purchases remain owned; earned status is separate. Existing accounts retain the previously free Academy Scout through migration V95.
+- Server reconciles synced learning progress when Collection/profile shop data is loaded. Learning progress is client-synced, not an anti-cheat certification. Online checkmate wins use server results.
+- No extra coin award for badges. Legacy purchase requests for locked achievement badges are rejected before spending coins.
+- Collection has requirements, progress and earned/previously-owned states, with natural-height cards.
+- Own Profile displays its equipped server badge, scoped to the current account. Public player profiles/rankings/opponent cards are not changed by this patch.
+- New badge labels translated in all 34 catalogs; ChessVerseAI remains unchanged.
+
+Validation:
+- EconomyControllerTest: 16 passing tests.
+- BadgeAchievementsTest: 5 passing tests, including idempotence, account isolation, purchase guard, historical streak and checkmate reason.
+- Badge layout/DTO tests: 35 passing tests; 34 locales at 320px and 2x text, locked/owned/earned details. These do not certify every app screen or native-language translation quality.
+
+Rollout still required: migration V95 + backend deployment, release app build, device verification. Deploy backend before the new app UI. Old clients retain their old price labels but cannot buy a locked achievement badge after backend deployment. No production deployment or AAB was produced for this patch.

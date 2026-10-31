@@ -3,6 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'daily completion Done dismisses to caller without starting another game',
+    (tester) async {
+      var done = 0, newGames = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameResultOverlay(
+            title: 'Challenge complete',
+            detail: 'Daily puzzle solved',
+            scoreLabel: '',
+            accuracy: null,
+            turningPoint: null,
+            onNewGame: () => newGames++,
+            onDismiss: () => done++,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.ensureVisible(find.text('Done'));
+      await tester.tap(find.text('Done'));
+      expect(done, 1);
+      expect(newGames, 0);
+    },
+  );
   GameSnapshot snapshotWithPly(int ply) => GameSnapshot(
     pieces: const <String, ChessPiece>{},
     moves: List<String>.filled(ply, 'move'),
@@ -52,11 +76,27 @@ void main() {
   });
 
   test('undo honours a Black-to-move initial position', () {
-    final history = [snapshotWithPly(0), snapshotWithPly(1), snapshotWithPly(2)];
-    expect(computerUndoSnapshotIndex(history, humanPlaysWhite: false,
-      initialWhiteToMove: false), 2);
-    expect(computerUndoSnapshotIndex(history, humanPlaysWhite: true,
-      initialWhiteToMove: false), 1);
+    final history = [
+      snapshotWithPly(0),
+      snapshotWithPly(1),
+      snapshotWithPly(2),
+    ];
+    expect(
+      computerUndoSnapshotIndex(
+        history,
+        humanPlaysWhite: false,
+        initialWhiteToMove: false,
+      ),
+      2,
+    );
+    expect(
+      computerUndoSnapshotIndex(
+        history,
+        humanPlaysWhite: true,
+        initialWhiteToMove: false,
+      ),
+      1,
+    );
   });
 
   testWidgets('turn reminder is text-only and has no popup subtitle', (

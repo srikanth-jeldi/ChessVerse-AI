@@ -34,6 +34,7 @@ class TournamentEngineTest {
 
     @BeforeEach
     void schema() {
+        jdbc.execute("create table if not exists tournament_preview_slot(tournament_id uuid,player_id uuid,slot int,primary key(tournament_id,player_id),unique(tournament_id,slot))");
         jdbc.execute("create table if not exists chess_tournament(id uuid primary key,name varchar(100),description varchar(300),time_control_minutes int,capacity int,starts_at timestamp with time zone,ends_at timestamp with time zone,status varchar(16),current_round int default 0,champion_id uuid,runner_up_id uuid,entry_coins int default 100,series_code varchar(32),occurrence_number int default 1,cadence_days int default 0,minimum_players int default 2,badge_code varchar(48),champion_bonus int default 0,runner_up_bonus int default 0,participation_bonus int default 0)");
         jdbc.execute("create table if not exists chess_tournament_entry(tournament_id uuid,player_id uuid,joined_at timestamp with time zone,active boolean default true,reserved_coins int default 0,reservation_id uuid,refunded_at timestamp with time zone,primary key(tournament_id,player_id))");
         jdbc.execute("create table if not exists chess_tournament_round(id uuid primary key,tournament_id uuid,round_number int,status varchar(16),created_at timestamp with time zone,completed_at timestamp with time zone)");
@@ -73,6 +74,16 @@ class TournamentEngineTest {
                         .header("Authorization","Bearer "+second)).andExpect(status().isOk());
         assertEquals(0L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,firstId));
         assertEquals(0L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,secondId));
+        var previewResponse = mockMvc.perform(get("/api/v1/community/tournaments/"+tournament)
+                        .header("Authorization","Bearer "+first))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.rounds[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.rounds[0].pairings[0].matchId").isEmpty())
+                .andExpect(jsonPath("$.rounds[0].pairings[0].winner").isEmpty())
+                .andReturn();
+        var preview = json.readTree(previewResponse.getResponse().getContentAsString())
+                .path("rounds").get(0).path("pairings").get(0);
+        assertEquals(0, jdbc.queryForObject("select count(*) from chess_tournament_round where tournament_id=?", Integer.class, tournament));
         jdbc.update("update chess_tournament set starts_at=?,status='OPEN',champion_id=null,current_round=0 where id=?",
                 Timestamp.from(Instant.now().minusSeconds(1)),tournament);
 
@@ -80,6 +91,10 @@ class TournamentEngineTest {
                         .header("Authorization","Bearer "+first))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.rounds[0].pairings[0].matchId").isNotEmpty()).andReturn();
+        var startedPairing = json.readTree(result.getResponse().getContentAsString())
+                .path("rounds").get(0).path("pairings").get(0);
+        assertEquals(preview.path("white").path("id").asText(), startedPairing.path("white").path("id").asText());
+        assertEquals(preview.path("black").path("id").asText(), startedPairing.path("black").path("id").asText());
         UUID matchId=UUID.fromString(json.readTree(result.getResponse().getContentAsString())
                 .path("rounds").get(0).path("pairings").get(0).path("matchId").asText());
         OnlineMatch match=matches.findById(matchId).orElseThrow();

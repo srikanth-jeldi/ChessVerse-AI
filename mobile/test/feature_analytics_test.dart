@@ -32,4 +32,20 @@ void main() {
       completes,
     );
   });
+
+  test('same board on the next IST day counts as playing again', () {
+    final tracker = PlayActivityTracker();
+    expect(
+      tracker.acceptHumanMove(at: DateTime.parse('2026-10-30T18:29:58Z')),
+      isTrue,
+    );
+    expect(
+      tracker.acceptHumanMove(at: DateTime.parse('2026-10-30T18:29:59Z')),
+      isFalse,
+    );
+    expect(
+      tracker.acceptHumanMove(at: DateTime.parse('2026-10-30T18:30:00Z')),
+      isTrue,
+    );
+  });
 }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/analytics/app_analytics.dart';
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/coach_localizations.dart';
 import '../../../core/coach_extra_localizations.dart';
@@ -3233,6 +3234,9 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   @override
   void initState() {
     super.initState();
+    unawaited(
+      AppAnalytics.logFeature(FeatureEvent.chat_opened, mode: 'ai_coach'),
+    );
     _languageCode = widget.initialLanguageCode;
     _answer = _localizedPersonalCoachAnswer(
       widget.insight,

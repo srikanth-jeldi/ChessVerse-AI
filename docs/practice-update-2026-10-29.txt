@@ -1,0 +1,41 @@
+Practice update - 29 October 2026
+
+Implemented in the working tree; not released or deployed.
+
+Daily challenge
+- Seven-day reward cycle: 10, 15, 20, 25, 30, 35, 40 coins, then repeat.
+- Missing a UTC calendar day restarts the reward cycle. Streak appears below the board.
+- Done returns Home. Daily puzzles use a curated moderate/hard forcing-line pool.
+- Server validates dated move proofs and credits each account/day once, including concurrent retries.
+- Offline proofs may be submitted within seven days. Backend deployment is required before live reward verification.
+
+Daily Routine
+- Daily account-scoped tasks use recent reviewed mistakes, puzzle progress and opening practice.
+- New users receive an honest starter plan; no invented weaknesses or new cloud AI calls.
+- Completion reflects solved puzzles, successful mistake practice and completed opening lines.
+
+Opening Trainer
+- Ruy Lopez, Sicilian Defence, Italian Game and Queen's Gambit; practise White or Black.
+- Wrong line moves leave the position unchanged and reveal guidance; other legal moves are not labelled blunders.
+- Hint arrows, restart, completion tracking and an LTR board within RTL interfaces.
+
+Public Chess.com game import
+- Supported public game URL, either player's username and game month are required.
+- Uses the documented monthly public archive API, exact URL matching and the existing PGN import flow.
+- Clear unsupported-link, missing-game, network and rate-limit errors; no claim of support for every link.
+
+Verification
+- Practice domain/import tests: 16 passed.
+- New practice/streak layouts: all 34 languages at narrow width and enlarged text, including import keyboard state.
+- Daily puzzle suite: 5 passed, including legal checkmate replay for all 118 selected puzzles.
+- Overlay regression suite: 8 passed after allowing the entrance animation to settle in the Done test.
+- Backend reward/proof/duplicate/concurrent-credit suites: 8 passed.
+- Live public archive URL-to-PGN fetch passed; 3604-character PGN returned.
+- Full Flutter analysis and final focused analysis: no issues.
+- Translation checks preserve existing copy, placeholders and ChessVerseAI branding.
+
+Deferred by user until tomorrow
+- Real-device tests, including actual Home navigation, account switching, puzzle/mistake completion refresh,
+  both opening sides, RTL arrows, keyboard interactions and importing into My Games.
+- Backend deployment and real wallet credit verification.
+- New release AAB, release version and publication are not part of this completed code verification.

@@ -1,3 +1,4 @@
+import 'opening_trainer_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/academy_story_localizations.dart';
@@ -322,6 +323,15 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               gamesReviewed: LocalGameArchive.games.length,
               copy: _copy,
             ),
+            const SizedBox(height: 14),
+            Card(child: ListTile(
+              leading: const Icon(Icons.account_tree_outlined),
+              title: const UiText('Opening Trainer'),
+              subtitle: const UiText('Practise this opening line. Other legal moves may also be good.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => const OpeningTrainerScreen())),
+            )),
             const SizedBox(height: 14),
             const MistakeBankEntryCard(),
             const SizedBox(height: 14),

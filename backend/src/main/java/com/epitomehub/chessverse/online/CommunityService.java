@@ -178,6 +178,7 @@ class CommunityService {
             if ((Integer)entry[0] > 0 && entry[1] != null) economy.grantCoins(player.id(),(Integer)entry[0],
                     "TOURNAMENT_ENTRY_REFUND","tournament:"+tournamentId+":refund:"+entry[1],"Tournament entry returned");
         }
+        TournamentPreviewSlots.sync(jdbc, tournamentId);
         return hub(player);
     }
 

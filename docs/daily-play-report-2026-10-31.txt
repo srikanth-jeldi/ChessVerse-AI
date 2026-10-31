@@ -22,3 +22,12 @@ Set chessverse.play-report.recipient explicitly and enable chessverse.play-repor
 only after approval, on the intended reporting instance.
 Chat activity records opens and successful messages, never message content. Additional feature navigation counts are included. Delivery follows the auth-report enabled flag unless explicitly overridden.
 
+
+Rollout update:
+- Backend commit 42a605d8c6a83c596494a819df7967e044e21ab0 deployed successfully by GitHub run 41189724762.
+- API and readiness both reported UP.
+- New chat/feature mobile instrumentation remains local, awaiting the next app release.
+- Three report unit tests, three analytics endpoint tests and four Flutter analytics tests pass; targeted Flutter analysis clean.
+- Chat opens, successful text/attachment sends and successful AI coach questions are counts only; no chat content is exported.
+- Auth report remains at its existing schedule; play report starts at 09:00 IST with hourly unsent retries through 23:00. A pending previous-day report may be delivered on the first retry after deployment.
+- Pending, undeployed badge migration moved from V93 to V95 so it can follow live V94 without out-of-order migration.

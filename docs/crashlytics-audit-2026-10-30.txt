@@ -1,0 +1,245 @@
+ChessVerseAI stability investigation - 30 October 2026 (Asia/Calcutta)
+
+Status: source fixes and regression verification; no new AAB, deployment,
+Play rollout or Crashlytics issue closure performed in this audit.
+Earlier uncommitted daily-practice/streak changes are preserved separately.
+
+LIVE EVIDENCE
+Signed-in Crashlytics, last 24 hours (29-30 October), open issues:
+10 crashes / 1 user; 14 non-fatals / 11 users; 2 ANRs / 1 user.
+Issue user counts overlap and must not be summed as unique users.
+
+1. MainActivity startup crash
+Issue deded8c0f31d4e1114dffff8c8ea4ed6
+All 10 current-window events: 1.3.1 (226), Huawei Enjoy 9s, Android 11.
+Selected event 29 October 16:51:49: ReLinker MissingLibraryException,
+libflutter.so absent; searched arm64-v8a, armeabi-v7a, armeabi, found none.
+The group's historical title describes ARM64/x86_64 mismatch, but that is
+not the exception in this selected event. Do not infer its cause from the title.
+Existing 1.3.57+324 AAB verified directly: libflutter.so AND libapp.so exist
+for armeabi-v7a, arm64-v8a and x86_64; ELF machine IDs 40/183/62 all match.
+Current Gradle explicitly preserves all three ABIs. An old installed binary
+cannot be repaired by editing today's source. Affected installation needs an
+official Play update (or complete reinstall after safeguarding account data).
+No startup catch-and-ignore or removal of supported libraries was added.
+
+2. Ad SDK eight-second timeout (two issue groups)
+Issue 200c30dd5962dee956c633adc35eb446: 7 events / 6 users.
+Versions in current window: 324=3, 304=2, 300=1, 294=1.
+Selected 324 event: Samsung SM-A032F, Android 13, 30 October 02:03:56.
+Breadcrumbs: network offline, archive ready, SDK initialize, then timeout.
+Issue 59c4a98a29197d562c51aa65d254c306: 4 events / 4 users, all build311.
+These are handled non-fatals, not application crashes.
+Google documents initialization completion or a 30-second SDK timeout.
+The app's eight-second caller wait previously reported failure and left a
+mounted banner collapsed even if native initialization completed later.
+
+SOURCE FIX
+- Retain a single native initialization across bounded caller waits.
+- Publish late readiness so mounted banner slots can load automatically.
+- Retry empty banner slots on foreground/network recovery; avoid duplicate loads.
+- Avoid starting ad work in background or when network health is known offline.
+- Eight-second caller deferral becomes a breadcrumb, not a false SDK-failure event.
+- Retain actual native errors (including late errors) and report a genuinely
+  stalled operation once after 35 seconds. No blanket Crashlytics filtering.
+- No new per-device ad suppression or SDK removal.
+
+3. TLS health probe
+Issue 33efb1d8d263f1e8520b67ea4592ab80: 3 events / 1 user, all build311.
+Oppo CPH2179 / Android10; selected event29 October15:57:30 reports
+CERTIFICATE_VERIFY_FAILED: self signed certificate.
+Production api.chessverseai.com passed hostname/certificate validation from
+this computer with TLS1.3 and Let's Encrypt YE2, expiry24 December2026.
+That does not prove what certificate/network the affected device received.
+SOURCE FIX: native SocketException/TlsException now allow offline gameplay
+and recovery instead of treating transport failure as an HTTP server outage.
+TLS errors remain reported. Certificate validation is NOT disabled or bypassed.
+Health requests close on completion/timeout, pause in background, and resume
+when foregrounded. Late results cannot overwrite a newer probe or disposed UI.
+
+4. ANR - still unconfirmed, not claimed fixed
+Issue 4d05f9e74e77520b418eac3a355108f1: 2 events / 1 user, both build324.
+Corn ClassyS26Ultra4G / Android16, background state.
+Selected events:29 October12:34:22 and30 October11:01:44.
+Both event views exposed no stack content; latest logs/breadcrumbs were absent.
+Copy stack returned empty; stack download failed to produce a download.
+Firebase labels root cause unknown. Its AI summary speculates about encrypted
+storage/file access, but the available event data does not establish this.
+Do not weaken storage protection or introduce a device-specific workaround
+based on that generated explanation.
+Lifecycle and system-memory-pressure breadcrumbs added for future reports;
+background network/ad deferral is hardening, not proof this ANR is fixed.
+Resolution needs a useful full thread dump/Play ANR report or reproduction on
+the affected device, followed by release telemetry verification.
+
+PRIMARY REFERENCES
+https://developers.google.com/admob/flutter/quick-start
+https://developers.google.com/admob/android/optimize-initialization
+(GMA24+ optimization flags already default true; no redundant claimed fix.)
+https://firebase.google.com/docs/crashlytics/debug-anr-errors
+https://developer.android.com/topic/performance/anrs/diagnose-and-fix-anrs
+
+VERIFICATION
+- 29 focused regressions passed: ad initializer, network health/lifecycle,
+  post-match ads, offline/server-error UI, diagnostic redaction/classification.
+- 2 additional mocked banner integration tests passed with debug test ads
+  explicitly enabled: late SDK completion loads a mounted banner, but never
+  loads after leaving/disposal. No live production ad traffic was generated.
+- Final focused Flutter analyzer: no issues found (7 targets,105.7seconds).
+- git diff --check passed.
+- Existing build324 native-library presence and ELF ABI checks:6/6passed.
+- Production API certificate/hostname validation passed from this computer.
+- Real-device reproduction, new AAB rollout and post-release telemetry remain
+  outstanding. No claim that all crashes/ANRs are eliminated.
+
+NEXT EVIDENCE NEEDED
+Requested the matching Play Console Android vitals ANR detail link from the
+user because Firebase exposed no useful thread dump for these two events.
+
+FOLLOW-UP: USER'S SEVEN-DAY CRASH-ONLY LINK
+Verified 24-30 October in the authenticated Firebase UI: 24 crashes, 5 users.
+- MainActivity native-library group: 23 events / 4 users. Version breakdown:
+  1.2.93 (217):11; 1.3.1 (226):10; 1.2.87 (211):1; 1.2.90 (214):1.
+- HSDP targetPackageName null:1 event /1 user, 1.3.36 (303), OnePlus8Pro,
+  Android11,25 October17:27:05. Stack identifies hsdp2.1.0. Current source
+  already pins hsdp2.2.0 in mobile/android/app/build.gradle.kts:107.
+- No build324 event appears in this open/crash-only seven-day list. This
+  does not exclude ANRs/non-fatals or establish zero issues in build324.
+- The supplied URL is Firebase with types=crash; it does not provide the
+  missing Play Console ANR thread evidence. The ANR remains unresolved.
+
+FOLLOW-UP: REMOVED CRASH-ONLY FILTER (30 OCTOBER)
+The seven-day all-types list exposes three ANR groups, six events total:
+1. 7c27497299c518c02c91164755037c5b: one event, build311, Vivo V2118,
+   Android12,24 October11:02:16. Main thread blocks in Play Install Referrer
+   binder call invoked by Facebook InstallReferrerUtil setup callback.
+   Added com.facebook.sdk.AutoLogAppEventsEnabled=false to the app manifest
+   to suppress optional automatic Facebook analytics/attribution traffic.
+   Facebook initialization/login remain enabled. This mitigation reduces
+   the observed trigger; it is not proof that all SDK binder calls are gone.
+   Tradeoff: automatic Meta app events/installation attribution are disabled;
+   Firebase analytics and AdMob configuration are unchanged.
+   Confirmed cached facebook-core18.1.3 bytecode gates automatic event methods
+   using getAutoLogAppEventsEnabled. XML parses with the intended false value.
+   No app code re-enables this setting or explicitly logs Facebook app events.
+2. 8a4f7c4c9a513e5c48c2fbd841cf65a4: one event, build311, Itel A515W,
+   Android14,26 October12:38:33. Android ActivityThread.handleCreateService
+   calls getSystemService -> PackageManager.hasSystemFeature -> binder.
+   No application/service identity is exposed by this stack. Cannot safely
+   attribute this to Facebook or remove an arbitrary service. Unresolved.
+3. 4d05f9e74e77520b418eac3a355108f1: four events on Corn ClassyS26Ultra4G,
+   Android16,100% background. Three on324 (28 October23:33,29 October12:34,
+   30 October11:01) and one on311 (26 October10:46). Inspected all four;
+   stack panels empty. Previously reported two events used a24-hour window.
+
+New validation limitation: processReleaseMainManifest failed before execution
+twice because Gradle could not establish its local loopback connection,
+including an IPv4/no-daemon retry. Therefore release manifest merge and
+real-device Facebook-login regression are NOT verified for this new setting.
+Prior31 Flutter tests remain valid for the Dart changes, not this native edit.
+No new AAB/deployment or issue closure performed.
+SDK reference: https://github.com/facebook/facebook-android-sdk/issues/1039
+SDK automatic-event gate: https://github.com/facebook/facebook-android-sdk/blob/main/facebook-core/src/main/java/com/facebook/appevents/InternalAppEventsLogger.kt
+
+PLAY CONSOLE FOLLOW-UP (30 OCTOBER)
+User supplied authenticated Android vitals link. Read the nine listed groups
+for23-30 October; table totals15 events, with data last updatedThursday12:30.
+Do NOT equate this window/pipeline with Firebase counts or infer that build324
+has no fatal crashes from the earlier Firebase-only list.
+
+- edb64ba581d5e6570f6e3c7141c12402: IMGeglMakeCurrent SIGSEGV,2 events/2 users,
+  builds311/324,Android10. Devices Infinix-X660 and POCO angelicain.
+  Selected324 sample is POCO C31. Vendor GLES/IMG EGL -> Android HWUI
+  RenderThread.makeCurrent; no Flutter/ad frame establishing the trigger.
+- a1e88d2c91f3ddf45ec0385bc1440a67: same driver crash family,1 event,311,
+  Oppo CPH2239,Android10,64-bit vendor graphics/HWUI path.
+  Both remain unresolved; do not blindly switch Flutter renderers or disable
+  ads/hardware acceleration based solely on a vendor crash signature.
+- 6eaac4dffd29698f1502d695cbff2359:324,1 no-focused-window ANR on Google Play
+  Games on PC,Android14,x86_64. Main thread ART NewLocalRef wait while Flutter
+  dispatches a platform message. Exact plugin/channel not identified.
+- d6f045ccd040889d1a975d071fe8a68a:5 events/1 Corn user,311/324,Android16,
+  background. Play explicitly says 'Stack trace not available', confirming
+  the missing Firebase trace. No full-root-cause fix can be claimed.
+- edcf41f994db97b15a60ad3996062ad3:311,1 event,Itel A24 2023/A507LX,
+  Android12. PendingIntent.getBroadcast -> getBroadcastPendingIntent ->
+  FlutterLocalNotificationsPlugin.cancelNotification/cancel blocks main.
+  Found repeated cancellation of28 reminder IDs on Play opening. Changed
+  scheduling to replace retained IDs in place and cancel only pending obsolete
+  IDs owned by the play-reminder feature. Daily puzzle alarm likewise replaces
+  its same ID without cancelling first. Disable still cancels all pending
+  owned play reminders; unrelated/tournament reminders are preserved.
+  This reduces observed binder-call exposure; it does not move the plugin's
+  remaining cancellation binder calls off main or prove the ANR eliminated.
+- 37a30cf294d890ca209167c47942826f:311,Itel A515W,Android14,1 background ANR.
+  Timeout is FCM RECEIVE broadcast. Main thread is creating an Android system
+  service via PackageManager.hasSystemFeature. Same stack as Firebase8a4f7c;
+  Play adds the push-broadcast context, but no evidence of a slow Dart handler.
+- 2c0a0f274a4d640661d9dfbf2c725706:311,Samsung Galaxy A03 Core,Android12,
+  1 background ANR. Dart GC MarkingVisitor/IterateRoots/CollectGarbage during
+  NotifyIdle. Heap/allocation profile needed to locate responsible allocations.
+- bbca7fd22035162343d7a2d680d881c3:2 startup crashes,211/217,Android11,
+  Redmi cattail/realme RMX3231. Selected211 stack wraps FlutterLoader startup
+  exception; deepest exception text not exposed in this Play sample.
+- ce5d40f2a8f37bc4b123dbd193bfc306:Facebook install-referrer binder ANR,
+  311,1 event, Samsung Galaxy M02,Android11,foreground. Main thread blocks
+  in IGetInstallReferrerService.getInstallReferrer called from Facebook
+  InstallReferrerUtil.onInstallReferrerSetupFinished. Same causal path as
+  the separate Firebase Vivo sample; mitigation documented above.
+
+NOTIFICATION CHANGE VALIDATION
+10 tests passed: new pending-reminder cleanup tests plus reminder plan,
+timezone and notification deep-link regressions. Focused analyzer: no issues
+(3 targets,29.1s). git diff --check passed. No live notification sends.
+Source: mobile/lib/core/notifications/pending_reminder_cleanup.dart and
+daily_reminder_service.dart. Tests: mobile/test/pending_reminder_cleanup_test.dart.
+Reminder IDs replace existing notifications per plugin documentation:
+https://pub.dev/documentation/flutter_local_notifications/latest/index.html
+Native device regression and release build remain pending. No dashboard
+issues hidden/archived, no new AAB or rollout produced during this audit.
+
+USER TERMINAL AND DEVICE FOLLOW-UP
+User supplied successful processReleaseMainManifest output (3m14s). Verified
+the generated release/processReleaseMainManifest/AndroidManifest.xml contains
+com.facebook.sdk.AutoLogAppEventsEnabled=false. Manifest merge is now verified;
+this is not an APK/AAB build or proof of ANR elimination.
+Paired and connected Samsung SM-F415F through wireless ADB. A fresh side-by-side
+debug APK build from the agent still failed before compilation with 'Unable to
+establish loopback connection'; see .build-tmp/stability-device-build.log.
+No updated test APK installed and no real-device regression claimed yet.
+
+DEBUG APK FOLLOW-UP
+User successfully built the side-by-side debug APK in their terminal (219.4s).
+Verified app-debug.apk: package com.epitomehub.chessverse.uitest, version324 /
+1.3.57, built30October14:48 local time. This is a debug test APK, not the next
+release AAB. Phone was no longer connected; mDNS advertised32879 but direct
+connect was refused. Installation and real-device testing await a working
+debugging connection; no app data was removed.
+
+DEVICE INSTALL / CONFIGURATION FINDINGS
+Connected Samsung SM-F415F on34095 and installed .uitest APK successfully.
+Initial am start -W timed out at10.2s; process survived and onboarding then
+welcome screen were visible and scrollable. Startup logs included175 skipped
+frames; no fatal crash or ANR signature in the captured startup window. This
+does not establish acceptable release performance or resolve vendor ANRs.
+Firebase Installations rejected .uitest with403 API_KEY_ANDROID_APP_BLOCKED.
+The supplied debug build command also omitted API_BASE_URL and therefore used
+the debug default127.0.0.1:8080. Guest/game smoke tests are incomplete. Prepared
+tools/build-stability-device-test.ps1 with explicit HTTPS cloud API endpoint.
+Firebase auth/push still need dedicated test-package setup or a Play-signed
+test-track build. No production credentials/restrictions changed.
+
+CLOUD-CONNECTED DEVICE SMOKE TEST (30 OCTOBER)
+User rebuilt using build-stability-device-test.ps1 successfully (52.1s).
+Updated .uitest installed on Samsung SM-F415F. am start succeeded,8592ms;
+debug startup timing is not a release-performance measurement.
+Skipped onboarding, entered a new guest, and observed Home with100 coins.
+Started AI game as White at1400. Verified board sequence1.e4 e5 2.Nf3 Nc6.
+Backgrounded afterNf3 and resumed successfully (am start wait76ms); board
+retained both user moves and AI replies. No E/flutter, FATAL EXCEPTION,
+ANR in, or Fatal signal matches in captured app-PID final log.
+Evidence: .build-tmp/cv-cloud-ui2.xml, cv-cloud-move2.xml,
+cv-cloud-resume.xml and stability-cloud-final.log.
+This is a short guest/game/lifecycle smoke test only. Firebase auth/push remain
+unverified because of the .uitest package restriction. No affected GPU/Corn/PC
+device reproduction, prolonged soak, next-version AAB, or production rollout.

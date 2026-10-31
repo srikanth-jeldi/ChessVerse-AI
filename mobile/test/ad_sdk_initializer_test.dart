@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:google_mobile_ads/src/ad_instance_manager.dart';
@@ -68,6 +69,41 @@ void main() {
       expect(adCalls, 1);
     },
   );
+
+  test(
+    'late SDK completion notifies slots without another user request',
+    () async {
+      messenger.setMockMethodCallHandler(environment, (_) async => false);
+      final pending = Completer<InitializationStatus>();
+      messenger.setMockMethodCallHandler(ads, (_) {
+        adCalls++;
+        return pending.future;
+      });
+      var notifications = 0;
+      void listener() => notifications++;
+      AdSdkInitializer.readiness.addListener(listener);
+      addTearDown(() => AdSdkInitializer.readiness.removeListener(listener));
+      expect(await AdSdkInitializer.ensureReady(), isFalse);
+      expect(AdSdkInitializer.readiness.value, isFalse);
+      pending.complete(InitializationStatus(<String, AdapterStatus>{}));
+      await Future<void>.delayed(Duration.zero);
+      expect(AdSdkInitializer.readiness.value, isTrue);
+      expect(notifications, 1);
+      expect(await AdSdkInitializer.ensureReady(), isTrue);
+      expect(adCalls, 1);
+    },
+  );
+
+  test('background request defers initialization until foreground', () async {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    messenger.setMockMethodCallHandler(environment, (_) async => false);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    expect(await AdSdkInitializer.ensureReady(), isFalse);
+    expect(adCalls, 0);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    expect(await AdSdkInitializer.ensureReady(), isTrue);
+    expect(adCalls, 1);
+  });
 
   test('completed native failure permits a new initialization', () async {
     messenger.setMockMethodCallHandler(environment, (_) async => false);

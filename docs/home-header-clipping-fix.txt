@@ -1,0 +1,34 @@
+Home text layout fix (27 October 2026)
+
+Long account names now wrap without ellipsis. The header separates identity
+and controls from the wrapping coin actions in both phone and wide layouts.
+
+Home hero height is measured from translated content and the current text
+scale; titles and descriptions no longer have fixed line limits. AI rival
+cards retain two columns on phones and wrap the icon/rating header when needed.
+Shortcut rows reserve enough vertical space for enlarged labels. Dashboard
+panels and ranking rows grow with their content rather than fixed heights.
+The desktop sidebar uses the unchanged ChessVerseAI brand in every language.
+
+Verification:
+- 68 header geometry checks: 34 languages, widths 320/900, 150% text scale.
+- 102 full Home cases: 34 languages, widths 320/900/1600, 150% text scale;
+  every carousel page exercised, no reported layout overflow.
+- 10 RTL board animation regressions passed.
+- Analyzer: no issues in changed widgets/tests.
+
+These checks cover Home and the board regressions, not every app screen or
+all possible backend data. Included in production release 1.3.57 (324). A side-by-side debug APK was
+built for device testing before the production bundle.
+Physical verification completed on Samsung SM-F415F: installed without data
+reset, inspected Hebrew and Arabic Home screenshots with the signed-in long
+name and live 2,130-coin balance. Full name wraps on two lines without ellipsis;
+Arabic rival cards remain a two-column grid with readable titles/buttons.
+Device checks cover these visible Home states, not all 34 languages on hardware.
+Screenshots: .build-tmp/home-fixed-device.png, home-fixed-arabic.png,
+home-fixed-arabic-rivals.png.
+
+Build 324: production package and AdMob identity verified; signature verified.
+Bundletool maximum compressed downloads: ARM32 24,532,320 bytes,
+ARM64 24,777,685 bytes, x86_64 24,951,620 bytes (all below 25 MB).
+All 294 protected asset/native paths and 34 language catalogs preserved.

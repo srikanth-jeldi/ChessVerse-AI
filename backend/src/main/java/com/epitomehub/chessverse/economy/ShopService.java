@@ -19,7 +19,9 @@ class ShopService {
     private final JdbcTemplate jdbc;
     private final EconomyService economy;
     private final boolean postgres;
-    ShopService(JdbcTemplate jdbc, EconomyService economy){
+    private final BadgeAchievements badges;
+    ShopService(JdbcTemplate jdbc, EconomyService economy, BadgeAchievements badges){
+        this.badges=badges;
         this.jdbc=jdbc;
         this.economy=economy;
         String database=jdbc.execute((ConnectionCallback<String>) connection ->
@@ -32,8 +34,11 @@ class ShopService {
 
     @Transactional
     ShopDtos.ShopDto purchase(AuthenticatedPlayer player,UUID itemId){
+        lockPlayer(player.id());
+        badges.reconcile(player.id());
         Item item=item(itemId,true);
         if(owned(player.id(),itemId)) return load(player);
+        if(BadgeAchievements.TARGETS.containsKey(item.slug)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Earn this badge by completing its achievement.");
         if("FREE".equals(item.currency)) return equipIfFree(player,item);
         economy.spend(player.id(),item.currency,item.price,"COSMETIC_PURCHASE",
                 "cosmetic:"+itemId,"Purchased "+item.name);
@@ -47,6 +52,8 @@ class ShopService {
 
     @Transactional
     ShopDtos.ShopDto equip(AuthenticatedPlayer player,String rawSlot,UUID itemId){
+        lockPlayer(player.id());
+        badges.reconcile(player.id());
         String slot=rawSlot.toUpperCase();
         if(!List.of("BOARD","PIECES","EFFECT","FRAME").contains(slot)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unknown cosmetic slot.");
         ensureLoadout(player.id());
@@ -58,7 +65,7 @@ class ShopService {
         }
         Item item=item(itemId,false);
         if(!slot.equals(item.category)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Item does not match this slot.");
-        if(!"FREE".equals(item.currency)&&!owned(player.id(),itemId)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Purchase this item before equipping it.");
+        if((BadgeAchievements.TARGETS.containsKey(item.slug)||!"FREE".equals(item.currency))&&!owned(player.id(),itemId)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Unlock this item before equipping it.");
         jdbc.update("update player_cosmetic_loadout set "+column+"=?,updated_at=? where player_id=?",itemId,Timestamp.from(Instant.now()),player.id());
         return load(player);
     }
@@ -67,13 +74,14 @@ class ShopService {
         return equip(player,item.category,item.id);
     }
     private ShopDtos.ShopDto load(AuthenticatedPlayer player){
+        var progress=badges.reconcile(player.id());
         EconomyDtos.WalletDto wallet=economy.wallet(player);
         ensureLoadout(player.id());
         List<ShopDtos.ItemDto> items=jdbc.query("""
                 select i.*,exists(select 1 from player_cosmetic_inventory x where x.player_id=? and x.item_id=i.id) owned,
                 (l.board_item_id=i.id or l.pieces_item_id=i.id or l.effect_item_id=i.id or l.frame_item_id=i.id) equipped
                 from cosmetic_item i join player_cosmetic_loadout l on l.player_id=? where i.active=true order by i.category,i.sort_order
-                """,this::map,player.id(),player.id());
+                """,(rs,n)->map(rs,progress),player.id(),player.id());
         return new ShopDtos.ShopDto(player.id(),wallet,items);
     }
     private void ensureLoadout(UUID playerId){
@@ -97,7 +105,12 @@ class ShopService {
                 """,playerId,now);
     }
     private boolean owned(UUID playerId,UUID itemId){Boolean v=jdbc.queryForObject("select exists(select 1 from player_cosmetic_inventory where player_id=? and item_id=?)",Boolean.class,playerId,itemId);return Boolean.TRUE.equals(v);}
-    private Item item(UUID id,boolean lock){return jdbc.query("select id,category,name,price_currency,price_amount from cosmetic_item where id=? and active=true"+(lock?" for update":""),rs->{if(!rs.next())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Cosmetic item not found.");return new Item(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),rs.getString(4),rs.getLong(5));},id);}
-    private ShopDtos.ItemDto map(ResultSet rs,int row)throws SQLException{return new ShopDtos.ItemDto(rs.getObject("id",UUID.class),rs.getString("slug"),rs.getString("category"),rs.getString("name"),rs.getString("description"),rs.getString("price_currency"),rs.getLong("price_amount"),rs.getString("primary_color"),rs.getString("secondary_color"),rs.getString("asset_key"),rs.getBoolean("owned")||"FREE".equals(rs.getString("price_currency")),rs.getBoolean("equipped"));}
-    private record Item(UUID id,String category,String name,String currency,long price){}
+    private void lockPlayer(UUID player){jdbc.queryForObject("select id from player_account where id=? for update",UUID.class,player);}
+    private Item item(UUID id,boolean lock){return jdbc.query("select id,category,name,price_currency,price_amount,slug from cosmetic_item where id=? and active=true"+(lock?" for update":""),rs->{if(!rs.next())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Cosmetic item not found.");return new Item(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),rs.getString(4),rs.getLong(5),rs.getString(6));},id);}
+    private ShopDtos.ItemDto map(ResultSet rs,java.util.Map<String,BadgeAchievements.Progress> progress)throws SQLException{
+        var badge=progress.get(rs.getString("slug"));
+        boolean owned=rs.getBoolean("owned")||(badge==null&&"FREE".equals(rs.getString("price_currency")));
+        return new ShopDtos.ItemDto(rs.getObject("id",UUID.class),rs.getString("slug"),rs.getString("category"),rs.getString("name"),rs.getString("description"),rs.getString("price_currency"),rs.getLong("price_amount"),rs.getString("primary_color"),rs.getString("secondary_color"),rs.getString("asset_key"),owned,rs.getBoolean("equipped"),badge);
+    }
+    private record Item(UUID id,String category,String name,String currency,long price,String slug){}
 }

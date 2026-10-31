@@ -1044,6 +1044,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _dailyChallenge.id,
     );
     _gameMode = widget.initialGameMode;
+    if (_isTacticsMode && _dailyChallenge.initialFen != null) {
+      _initialGameFen = _dailyChallenge.initialFen!;
+    }
     _aiLevel = widget.initialAiLevel.clamp(1, 10).toDouble();
     _aiStyle = widget.initialAiStyle;
     _humanPlaysWhite = switch (widget.initialSideChoice) {
@@ -1087,7 +1090,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
         _coachNote =
-            'Move any legal white coin. Checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
+            UiCopy.format('Find the forcing line. Checkmate in {0} moves.', [_dailyChallenge.playerMoveGoal]);
       }
     }
     if (_gameMode == GameMode.puzzle) {
@@ -1718,6 +1721,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   ),
                 );
               }
+              if (_gameMode == GameMode.daily) {
+                studioCoach = SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday),
+                  studioCoach,
+                ]));
+              }
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
                   sideToMoveWhite == _humanPlaysWhite && !_aiThinking,
@@ -2097,6 +2106,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             coinsEarned: _gameMode == GameMode.online
                                 ? _onlineMatch?.coinsEarned
                                 : null,
+                            dailyRewardSummary: _gameMode == GameMode.daily
+                                ? DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday) : null,
                             onNewGame: _startGameAfterResult,
                             newGameLabel:
                                 _onlineMatch?.isTournamentMatch == true
@@ -2118,6 +2129,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   }
                                 : null,
                             onDismiss: () async {
+                              if (_gameMode == GameMode.daily && _dailyCompletedToday) {
+                                DesktopNavigationBridge.open(context, 0);
+                                return;
+                              }
                               setState(() => _resultVisible = false);
                               await _showPostMatchAdIfEligible();
                               await _maybeRequestStoreReview();
@@ -3000,25 +3015,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
-    final DateTime today = DateTime.now();
-    final int pattern = dailyChallengePatternForDate(today);
-    final String date = dailyChallengeDateKey(today);
-    final String title = switch (pattern % dailyChallengeQueenFiles.length) {
-      0 => 'Royal Net',
-      1 => 'Back Rank Spark',
-      2 => 'Moonlight Mate',
-      3 => 'Golden File',
-      4 => 'Corner Storm',
-      5 => 'Bishop Beacon',
-      _ => 'Queen Flight',
-    };
+    final today = DateTime.now().toUtc();
+    final puzzle = dailyPuzzleForDate(today, hard: difficulty == DailyChallengeDifficulty.hard);
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-freeplay-v7',
-      title: '$title - ${difficulty.label}',
-      difficulty: difficulty,
-      pattern: pattern,
-      setupMoves: _dailySetupLine(difficulty, pattern),
-      solution: _dailySolutionLine(difficulty, pattern),
+      id: '${dailyChallengeDateKey(today)}-v8-${puzzle.id}',
+      title: puzzle.title,
+      difficulty: difficulty == DailyChallengeDifficulty.hard ? difficulty : DailyChallengeDifficulty.medium,
+      pattern: puzzle.number - 1,
+      setupMoves: const [], solution: puzzle.solution,
+      initialFen: puzzle.fen, forcedPlayerMoves: puzzle.playerMoveGoal,
     );
   }
 
@@ -3040,25 +3045,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
-  List<String> _dailySetupLine(
-    DailyChallengeDifficulty difficulty,
-    int pattern,
-  ) {
-    // Daily Checkmate starts from a composed late-game board, not a full
-    // opening. Setup moves are intentionally empty so the player sees only the
-    // puzzle position.
-    return const <String>[];
-  }
-
-  List<String> _dailySolutionLine(
-    DailyChallengeDifficulty difficulty,
-    int pattern,
-  ) {
-    return dailyChallengeSolutionFor(difficulty, pattern);
-  }
-
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    if (_gameMode == GameMode.puzzle && challenge.initialFen != null) {
+    if (challenge.initialFen != null) {
       return _piecesFromFen(challenge.initialFen!);
     }
     final String queenFile = dailyChallengeQueenFileForPattern(
@@ -3168,22 +3156,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final bool firstCompletion = !_dailyCompletedToday;
     if (firstCompletion) {
       _dailyCompletedToday = true;
-      LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
+      LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id, moves: _moves.reversed.toList());
     }
     _gameResultTitle = 'Challenge complete';
     final int streak = LocalGameArchive.stats().dailyStreak;
-    final bool milestoneBonus =
-        firstCompletion && streak > 0 && streak % 7 == 0;
-    _gameResultDetail =
-        '$streak ${streak == 1 ? 'day' : 'days'} streak. '
-        '${milestoneBonus ? '+100 streak bonus coins! ' : ''}'
-        '${_dailyUnlockMessage()}';
-    _resultVisible = false;
-    _coachNote =
-        "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete. "
-        '$streak ${streak == 1 ? 'day' : 'days'} streak. '
-        '${milestoneBonus ? '+100 streak bonus coins! ' : ''}'
-        '${_dailyUnlockMessage()}';
+    final reward = dailyPuzzleRewardCoins(streak);
+    _gameResultDetail = '$streak ${streak == 1 ? 'day' : 'days'} streak. ${_dailyUnlockMessage()}';
+    _resultVisible = true;
+    _coachNote = '${UiCopy.text('Challenge complete')} · $streak · $reward ${UiCopy.text('Coins')}';
     if (firstCompletion) {
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
@@ -3350,7 +3330,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
 
       final String from = _selectedSquare!;
-      if (_gameMode == GameMode.puzzle &&
+      if (_isTacticsMode &&
           !_puzzleExplorationMode &&
           _dailyPlyIndex < _dailyChallenge.solution.length) {
         final String expected = _dailyChallenge.solution[_dailyPlyIndex]
@@ -3475,7 +3455,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _coachNote = '$moveFeedback $_coachNote';
           }
           _lastPlayerCoachNote = _coachNote;
-          if (_gameMode == GameMode.puzzle && puzzleWrongMove) {
+          if (_isTacticsMode && puzzleWrongMove) {
             // A tactics puzzle is an exact forcing line, not a free-play game.
             // End this attempt instead of allowing a long branch that can
             // eventually surface normal-game draw/stalemate results.
@@ -4499,6 +4479,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;
+      if (_isTacticsMode && challenge.initialFen != null) {
+        _initialGameFen = challenge.initialFen!;
+      }
       _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
       _puzzleExplorationMode = false;
@@ -4531,7 +4514,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
                 ? _dailyUnlockMessage()
-                : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
+                : UiCopy.format('Find the forcing line. Checkmate in {0} moves.', [challenge.playerMoveGoal])
           : _gameMode == GameMode.puzzle
           ? '${_activePuzzle.title}: checkmate in ${challenge.playerMoveGoal} moves.'
           : 'Select a coin to see legal moves.';

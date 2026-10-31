@@ -1,0 +1,7 @@
+<en-GB>
+Daily puzzle streaks now earn coin rewards, with a clear return to Home.
+Practise with your daily plan, guided openings and supported Chess.com game imports.
+Discover achievement badges and track your progress.
+See registered tournament pairings and revisit past results.
+Improved offline profile pictures, multilingual layouts and startup reliability.
+</en-GB>

@@ -18,6 +18,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../social/data/community_api.dart';
 import '../../coaches/coach_picker_screen.dart';
+import '../../shop/presentation/profile_collection_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -234,6 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             uploading: _uploadingPhoto,
           ),
           const SizedBox(height: 18),
+          ProfileCollectionBadge(key: ValueKey(_accountRevision)),
           Card(
             child: ListTile(
               leading: const Icon(Icons.record_voice_over),

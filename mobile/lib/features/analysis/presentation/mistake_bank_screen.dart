@@ -126,8 +126,11 @@ class MistakeBankScreen extends StatefulWidget {
   const MistakeBankScreen({
     super.key,
     this.analyzePosition,
+    this.initialItemIds,
     this.showRewardedHint,
   });
+
+  final List<String>? initialItemIds;
 
   final Future<RewardedCoinOutcome> Function()? showRewardedHint;
 
@@ -260,7 +263,8 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     unawaited(_refreshHintPass());
     unawaited(AppAnalytics.logFeature(FeatureEvent.mistake_bank_viewed));
     _allItems = MistakeBank.all(LocalGameArchive.games);
-    _items = _allItems.take(5).toList(growable: false);
+    _items = _allItems.where((item) => widget.initialItemIds?.contains(item.id) ?? true).take(5).toList(growable: false);
+    if (widget.initialItemIds != null) _showWeaknesses = false;
     if (_items.isNotEmpty) _currentFen = _items.first.review.fenBefore;
     AppLanguageController.effectiveLanguageChanges.addListener(_onLanguage);
     AppLanguageController.effectiveCode().then((String code) {
@@ -289,7 +293,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
           _reviews = value;
           final now = DateTime.now().toUtc();
           _items = _allItems
-              .where((item) => value[item.id]?.due(now) ?? true)
+              .where((item) => widget.initialItemIds != null ? widget.initialItemIds!.contains(item.id) : (value[item.id]?.due(now) ?? true))
               .take(5)
               .toList(growable: false);
           _index = 0;

@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../config/app_config.dart';
 import '../diagnostics/app_diagnostics.dart';
+import '../network/network_health_controller.dart';
 import 'ad_sdk_initializer.dart';
 
 /// Compact banner reserved for non-gameplay screens.
@@ -19,7 +20,8 @@ class BannerAdSlot extends StatefulWidget {
   State<BannerAdSlot> createState() => _BannerAdSlotState();
 }
 
-class _BannerAdSlotState extends State<BannerAdSlot> {
+class _BannerAdSlotState extends State<BannerAdSlot>
+    with WidgetsBindingObserver {
   static const bool _enableDebugAds = bool.fromEnvironment(
     'ENABLE_ADMOB_TEST_ADS',
   );
@@ -28,6 +30,7 @@ class _BannerAdSlotState extends State<BannerAdSlot> {
 
   BannerAd? _ad;
   bool _loaded = false;
+  bool _loading = false;
 
   bool get _platformSupported =>
       !kIsWeb &&
@@ -52,11 +55,28 @@ class _BannerAdSlotState extends State<BannerAdSlot> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    AdSdkInitializer.readiness.addListener(_retryWhenReady);
+    NetworkHealthController.instance.addListener(_retryWhenReady);
     if (_supported) _load();
   }
 
+  void _retryWhenReady() {
+    if (mounted && _supported && _ad == null && !_loading) unawaited(_load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _retryWhenReady();
+  }
+
   Future<void> _load() async {
-    if (!await AdSdkInitializer.ensureReady() || !mounted) return;
+    if (_loading || _ad != null || !mounted) return;
+    _loading = true;
+    if (!await AdSdkInitializer.ensureReady() || !mounted) {
+      _loading = false;
+      return;
+    }
     AppDiagnostics.log('ad_banner_load');
     final BannerAd ad = BannerAd(
       size: AdSize.banner,
@@ -90,11 +110,16 @@ class _BannerAdSlotState extends State<BannerAdSlot> {
         stack,
         reason: 'Banner load failed',
       );
+    } finally {
+      _loading = false;
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    AdSdkInitializer.readiness.removeListener(_retryWhenReady);
+    NetworkHealthController.instance.removeListener(_retryWhenReady);
     final ad = _ad;
     if (ad != null) unawaited(_disposeAd(ad));
     super.dispose();

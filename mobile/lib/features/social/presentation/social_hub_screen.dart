@@ -1,3 +1,5 @@
+import '../../../core/widgets/player_avatar.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'club_social_dialog.dart';
@@ -5,6 +7,9 @@ import 'club_invitations_panel.dart';
 import '../../../core/club_social_localizations.dart';
 
 import 'dart:async';
+
+import '../../../core/analytics/app_analytics.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -1424,13 +1429,10 @@ class _ChatCard extends StatelessWidget {
       side: const BorderSide(color: Color(0xFF2A485C)),
     ),
     tileColor: const Color(0xEE0A1C2B),
-    leading: CircleAvatar(
-      backgroundImage: friend.photoUrl == null
-          ? null
-          : NetworkImage(friend.photoUrl!),
-      child: friend.photoUrl == null
-          ? Text(friend.displayName.substring(0, 1).toUpperCase())
-          : null,
+    leading: PlayerAvatar(
+      photoUrl: friend.photoUrl,
+      name: friend.displayName,
+      radius: 20,
     ),
     title: Text(
       friend.displayName,
@@ -1523,6 +1525,9 @@ class _ChatScreenState extends State<_ChatScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(
+      AppAnalytics.logFeature(FeatureEvent.chat_opened, mode: 'friend_chat'),
+    );
     _friendOnline = widget.friend.online;
     _e2ee = E2eeChatService(api: widget.api);
     _composerFocus.addListener(() {
@@ -1706,6 +1711,12 @@ class _ChatScreenState extends State<_ChatScreen> {
         outgoingBody,
         encrypted: false,
       );
+      unawaited(
+        AppAnalytics.logFeature(
+          FeatureEvent.chat_message_sent,
+          mode: 'friend_chat',
+        ),
+      );
       final MessageDto m = await _decryptMessage(encrypted);
       if (mounted) {
         setState(
@@ -1857,6 +1868,12 @@ class _ChatScreenState extends State<_ChatScreen> {
         type,
         caption,
         encrypted: false,
+      );
+      unawaited(
+        AppAnalytics.logFeature(
+          FeatureEvent.chat_message_sent,
+          mode: 'friend_attachment',
+        ),
       );
       final MessageDto message = await _decryptMessage(encrypted);
       if (mounted) {
@@ -2229,19 +2246,11 @@ class _ChatScreenState extends State<_ChatScreen> {
           children: <Widget>[
             Stack(
               children: <Widget>[
-                CircleAvatar(
+                PlayerAvatar(
+                  photoUrl: widget.friend.photoUrl,
+                  name: widget.friend.displayName,
                   radius: 19,
                   backgroundColor: const Color(0xFF0A3341),
-                  backgroundImage: widget.friend.photoUrl == null
-                      ? null
-                      : NetworkImage(widget.friend.photoUrl!),
-                  child: widget.friend.photoUrl == null
-                      ? Text(
-                          widget.friend.displayName
-                              .substring(0, 1)
-                              .toUpperCase(),
-                        )
-                      : null,
                 ),
                 Positioned(
                   right: 0,
@@ -3469,13 +3478,10 @@ class _PlayerCard extends StatelessWidget {
             children: <Widget>[
               Stack(
                 children: <Widget>[
-                  CircleAvatar(
-                    backgroundImage: player.photoUrl == null
-                        ? null
-                        : NetworkImage(player.photoUrl!),
-                    child: player.photoUrl == null
-                        ? Text(player.displayName.substring(0, 1).toUpperCase())
-                        : null,
+                  PlayerAvatar(
+                    photoUrl: player.photoUrl,
+                    name: player.displayName,
+                    radius: 20,
                   ),
                   Positioned(
                     right: 0,
@@ -3595,23 +3601,11 @@ class _SocialPlayerProfile extends StatelessWidget {
                               width: 2,
                             ),
                           ),
-                          child: CircleAvatar(
+                          child: PlayerAvatar(
+                            photoUrl: player.photoUrl,
+                            name: player.displayName,
                             radius: 50,
                             backgroundColor: const Color(0xFF103747),
-                            backgroundImage: player.photoUrl == null
-                                ? null
-                                : NetworkImage(player.photoUrl!),
-                            child: player.photoUrl == null
-                                ? Text(
-                                    player.displayName
-                                        .substring(0, 1)
-                                        .toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  )
-                                : null,
                           ),
                         ),
                         Positioned(

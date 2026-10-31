@@ -105,34 +105,29 @@ class DesktopAppSidebar extends StatelessWidget {
         children: <Widget>[
           Image.asset('assets/branding/app_icon.png', width: 88, height: 88),
           const SizedBox(height: 8),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Flexible(
-                child: UiText(
-                  'CHESSVERSE',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: Color(0xFFF5F7FA),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    decoration: TextDecoration.none,
-                    decorationColor: Colors.transparent,
+          const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'ChessVerse',
+                    style: TextStyle(color: Color(0xFFF5F7FA)),
                   ),
-                ),
+                  TextSpan(
+                    text: 'AI',
+                    style: TextStyle(color: Color(0xFFE9B84C)),
+                  ),
+                ],
               ),
-              UiText(
-                'AI',
-                style: TextStyle(
-                  color: Color(0xFFE9B84C),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  decoration: TextDecoration.none,
-                  decorationColor: Colors.transparent,
-                ),
+              textDirection: TextDirection.ltr,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                decoration: TextDecoration.none,
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 27),
           Expanded(

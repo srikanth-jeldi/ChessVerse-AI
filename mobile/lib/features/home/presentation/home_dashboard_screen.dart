@@ -1,3 +1,4 @@
+import '../../analysis/presentation/daily_routine_card.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -37,6 +38,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.onFriendsGame = _noOnlineAction,
     required this.onAnalysis,
     required this.onPuzzles,
+    this.onRoutinePuzzle,
     required this.onSavedGames,
     required this.onLearnChess,
     required this.onProfile,
@@ -65,6 +67,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
+  final Future<void> Function(String)? onRoutinePuzzle;
   final VoidCallback onSavedGames;
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
@@ -102,6 +105,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onFriendsGame: onFriendsGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
+                onRoutinePuzzle: onRoutinePuzzle,
                 onSavedGames: onSavedGames,
                 onLearnChess: onLearnChess,
                 onProfile: onProfile,
@@ -130,6 +134,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onFriendsGame: onFriendsGame,
               onAnalysis: onAnalysis,
               onPuzzles: onPuzzles,
+                onRoutinePuzzle: onRoutinePuzzle,
               onSavedGames: onSavedGames,
               onLearnChess: onLearnChess,
               onProfile: onProfile,
@@ -165,6 +170,7 @@ class _MobileHome extends StatefulWidget {
     required this.onFriendsGame,
     required this.onAnalysis,
     required this.onPuzzles,
+    this.onRoutinePuzzle,
     required this.onSavedGames,
     required this.onLearnChess,
     required this.onProfile,
@@ -192,6 +198,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
+  final Future<void> Function(String)? onRoutinePuzzle;
   final VoidCallback onSavedGames;
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
@@ -229,7 +236,7 @@ class _MobileHomeState extends State<_MobileHome> {
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   children: <Widget>[
-                    _PlayerHeader(
+                    HomePlayerHeader(
                       playerName: widget.playerName,
                       profilePhotoUrl: widget.profilePhotoUrl,
                       coinBalance: widget.coinBalance,
@@ -399,7 +406,8 @@ class _MobileHomeState extends State<_MobileHome> {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 4,
                       crossAxisSpacing: 8,
-                      childAspectRatio: .82,
+                      mainAxisExtent:
+                          60 + MediaQuery.textScalerOf(context).scale(40),
                       children: <Widget>[
                         _MiniCard(
                           keyName: 'chess-puzzles',
@@ -455,6 +463,7 @@ class _MobileHomeState extends State<_MobileHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    if (widget.onRoutinePuzzle != null) DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
                     const MistakeBankEntryCard(),
                     const SizedBox(height: 12),
                     ValueListenableBuilder<int>(
@@ -499,6 +508,7 @@ class _WideHome extends StatefulWidget {
     required this.onImportGame,
     required this.onAnalysis,
     required this.onPuzzles,
+    this.onRoutinePuzzle,
     required this.onSavedGames,
     required this.onLearnChess,
     required this.onProfile,
@@ -526,6 +536,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onImportGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
+  final Future<void> Function(String)? onRoutinePuzzle;
   final VoidCallback onSavedGames;
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
@@ -577,7 +588,7 @@ class _WideHomeState extends State<_WideHome> {
                     constraints: const BoxConstraints(maxWidth: 1220),
                     child: Column(
                       children: <Widget>[
-                        _PlayerHeader(
+                        HomePlayerHeader(
                           playerName: widget.playerName,
                           profilePhotoUrl: widget.profilePhotoUrl,
                           coinBalance: widget.coinBalance,
@@ -831,6 +842,7 @@ class _WideHomeState extends State<_WideHome> {
                           ],
                         ),
                         const SizedBox(height: 18),
+                        if (widget.onRoutinePuzzle != null) DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
                         const MistakeBankEntryCard(),
                         const SizedBox(height: 18),
                         ValueListenableBuilder<int>(
@@ -1251,8 +1263,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
             ),
           ),
         ];
-        return SizedBox(
-          height: 280,
+        return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: panels,
@@ -1317,7 +1328,7 @@ class _DashboardPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 256,
+    constraints: const BoxConstraints(minHeight: 256),
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: const Color(0xE60A1D2E),
@@ -1325,6 +1336,7 @@ class _DashboardPanel extends StatelessWidget {
       border: Border.all(color: const Color(0xFF1D3D55)),
     ),
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Row(
           children: <Widget>[
@@ -1348,7 +1360,7 @@ class _DashboardPanel extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Expanded(child: child),
+        child,
       ],
     ),
   );
@@ -1618,9 +1630,9 @@ class _CompactRankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 40,
+    constraints: const BoxConstraints(minHeight: 40),
     margin: const EdgeInsets.symmetric(vertical: 2),
-    padding: const EdgeInsets.symmetric(horizontal: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
       color: highlight ? const Color(0xFF12364E) : const Color(0x8A0E2940),
       borderRadius: BorderRadius.circular(9),
@@ -1690,8 +1702,9 @@ class _CompactRankingRow extends StatelessWidget {
   );
 }
 
-class _PlayerHeader extends StatelessWidget {
-  const _PlayerHeader({
+class HomePlayerHeader extends StatelessWidget {
+  const HomePlayerHeader({
+    super.key,
     required this.playerName,
     this.profilePhotoUrl,
     this.coinBalance,
@@ -1735,8 +1748,11 @@ class _PlayerHeader extends StatelessWidget {
           ),
           Text(
             playerName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            key: const ValueKey<String>('home-player-name'),
+            // Account names are user content, not short translated labels.
+            // Let the header grow instead of hiding the name in RTL or at
+            // larger accessibility text sizes.
+            softWrap: true,
             style: TextStyle(
               color: Colors.white,
               fontSize: wide ? 22 : 17,
@@ -1776,57 +1792,37 @@ class _PlayerHeader extends StatelessWidget {
       ),
     );
 
-    if (!wide) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            profile,
+            const SizedBox(width: 12),
+            identity,
+            const SizedBox(width: 6),
+            notifications,
+            const SizedBox(width: 6),
+            settings,
+          ],
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: <Widget>[
-              profile,
-              const SizedBox(width: 12),
-              identity,
-              const SizedBox(width: 6),
-              notifications,
-              const SizedBox(width: 6),
-              settings,
+              freeCoins,
+              CoinBalanceBadge(
+                balance: coinBalance,
+                compact: true,
+                onTap: onCoins,
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                freeCoins,
-                CoinBalanceBadge(
-                  balance: coinBalance,
-                  compact: true,
-                  onTap: onCoins,
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: <Widget>[
-        profile,
-        const SizedBox(width: 12),
-        identity,
-        freeCoins,
-        const SizedBox(width: 6),
-        CoinBalanceBadge(
-          balance: coinBalance,
-          expandedLabel: true,
-          onTap: onCoins,
         ),
-        const SizedBox(width: 6),
-        notifications,
-        const SizedBox(width: 6),
-        settings,
       ],
     );
   }
@@ -1953,53 +1949,112 @@ class _HomeHeroCarousel extends StatelessWidget {
   final bool wide;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: <Widget>[
-      SizedBox(
-        height: height,
-        child: PageView.builder(
-          key: const ValueKey<String>('home-hero-carousel'),
-          controller: controller,
-          onPageChanged: onPageChanged,
-          itemCount: slides.length,
-          itemBuilder: (BuildContext context, int index) {
-            final _HomeHeroData slide = slides[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: _CarouselHero(
-                data: slide,
-                wide: wide,
-                onNext: () => controller.animateToPage(
-                  (index + 1) % slides.length,
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutCubic,
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      if (slides.length > 1) const SizedBox(height: 8),
-      if (slides.length > 1)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List<Widget>.generate(
-            slides.length,
-            (int index) => AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              width: selectedIndex == index ? 18 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              decoration: BoxDecoration(
-                color: selectedIndex == index
-                    ? const Color(0xFF45D7C2)
-                    : const Color(0xFF3B5668),
-                borderRadius: BorderRadius.circular(99),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final contentWidth = (wide ? 430.0 : 205.0).clamp(
+        1.0,
+        constraints.maxWidth - (wide ? 60 : 44),
+      );
+      double measure(
+        String text,
+        double fontSize,
+        double width, {
+        double? lineHeight,
+        FontWeight? weight,
+      }) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: DefaultTextStyle.of(context).style.merge(
+              TextStyle(
+                fontSize: fontSize,
+                height: lineHeight,
+                fontWeight: weight,
               ),
             ),
           ),
-        ),
-    ],
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: width);
+        final result = painter.height;
+        painter.dispose();
+        return result;
+      }
+
+      var requiredHeight = height;
+      for (final slide in slides) {
+        final needed =
+            (wide ? 60 : 44) +
+            measure(
+              slide.title,
+              wide ? 40 : 22,
+              contentWidth - (wide ? 47 : 39),
+              lineHeight: 1,
+              weight: FontWeight.w900,
+            ) +
+            8 +
+            measure(slide.subtitle, 13, contentWidth) +
+            24 +
+            64 +
+            (slide.statusLabel == null && slide.countdownTarget == null
+                ? 0
+                : 5 +
+                      measure(
+                        slide.statusLabel ?? '00 days 00 hours 00 minutes',
+                        10,
+                        contentWidth,
+                      ));
+        if (needed > requiredHeight) requiredHeight = needed;
+      }
+      return Column(
+        children: <Widget>[
+          SizedBox(
+            height: requiredHeight,
+            child: PageView.builder(
+              key: const ValueKey<String>('home-hero-carousel'),
+              controller: controller,
+              onPageChanged: onPageChanged,
+              itemCount: slides.length,
+              itemBuilder: (BuildContext context, int index) {
+                final _HomeHeroData slide = slides[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
+                  child: _CarouselHero(
+                    data: slide,
+                    wide: wide,
+                    onNext: () => controller.animateToPage(
+                      (index + 1) % slides.length,
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (slides.length > 1) const SizedBox(height: 8),
+          if (slides.length > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List<Widget>.generate(
+                slides.length,
+                (int index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: selectedIndex == index ? 18 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: selectedIndex == index
+                        ? const Color(0xFF45D7C2)
+                        : const Color(0xFF3B5668),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    },
   );
 }
 
@@ -2080,8 +2135,6 @@ class _CarouselHero extends StatelessWidget {
                         Expanded(
                           child: Text(
                             data.title,
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: wide ? 40 : 22,
@@ -2095,7 +2148,6 @@ class _CarouselHero extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       data.subtitle,
-                      maxLines: 2,
                       style: const TextStyle(
                         color: Color(0xFFC5D5E0),
                         fontSize: 13,
@@ -2427,11 +2479,30 @@ class _AiPersonaStrip extends StatelessWidget {
                   return height;
                 }
 
+                final ratingPainter = TextPainter(
+                  text: TextSpan(
+                    text: '2200',
+                    style: DefaultTextStyle.of(context).style.merge(
+                      const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  textDirection: Directionality.of(context),
+                  textScaler: MediaQuery.textScalerOf(context),
+                )..layout();
+                final headerHeight =
+                    40 + 8 + ratingPainter.width + 18 >
+                        cardWidth - 2 * cardPadding
+                    ? 44 + ratingPainter.height + 10
+                    : 40.0;
+                ratingPainter.dispose();
                 double cardHeight = wide ? 174 : 184;
                 for (final persona in aiPersonas) {
                   final needed =
                       2 * cardPadding +
-                      40 +
+                      headerHeight +
                       8 +
                       textHeight(persona.name, titleStyle) +
                       4 +
@@ -2507,7 +2578,11 @@ class _AiPersonaStrip extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
-                                    Row(
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
                                       children: <Widget>[
                                         Container(
                                           width: 40,
@@ -2529,7 +2604,6 @@ class _AiPersonaStrip extends StatelessWidget {
                                             size: 23,
                                           ),
                                         ),
-                                        const Spacer(),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 9,

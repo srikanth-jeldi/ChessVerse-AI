@@ -11,6 +11,7 @@ import '../app_language.dart';
 import '../app_preferences.dart';
 import '../live_coach_localizations.dart';
 import 'tournament_reminder_localizations.dart';
+import 'pending_reminder_cleanup.dart';
 
 @immutable
 class NotificationOpenRequest {
@@ -253,13 +254,15 @@ class DailyReminderService {
   }
 
   Future<void> _cancelPlayReminders() async {
-    for (int index = 0; index < _scheduledPlayReminderCount; index++) {
-      await _plugin.cancel(_playReminderIdBase + index);
-    }
+    await cancelObsoleteReminders(_plugin, ownedIds: _playReminderIds);
   }
 
+  Set<int> get _playReminderIds => <int>{
+    for (int index = 0; index < _scheduledPlayReminderCount; index++)
+      _playReminderIdBase + index,
+  };
+
   Future<void> _schedulePlayReminders(tz.TZDateTime lastActivity) async {
-    await _cancelPlayReminders();
     final String language = await AppLanguageController.effectiveCode();
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     final int elapsedDays = now.difference(lastActivity).inDays;
@@ -267,6 +270,16 @@ class DailyReminderService {
         ? lastActivity.add(Duration(days: elapsedDays - 1))
         : lastActivity;
     final List<tz.TZDateTime> plan = buildPlayReminderPlan(anchor);
+    // Future IDs are replaced in place. Only cancel pending IDs no longer in
+    // the plan, avoiding the old burst of 28 main-thread PendingIntent calls.
+    await cancelObsoleteReminders(
+      _plugin,
+      ownedIds: _playReminderIds,
+      retainedIds: <int>{
+        for (int index = 0; index < plan.length; index++)
+          if (plan[index].isAfter(now)) _playReminderIdBase + index,
+      },
+    );
     for (int index = 0; index < plan.length; index++) {
       if (!plan[index].isAfter(now)) continue;
       final bool followUp = index.isOdd;
@@ -297,7 +310,7 @@ class DailyReminderService {
   }
 
   Future<void> _scheduleDailyPuzzle(int preferredHour) async {
-    await _plugin.cancel(_dailyPuzzleNotificationId);
+    // Scheduling the same ID replaces its previous alarm.
     final String language = await AppLanguageController.effectiveCode();
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     final int safeHour = preferredHour.clamp(8, 21);

@@ -8,7 +8,7 @@ final class TournamentDtos {
     private TournamentDtos() {}
     record PlayerDto(UUID id, String displayName, String photoUrl) {}
     record PairingDto(UUID id, int board, PlayerDto white, PlayerDto black,
-            UUID matchId, PlayerDto winner, String status, boolean mine) {}
+            UUID matchId, PlayerDto winner, String status, boolean mine, String result, String resultReason) {}
     record RoundDto(int number, String status, List<PairingDto> pairings) {}
     record AchievementDto(UUID tournamentId, String tournamentName, String badgeCode,
             String placement, Instant awardedAt) {}

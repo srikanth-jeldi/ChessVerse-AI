@@ -214,11 +214,13 @@ class TournamentPairingDto {
     this.matchId,
     this.winner,
     this.status,
-    this.mine,
-  );
+    this.mine, [
+    this.result,
+    this.resultReason,
+  ]);
   final int board;
   final TournamentPlayerDto? white, black, winner;
-  final String? matchId;
+  final String? matchId, result, resultReason;
   final String status;
   final bool mine;
   factory TournamentPairingDto.fromJson(Map<String, dynamic> j) =>
@@ -236,6 +238,8 @@ class TournamentPairingDto {
             : null,
         j['status'] as String? ?? 'ACTIVE',
         j['mine'] as bool? ?? false,
+        j['result'] as String?,
+        j['resultReason'] as String?,
       );
 }
 

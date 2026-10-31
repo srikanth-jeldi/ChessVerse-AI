@@ -1,3 +1,5 @@
+import '../../../core/widgets/player_avatar.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -371,6 +373,13 @@ class _MyTournamentStatus extends StatelessWidget {
         .toList(growable: false);
     if (mine.isEmpty) return null;
     final current = mine.last;
+    if (current.status == 'PENDING') {
+      return const _MyTournamentStatus(
+        icon: Icons.schedule,
+        title: 'Registered players · provisional pairings',
+        body: 'Your opponent is shown below. Pairings lock when registration closes.',
+      );
+    }
     if (current.status == 'BYE') {
       return const _MyTournamentStatus(
         icon: Icons.fast_forward_rounded,
@@ -1423,7 +1432,12 @@ class _RoundColumn extends StatelessWidget {
             const SizedBox(width: 9),
             Expanded(
               child: Text(
-                _roundName(round.number),
+                uiText(
+                  context,
+                  round.status == 'PENDING'
+                      ? 'Registered players · provisional pairings'
+                      : _roundName(round.pairings.length),
+                ),
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   letterSpacing: .5,
@@ -1451,12 +1465,11 @@ class _RoundColumn extends StatelessWidget {
     ),
   );
 
-  String _roundName(int number) => switch (number) {
-    1 => 'OPENING ROUND',
-    2 => 'QUARTERFINAL',
-    3 => 'SEMIFINAL',
-    4 => 'FINAL',
-    _ => 'ROUND $number',
+  String _roundName(int boards) => switch (boards) {
+    1 => 'FINAL',
+    2 => 'SEMIFINAL',
+    3 || 4 => 'QUARTERFINAL',
+    _ => 'OPENING ROUND',
   };
 }
 
@@ -1521,16 +1534,29 @@ class _PairingCard extends StatelessWidget {
           const SizedBox(height: 8),
           _PlayerRow(
             player: pairing.white,
-            winner: pairing.winner?.id == pairing.white?.id,
+            winner:
+                pairing.winner != null &&
+                pairing.winner?.id == pairing.white?.id,
           ),
           const Divider(height: 12, color: Color(0xFF274257)),
           _PlayerRow(
             player: pairing.black,
-            winner: pairing.winner?.id == pairing.black?.id,
+            winner:
+                pairing.winner != null &&
+                pairing.winner?.id == pairing.black?.id,
             emptyLabel: pairing.status == 'BYE'
                 ? 'BYE · Advances automatically'
                 : 'Awaiting opponent',
           ),
+          if (pairing.result != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                pairing.result!,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.ltr,
+              ),
+            ),
           if (pairing.mine && pairing.matchId != null) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -1567,21 +1593,11 @@ class _PlayerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: <Widget>[
-      CircleAvatar(
+      PlayerAvatar(
+        photoUrl: player?.photoUrl,
+        name: player?.name ?? '?',
         radius: 14,
         backgroundColor: const Color(0xFF1D3B50),
-        backgroundImage: player?.photoUrl == null
-            ? null
-            : NetworkImage(player!.photoUrl!),
-        child: player?.photoUrl == null
-            ? Text(
-                (player?.name ?? '?').substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              )
-            : null,
       ),
       const SizedBox(width: 8),
       Expanded(

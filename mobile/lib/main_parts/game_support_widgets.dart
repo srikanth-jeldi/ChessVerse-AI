@@ -1019,6 +1019,7 @@ class GameResultOverlay extends StatelessWidget {
     required this.detail,
     required this.scoreLabel,
     this.showScore = true,
+    this.dailyRewardSummary,
     this.showCelebration = true,
     this.languageCode = 'en',
     required this.accuracy,
@@ -1036,6 +1037,7 @@ class GameResultOverlay extends StatelessWidget {
     super.key,
   });
 
+  final Widget? dailyRewardSummary;
   final String title;
   final String detail;
   final String scoreLabel;
@@ -1217,6 +1219,7 @@ class GameResultOverlay extends StatelessWidget {
                             ),
                           ),
                         ],
+                        ?dailyRewardSummary,
                         if (accuracy != null) ...<Widget>[
                           SizedBox(height: shortLandscape ? 5 : 10),
                           UiText(
@@ -1275,12 +1278,12 @@ class GameResultOverlay extends StatelessWidget {
                                           : onNewGame,
                                       icon: Icon(
                                         dailyComplete
-                                            ? Icons.schedule_rounded
+                                            ? Icons.home_rounded
                                             : Icons.refresh_rounded,
                                       ),
                                       label: Text(
                                         dailyComplete
-                                            ? 'Done'
+                                            ? UiCopy.text('Done')
                                             : missed
                                             ? 'Try again'
                                             : newGameLabel ??

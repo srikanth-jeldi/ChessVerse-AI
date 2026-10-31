@@ -1,3 +1,5 @@
+import 'features/daily_challenge/widgets/daily_puzzle_streak.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -1284,6 +1286,8 @@ class _SplashGateState extends State<SplashGate> {
           personasOnly: true,
           personaName: name,
         ),
+        onRoutinePuzzle: (id) =>
+            _openGame(context, GameMode.puzzle, puzzleId: id),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onImportGame: () => _push(
@@ -1631,6 +1635,22 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _selectPrimaryDestination(int destination) {
+    const features = [
+      'home',
+      'play',
+      'puzzles',
+      'learn',
+      'profile',
+      'community',
+    ];
+    if (destination >= 0 && destination < features.length) {
+      unawaited(
+        AppAnalytics.logFeature(
+          FeatureEvent.feature_opened,
+          mode: features[destination],
+        ),
+      );
+    }
     if (destination == 1) {
       unawaited(DailyReminderService.instance.recordPlayOpened());
     }
@@ -2398,7 +2418,7 @@ class _SplashGateState extends State<SplashGate> {
         token: initialAuthToken,
       ),
     );
-    return _push(
+    await _push(
       context,
       GameScreen(
         initiallySignedIn: true,
@@ -2425,6 +2445,9 @@ class _SplashGateState extends State<SplashGate> {
         onDisplayNameChanged: _updateDisplayName,
       ),
     );
+    if (mounted && mode == GameMode.daily) {
+      setState(() => _primaryDestination = 0);
+    }
   }
 
   Future<void> _openOnlineGame(

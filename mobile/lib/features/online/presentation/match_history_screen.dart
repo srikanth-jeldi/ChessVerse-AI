@@ -1,3 +1,5 @@
+import 'game_link_import_screen.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -137,15 +139,20 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     if (mounted) await _refresh();
   }
 
-  Future<void> _importPgn() async {
+  Future<void> _importPgn({String? downloadedPgn}) async {
     try {
-      final picked = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const <String>['pgn'],
-      );
-      if (picked.isEmpty) return;
-      final Uint8List bytes = await picked.single.readAsBytes();
-      final String rawPgn = utf8.decode(bytes, allowMalformed: true);
+      String rawPgn;
+      if (downloadedPgn != null) {
+        rawPgn = downloadedPgn;
+      } else {
+        final picked = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const <String>['pgn'],
+        );
+        if (picked.isEmpty) return;
+        final Uint8List bytes = await picked.single.readAsBytes();
+        rawPgn = utf8.decode(bytes, allowMalformed: true);
+      }
       final List<SavedGameRecord> imported = _pgn.importGames(rawPgn);
       if (!mounted) return;
       final _PgnReviewChoice? choice = await _choosePgnReview(imported.first);
@@ -731,6 +738,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   Future<void> _chooseImportFormat() async {
     final format = await _chooseArchiveFormat(importing: true);
+    if (format == 'url' && mounted) {
+      final pgn = await Navigator.of(context).push<String>(
+        MaterialPageRoute(builder: (_) => const GameLinkImportScreen()),
+      );
+      if (pgn != null && mounted) await _importPgn(downloadedPgn: pgn);
+    }
     if (format == 'pgn') await _importPgn();
     if (format == 'fen') await _importFen();
   }
@@ -791,6 +804,18 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 20),
+                if (importing) ...[
+                  _ArchiveFormatTile(
+                    icon: Icons.link,
+                    title: uiText(context, 'Import game link'),
+                    subtitle: uiText(
+                      context,
+                      'Import a finished public game without copying PGN.',
+                    ),
+                    onTap: () => Navigator.pop(context, 'url'),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _ArchiveFormatTile(
                   icon: Icons.history_rounded,
                   title: uiText(context, 'PGN • COMPLETE GAMES'),
@@ -2377,10 +2402,9 @@ class _PlayerAvatar extends StatelessWidget {
         uri != null && (uri.scheme == 'https' || uri.scheme == 'http');
     return CircleAvatar(
       backgroundColor: color.withValues(alpha: 0.18),
-      backgroundImage: networkPhoto ? NetworkImage(photoUrl!) : null,
-      child: networkPhoto
-          ? null
-          : Text(initials, style: TextStyle(color: color)),
+      foregroundImage: networkPhoto ? NetworkImage(photoUrl!) : null,
+      onForegroundImageError: networkPhoto ? (_, _) {} : null,
+      child: Text(initials, style: TextStyle(color: color)),
     );
   }
 }

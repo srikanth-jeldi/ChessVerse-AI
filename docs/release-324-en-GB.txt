@@ -1,0 +1,7 @@
+<en-GB>
+Improved Home screen layouts across 34 languages, including Arabic and Hebrew.
+Long profile names now display without being cut off.
+Improved cards and carousel text when using larger font sizes.
+Kept AI rival cards compact and ChessVerseAI branding consistent.
+Includes the recent right-to-left chessboard animation fixes.
+</en-GB>

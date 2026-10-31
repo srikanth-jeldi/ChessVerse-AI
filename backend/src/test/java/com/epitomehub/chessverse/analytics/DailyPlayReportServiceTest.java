@@ -34,5 +34,16 @@ class DailyPlayReportServiceTest {
   verifyNoInteractions(mail);
   assertEquals("",DailyPlayReportService.realEmail("guest@identity.chessverse.invalid"));
  }
+ @Test void chatOnlyAccountAppearsWithoutLoginOrGameEvents() {
+  var db=new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";DB_CLOSE_DELAY=-1","sa",""));
+  db.execute("create table player_account(id uuid primary key,display_name varchar,username varchar,email varchar)");
+  db.execute("create table product_analytics_event(player_id uuid,event_name varchar,occurred_at timestamp,context_value varchar)");
+  var id=UUID.randomUUID();db.update("insert into player_account values(?,'Chat user','chat_user',null)",id);
+  db.update("insert into product_analytics_event values(?,'chat_opened',?,'friend_chat')",id,Timestamp.from(Instant.parse("2026-10-30T06:00:00Z")));
+  var rows=new DailyPlayReportService(db,mock(JavaMailSender.class),"","",false).activity(LocalDate.of(2026,10,30));
+  assertEquals(1,rows.size());assertEquals(1L,rows.getFirst().counts().get("chat_opened"));
+  assertEquals(1L,rows.getFirst().counts().get("chat_opened / friend_chat"));
+  assertEquals(0L,rows.getFirst().counts().getOrDefault("game_first_move",0L));
+ }
 }
 

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../core/ads/banner_ad_slot.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/app_language.dart';
+import '../../../core/app_ui_localizations.dart';
+import 'badge_achievement_details.dart';
 import '../../../core/shop_localizations.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
 import '../../../core/chess_piece_appearance.dart';
@@ -12,6 +14,7 @@ import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../../core/widgets/animated_coin_reward_balance.dart';
 import '../../../core/widgets/coin_reward_notice.dart';
 import '../data/shop_api.dart';
+import '../data/equipped_badge.dart';
 import '../data/economy_rewards_api.dart';
 
 String _s(String key, [Map<String, Object> values = const {}]) => shopText(
@@ -52,6 +55,7 @@ Future<void> resetToDefaultPieceAppearance() async {
 }
 
 Future<void> applyServerCosmeticLoadout(ShopDto shop) async {
+  equippedBadgeShop.value = shop;
   // Always clear a previous account/browser selection first. Premium pieces
   // are restored only from an explicitly equipped server loadout.
   await resetToDefaultPieceAppearance();
@@ -376,26 +380,36 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 wide ? 40 : 16,
                 120,
               ),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: c.maxWidth >= 1280
-                      ? 4
-                      : wide
-                      ? 3
-                      : (c.maxWidth > 560 ? 2 : 1),
-                  mainAxisExtent: _category == 'FRAME'
-                      ? 390
-                      : _category == 'PIECES'
-                      ? 380
-                      : 330,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => _card(items[i]),
-                  childCount: items.length,
-                ),
-              ),
+              sliver: _category == 'FRAME'
+                  ? SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _card(items[i]),
+                        ),
+                        childCount: items.length,
+                      ),
+                    )
+                  : SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: c.maxWidth >= 1280
+                            ? 4
+                            : wide
+                            ? 3
+                            : (c.maxWidth > 560 ? 2 : 1),
+                        mainAxisExtent: _category == 'FRAME'
+                            ? 390
+                            : _category == 'PIECES'
+                            ? 380
+                            : 330,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => _card(items[i]),
+                        childCount: items.length,
+                      ),
+                    ),
             ),
           ],
         );
@@ -816,19 +830,29 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: item.category == 'FRAME'
-                  ? _badgePreview(item, a)
-                  : item.category == 'PIECES' &&
-                        _pieceSetAsset(item.slug) != null
-                  ? _pieceSetPreview(item)
-                  : item.category == 'BOARD' && _boardAsset(item.slug) != null
-                  ? _boardPreview(item)
-                  : _preview(a, b, item),
+          if (item.category == 'FRAME')
+            SizedBox(
+              height: 220,
+              width: double.infinity,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _badgePreview(item, a),
+              ),
             ),
-          ),
+          if (item.category != 'FRAME')
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: item.category == 'FRAME'
+                    ? _badgePreview(item, a)
+                    : item.category == 'PIECES' &&
+                          _pieceSetAsset(item.slug) != null
+                    ? _pieceSetPreview(item)
+                    : item.category == 'BOARD' && _boardAsset(item.slug) != null
+                    ? _boardPreview(item)
+                    : _preview(a, b, item),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
             child: Column(
@@ -838,7 +862,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        item.name,
+                        item.category == 'FRAME'
+                            ? UiCopy.text(item.name)
+                            : item.name,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -868,26 +894,32 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   ),
                 ],
                 const SizedBox(height: 4),
-                Text(
-                  _s(
-                    item.category == 'PIECES'
-                        ? 'piecesInfo'
-                        : item.category == 'FRAME'
-                        ? 'badgesInfo'
-                        : 'boards',
+                if (item.category == 'FRAME')
+                  BadgeAchievementDetails(item: item),
+                if (item.category != 'FRAME')
+                  Text(
+                    _s(
+                      item.category == 'PIECES'
+                          ? 'piecesInfo'
+                          : item.category == 'FRAME'
+                          ? 'badgesInfo'
+                          : 'boards',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF9FB6C8),
+                      fontSize: 12,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF9FB6C8),
-                    fontSize: 12,
-                  ),
-                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _busy || (item.equipped && !canRestoreDefault)
+                    onPressed:
+                        _busy ||
+                            (item.equipped && !canRestoreDefault) ||
+                            (item.achievement != null && !item.owned)
                         ? null
                         : () => _act(item),
                     icon: Icon(
@@ -906,6 +938,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                           ? _s('equipped')
                           : item.owned
                           ? _s('equip')
+                          : item.achievement != null
+                          ? UiCopy.text('Keep practising to unlock')
                           : item.priceCurrency == 'FREE'
                           ? _s('free')
                           : '${item.priceAmount} ${_s(item.priceCurrency == 'DIAMONDS' ? 'diamonds' : 'coins')}',
