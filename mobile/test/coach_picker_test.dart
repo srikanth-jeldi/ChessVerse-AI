@@ -67,8 +67,9 @@ void main() {
           c.review('Blunder', 'fallback'),
           c.review('Inaccuracy', 'fallback'),
         ]) {
-          if (key != 'fallback')
+          if (key != 'fallback') {
             expect(catalog[key], isNotNull, reason: '${language.code}: $key');
+          }
         }
       }
       tester.view.physicalSize = const Size(320, 740);
@@ -122,8 +123,9 @@ void main() {
                 .descendant(of: card, matching: find.byType(RichText))
                 .evaluate()) {
           final render = element.renderObject;
-          if (render is RenderParagraph)
+          if (render is RenderParagraph) {
             expect(render.didExceedMaxLines, isFalse);
+          }
         }
       }
       if (language.code == 'en' ||

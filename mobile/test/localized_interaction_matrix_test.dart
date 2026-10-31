@@ -10,7 +10,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
-import 'package:chessverse_ai/core/analysis_dashboard_localizations.dart';
 import 'package:chessverse_ai/features/analysis/presentation/analysis_screen.dart';
 import 'package:chessverse_ai/features/analysis/presentation/mistake_bank_screen.dart';
 import 'package:chessverse_ai/features/analysis/presentation/adaptive_ai_review.dart';
