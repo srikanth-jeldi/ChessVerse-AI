@@ -191,6 +191,8 @@ void main() {
         AppLanguageController.effectiveLanguageChanges.value = locale.code;
         await tester.runAsync(() => UiCopy.load(locale.code));
         if ([
+          'review_full',
+          'review_simple',
           'notifications_loaded',
           'sessions_loaded',
           'leaderboard_loaded',
@@ -261,6 +263,10 @@ void main() {
               );
               await tester.pump();
               await tester.pump(const Duration(milliseconds: 600));
+              if (state == 'leaderboard_loaded') {
+                await tester.tap(find.byTooltip(UiCopy.text('ELO ratings')));
+                await tester.pumpAndSettle();
+              }
             },
             () => MockClient((request) async {
               final path = request.url.path;
@@ -464,6 +470,16 @@ void main() {
                 onDisplayNameChanged: (_) async {},
               ),
             );
+            await tester.ensureVisible(
+              find.byKey(
+                ValueKey(
+                  state == 'profile_menu'
+                      ? 'profile-actions-menu'
+                      : 'edit-player-profile',
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
             await tester.tap(
               find.byKey(
                 ValueKey(
@@ -686,8 +702,9 @@ void main() {
             await tester.tap(find.text('Open'));
             await tester.pumpAndSettle();
             if (state == 'review_full') {
-              final action = find.text(
-                analysisDashboardText('openReview', locale.code),
+              final action = find.descendant(
+                of: find.byKey(const ValueKey('review-mode-toggle')),
+                matching: find.byIcon(Icons.analytics_outlined),
               );
               await tester.ensureVisible(action);
               await tester.pump();

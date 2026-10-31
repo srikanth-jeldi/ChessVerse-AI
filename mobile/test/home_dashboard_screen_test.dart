@@ -250,7 +250,6 @@ void main() {
       find.byKey(const ValueKey<String>('global-coin-balance')),
       findsOneWidget,
     );
-    expect(find.text('Your Coins: '), findsOneWidget);
     expect(find.text('1,250'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -25,16 +25,19 @@ class RewardedInterstitialTrial {
   int _request = 0;
   bool isShowing = false;
   static bool inTreatment(int bucket) => bucket >= 0 && bucket < 10;
+  @visibleForTesting
+  static bool? enabledOverride;
   bool get enabled =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
-      AppConfig.rewardedInterstitialTrial &&
+      (enabledOverride ?? AppConfig.rewardedInterstitialTrial) &&
       (!kReleaseMode ||
           (AppConfig.rewardedInterstitialId.isNotEmpty &&
               AppConfig.rewardedInterstitialId != testUnit));
 
   @visibleForTesting
   static void resetForTesting() {
+    enabledOverride = null;
     instance._ad = null;
     instance._assignment = null;
     instance._loadedAt = null;

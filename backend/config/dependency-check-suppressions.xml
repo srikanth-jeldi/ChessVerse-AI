@@ -40,4 +40,18 @@
         <cve>CVE-2022-3171</cve>
         <cve>CVE-2024-7254</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+        Artifact mismatch reviewed 2026-10-31: apps-rewardedads 1.14.0 contains
+        only RewardedAdsVerifier and KeysDownloader, not SAML SSO or ChunkedMac.
+        CVE-2008-3891 concerns Google Apps SAML SSO. CVE-2026-15432 concerns
+        Tink ChunkedMac; the actual separate tink dependency is pinned to 1.24.0.
+        This suppression applies only to the wrapper, never to tink itself.
+        https://nvd.nist.gov/vuln/detail/CVE-2008-3891
+        https://github.com/tink-crypto/tink-java/issues/75
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.google\.crypto\.tink/apps-rewardedads@1\.14\.0$</packageUrl>
+        <cve>CVE-2008-3891</cve>
+        <cve>CVE-2026-15432</cve>
+    </suppress>
 </suppressions>

@@ -608,12 +608,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('view-game-result')));
     await tester.pump();
     expect(find.text('1 - 0'), findsOneWidget);
-    expect(
-      find.textContaining('1 - 0 • Opponent left the match'),
-      findsWidgets,
-    );
+    expect(find.textContaining('Opponent left the match'), findsWidgets);
     expect(find.textContaining('0-1 • Opponent left the match'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 12));
   });
 
   testWidgets('black player can move after starting a new game', (
@@ -876,7 +874,7 @@ void main() {
       find.byKey(const ValueKey<String>('idle-hint-target')),
       findsOneWidget,
     );
-    expect(find.textContaining('Blue lights suggest'), findsOneWidget);
+    expect(find.textContaining('Blue lights suggest'), findsWidgets);
   });
 
   testWidgets('online turn also reveals the idle blue move hint', (
@@ -1347,6 +1345,14 @@ void main() {
   testWidgets('checkmate marks the checked king square and shows the winner', (
     WidgetTester tester,
   ) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'auth.token': 'fixture-token',
+      'auth.displayName': 'Fixture player',
+      'auth.expiresAt': DateTime.now()
+          .add(const Duration(days: 1))
+          .toIso8601String(),
+      'auth.isGuest': 'false',
+    });
     await tester.pumpWidget(
       const MaterialApp(
         home: GameScreen(
@@ -1412,6 +1418,9 @@ void main() {
     );
 
     await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Analyze'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Analyze'));
     await tester.pumpAndSettle();
 

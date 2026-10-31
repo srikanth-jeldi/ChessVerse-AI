@@ -120,12 +120,10 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('REGISTERED'), findsOneWidget);
-      await tester.tap(
-        find.ancestor(
-          of: find.text('HYDERABAD'),
-          matching: find.byType(InkWell),
-        ),
-      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('HYDERABAD'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('HYDERABAD'));
       expect(opened?.id, 'hyd');
       await tester.scrollUntilVisible(
         find.text('TOKYO'),

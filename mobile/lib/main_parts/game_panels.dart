@@ -1002,10 +1002,13 @@ class _CoachEvaluation extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Text(
-            '${_localizedCoachUiLabel('evaluation', languageCode)} '
-            '${evaluationPawns == 0 ? '0.0' : '${evaluationPawns > 0 ? '+' : ''}${evaluationPawns.toStringAsFixed(1)}'}',
-            style: TextStyle(fontWeight: FontWeight.w700),
+          Flexible(
+            flex: 3,
+            child: Text(
+              '${_localizedCoachUiLabel('evaluation', languageCode)} '
+              '${evaluationPawns == 0 ? '0.0' : '${evaluationPawns > 0 ? '+' : ''}${evaluationPawns.toStringAsFixed(1)}'}',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

@@ -15,6 +15,12 @@ void main() {
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
       FlutterSecureStorage.setMockInitialValues({
         'settings.coachLanguage': 'en',
+        'auth.token': 'fixture-token',
+        'auth.displayName': 'Fixture player',
+        'auth.expiresAt': DateTime.now()
+            .add(const Duration(days: 1))
+            .toIso8601String(),
+        'auth.isGuest': 'false',
       });
       ComputerGameStore.resetForTesting();
       final messenger =

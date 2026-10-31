@@ -23,6 +23,7 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     AdSdkInitializer.resetForTesting();
     RewardedInterstitialTrial.resetForTesting();
+    RewardedInterstitialTrial.enabledOverride = true;
     FlutterSecureStorage.setMockInitialValues({
       'settings.ads.rewardedInterstitial.v1.bucket': '4',
     });
@@ -56,6 +57,7 @@ void main() {
     messenger.setMockMethodCallHandler(instanceManager.channel, null);
     messenger.setMockMethodCallHandler(environment, null);
     debugDefaultTargetPlatformOverride = null;
+    RewardedInterstitialTrial.resetForTesting();
   });
   test('treatment no-fill never shows a ready standard interstitial', () async {
     final service = PostMatchAdService.forTesting();

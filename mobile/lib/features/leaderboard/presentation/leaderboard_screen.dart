@@ -136,14 +136,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool wide =
+        AppBreakpoints.isTabletOrLarger(context) &&
+        MediaQuery.sizeOf(context).width >= 700;
     if (!_ratingMode) {
-      return CoinRankingsScreen(
-        onRating: () => setState(() => _ratingMode = true),
+      return _withSidebar(
+        context,
+        CoinRankingsScreen(onRating: () => setState(() => _ratingMode = true)),
       );
     }
-    final Size viewport = MediaQuery.sizeOf(context);
-    final bool wide =
-        AppBreakpoints.isTabletOrLarger(context) && viewport.width >= 700;
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -157,25 +158,40 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             onPressed: () => setState(() => _ratingMode = false),
             icon: const Icon(Icons.monetization_on_outlined),
           ),
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => SocialHubScreen(
-                  onOpenMatch: (OnlineMatchDto match) async {
-                    await widget.onOpenMatch?.call(match);
-                  },
+          if (MediaQuery.sizeOf(context).width < 500)
+            IconButton(
+              tooltip: UiCopy.text('Friends'),
+              icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SocialHubScreen(
+                    onOpenMatch: (match) async {
+                      await widget.onOpenMatch?.call(match);
+                    },
+                  ),
+                ),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SocialHubScreen(
+                    onOpenMatch: (OnlineMatchDto match) async {
+                      await widget.onOpenMatch?.call(match);
+                    },
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
+              label: const UiActionText(
+                'Friends',
+                style: TextStyle(
+                  color: Color(0xFF56DEC8),
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-            icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const UiActionText(
-              'Friends',
-              style: TextStyle(
-                color: Color(0xFF56DEC8),
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
           const SizedBox(width: 8),
         ],
         backgroundColor: const Color(0xE6071827),
@@ -383,6 +399,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         },
       ),
     );
+    return _withSidebar(context, page);
+  }
+
+  Widget _withSidebar(BuildContext context, Widget page) {
+    final bool wide =
+        AppBreakpoints.isTabletOrLarger(context) &&
+        MediaQuery.sizeOf(context).width >= 700;
     if (!wide) return page;
     return Row(
       children: <Widget>[

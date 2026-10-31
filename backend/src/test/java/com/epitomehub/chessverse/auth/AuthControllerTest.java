@@ -454,6 +454,8 @@ class AuthControllerTest {
 
     @Test
     void cloudProgressMergeUnionsPuzzleAndDailyProgressAcrossDevices() throws Exception {
+        String today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+        String yesterday = java.time.LocalDate.now(java.time.ZoneOffset.UTC).minusDays(1).toString();
         MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"installationId\":\"35e69b70-f69a-4b78-84b6-6dc337e7905f\"}"))
@@ -473,11 +475,11 @@ class AuthControllerTest {
                                   "avatar":3,
                                   "profileUpdatedAt":"2026-07-30T09:00:00Z",
                                   "dailyStreak":4,
-                                  "lastDailyCompletedAt":"2026-07-30T10:00:00Z",
+                                  "lastDailyCompletedAt":"2026-07-30T00:00:00Z",
                                   "completedPuzzleIds":["easy-1"],
-                                  "completedDailyChallengeIds":["daily-2026-07-30"]
+                                  "completedDailyChallengeIds":["2026-07-30"]
                                 }
-                                """))
+                                """.replace("2026-07-30", today).replace("2026-07-29", yesterday)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.completedPuzzleIds[0]").value("easy-1"));
 
@@ -494,14 +496,14 @@ class AuthControllerTest {
                                   "dailyStreak":2,
                                   "lastDailyCompletedAt":"2026-07-29T10:00:00Z",
                                   "completedPuzzleIds":["medium-2"],
-                                  "completedDailyChallengeIds":["daily-2026-07-29"]
+                                  "completedDailyChallengeIds":["2026-07-29"]
                                 }
-                                """))
+                                """.replace("2026-07-30", today).replace("2026-07-29", yesterday)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dailyStreak").value(4))
+                .andExpect(jsonPath("$.dailyStreak").value(2))
                 .andExpect(jsonPath("$.completedPuzzleIds.length()").value(2))
                 .andExpect(jsonPath("$.completedDailyChallengeIds.length()").value(2))
-                .andExpect(jsonPath("$.lastDailyCompletedAt").value("2026-07-30T10:00:00Z"));
+                .andExpect(jsonPath("$.lastDailyCompletedAt").value(today + "T00:00:00Z"));
     }
 
     @Test
