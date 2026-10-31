@@ -1,0 +1,44 @@
+ChessVerseAI 1.3.59 (326) - 1 November 2026
+
+Source: 572844bdfb2a84c0fc7d14b68d071d736ca2b49f (main)
+Signed AAB workflow: 41235253914 (success)
+CI: 41235200635 (success); Security gates: 41235200521 (success).
+
+Changes since 325
+- Daily challenge records retain their custom initial position. Regression
+  coverage checks archive JSON round trips and every review position for
+  the rotating daily puzzle catalogue.
+- Legacy daily records missing a custom initial position, or incorrectly
+  using the standard opening army, are excluded from saved history on load,
+  insertion and cloud merge. Their original positions cannot be recovered
+  reliably. Daily streak, completion and wallet data are not changed.
+- Puzzle Academy practice remains excluded from My Games.
+- Cloud computer-game history now retains initialFen when mapping records.
+- Learner Set Up Board enforces each side's standard inventory: one king,
+  one queen, two rooks/bishops/knights and eight pawns. Removing a piece
+  restores its available count. Pawns cannot be placed on ranks 1 or 8.
+- Black king width adjusted in the setup board and palette.
+- Existing release 325 features are retained.
+
+Validation
+- Local full Flutter functional suite: 3,634 passed, 2 skipped.
+- Full static analysis: no issues. Release CI tests and security checks passed.
+- Setup regression coverage includes all 34 supported UI languages.
+- CI verified signature and native symbol metadata; local verification checked
+  all 12 native libraries across armeabi-v7a, arm64-v8a and x86_64.
+- bundletool confirms versionCode 326, versionName 1.3.59.
+- Downloaded artifact ZIP CRC and AAB SHA256 verified.
+- AAB SHA256: 503bba160daea5446f0e77c594965fb53492c9b22ebd85d72d2fc4b9a9e3a0a6
+- Estimated Play download: 24,456,505 to 25,142,931 bytes (24.46-25.14 MB).
+  The maximum remains 0.14 MB above the earlier 25 MB target.
+
+Delivery
+release-output/1.3.59-326/ChessVerseAI-1.3.59-326.aab
+docs/release-326-en-GB.txt
+Crash symbols retained in release-output/1.3.59-326/symbols/.
+
+No real-device verification, website deployment or Play Store publication
+was performed in this release turn. Shared Flutter fixes require deployment
+to update the live website. Prior native ANRs are not certified resolved by
+these tests. Local Gradle hit a Windows loopback connection error; the
+successful production artifact was built by the existing GitHub workflow.
