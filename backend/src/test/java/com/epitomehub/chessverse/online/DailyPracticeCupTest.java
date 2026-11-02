@@ -59,6 +59,10 @@ class DailyPracticeCupTest {
         assertEquals(1,waiting.ply());
         assertThrows(OnlineMatchException.class,()->service.enter(cupId,shared.number(),white,"e7e5",1));
         assertEquals(2,service.enter(cup.id(),shared.number(),black,"e7e5",1).ply());
+        db.update("update practice_cup_game set result='1/2-1/2',started=true where cup_id=? and 0 in (white_seat,black_seat)",cupId);
+        UUID nextCup=service.join(alice).id();
+        assertNotEquals(cupId,nextCup);
+        assertEquals(cupId,service.join(bob).id());
         // Once human games are settled, the remaining AI pairs play legal
         // chess in bounded batches and the next refresh resumes their moves.
         db.update("update practice_cup_game set result='1/2-1/2',started=true where cup_id=? and (white_seat in (0,1) or black_seat in (0,1))",cup.id());
@@ -82,5 +86,10 @@ class DailyPracticeCupTest {
         assertEquals(2,winners.size());
         assertTrue(winners.stream().anyMatch(w->w.bot()));
         assertTrue(winners.stream().anyMatch(w->w.name().equals("Alice")));
+        var replay=service.join(alice);
+        assertEquals(nextCup,replay.id());
+        assertEquals(replay.id(),service.join(alice).id());
+        assertEquals(replay.id(),service.join(bob).id());
+        assertEquals(winners,service.recentWinners());
     }
 }

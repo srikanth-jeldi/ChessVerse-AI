@@ -34,7 +34,10 @@ class DailyPracticeCup {
         db.queryForObject("select day from practice_cup_day where day=? for update", LocalDate.class, today);
         List<UUID> existing = db.queryForList("""
                 select c.id from practice_cup c join practice_cup_seat s on s.cup_id=c.id
-                where c.day=? and s.player_id=?
+                where c.day=? and s.player_id=? and exists (
+                  select 1 from practice_cup_game g where g.cup_id=c.id
+                    and s.seat in (g.white_seat,g.black_seat) and g.result='*')
+                order by c.starts_at desc, c.id
                 """, UUID.class, today, player.id());
         if (!existing.isEmpty()) return standings(existing.getFirst(), player.id());
         List<UUID> available = db.queryForList("""
