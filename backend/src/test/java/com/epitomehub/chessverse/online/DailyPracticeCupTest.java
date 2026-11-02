@@ -1,6 +1,11 @@
 package com.epitomehub.chessverse.online;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import com.epitomehub.chessverse.auth.PlayerAuthenticationService;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -10,7 +15,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DailyPracticeCupTest {
-    @Test void soloStartRealJoinResumeAndLegalTurns() {
+    @Test void soloStartRealJoinResumeAndLegalTurns() throws Exception {
         var ds=new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+
                 ";MODE=PostgreSQL;NON_KEYWORDS=DAY;DB_CLOSE_DELAY=-1","sa","");
         var db=new JdbcTemplate(ds);
@@ -22,6 +27,15 @@ class DailyPracticeCupTest {
         var bob=new AuthenticatedPlayer(UUID.randomUUID(),"bob","Bob",null);
         db.update("insert into player_account values(?),(?)",alice.id(),bob.id());
         var service=new DailyPracticeCup(db);
+        var auth=mock(PlayerAuthenticationService.class);
+        when(auth.requireBearer("Bearer test")).thenReturn(alice);
+        var mvc=MockMvcBuilders.standaloneSetup(new DailyPracticeCupController(auth,service)).build();
+        String api="/api/v1/community/practice-cups";
+        mvc.perform(post(api+"/today").header("Authorization","Bearer test"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mySeat").value(0))
+                .andExpect(jsonPath("$.seats.length()").value(1))
+                .andExpect(jsonPath("$.seats[0].bot").value(false))
+                .andExpect(jsonPath("$.games.length()").value(0));
         var cup=service.join(alice);
         assertEquals(1,cup.seats().size());
         assertTrue(cup.lobbySeconds()>0 && cup.lobbySeconds()<=60);
@@ -41,6 +55,10 @@ class DailyPracticeCupTest {
                 Math.max(g.white(),g.black())).distinct().count());
         var game=service.enter(cup.id(),1,alice.id(),null,null);
         assertEquals(0,game.ply());
+        mvc.perform(post(api+"/"+cupId+"/boards/1").header("Authorization","Bearer test")
+                .contentType("application/json").content("{}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cup.seats[5].bot").value(true))
+                .andExpect(jsonPath("$.legal").isArray()).andExpect(jsonPath("$.ply").value(0));
         var next=service.enter(cup.id(),1,alice.id(),"e2e4",0);
         assertEquals(2,next.ply());
         assertThrows(OnlineMatchException.class,()->service.enter(cupId,1,alice.id(),"e2e4",0));
