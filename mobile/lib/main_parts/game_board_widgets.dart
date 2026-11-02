@@ -7,9 +7,14 @@ class CompactHeader extends StatelessWidget {
     required this.onReset,
     required this.onLogout,
     this.onPause,
+    this.backLabel = 'Back to Home',
+    this.resetLabel = 'Reset board',
+    this.exitLabel = 'Sign out',
+    this.profileLabel = 'Profile',
     super.key,
   });
 
+  final String backLabel, resetLabel, exitLabel, profileLabel;
   final VoidCallback onHome;
   final VoidCallback onProfile;
   final VoidCallback onReset;
@@ -22,7 +27,7 @@ class CompactHeader extends StatelessWidget {
       children: <Widget>[
         IconButton(
           key: const ValueKey<String>('mobile-back-to-home'),
-          tooltip: uiText(context, 'Back to Home'),
+          tooltip: uiText(context, backLabel),
           onPressed: onHome,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
@@ -54,17 +59,17 @@ class CompactHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: uiText(context, 'Profile'),
+          tooltip: uiText(context, profileLabel),
           onPressed: onProfile,
           icon: const Icon(Icons.person_rounded),
         ),
         IconButton(
-          tooltip: uiText(context, 'Reset board'),
+          tooltip: uiText(context, resetLabel),
           onPressed: onReset,
           icon: const Icon(Icons.refresh_rounded),
         ),
         IconButton(
-          tooltip: uiText(context, 'Sign out'),
+          tooltip: uiText(context, exitLabel),
           onPressed: onLogout,
           icon: const Icon(Icons.logout_rounded),
         ),

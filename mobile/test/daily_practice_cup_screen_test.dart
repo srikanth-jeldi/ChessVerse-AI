@@ -226,9 +226,8 @@ void main() {
     await tester.ensureVisible(pairing);
     await tester.tap(pairing);
     await tester.pumpAndSettle();
-    expect(find.text('Player 0'), findsOneWidget);
-    expect(find.text('Player 5'), findsOneWidget);
-    expect(find.text('AI Coach'), findsOneWidget);
+    expect(find.text('Automatic voice coach'), findsOneWidget);
+    expect(find.byKey(const ValueKey('live-coach-language')), findsOneWidget);
     expect(find.textContaining('· AI'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('square-e2')));
     await tester.tap(find.byKey(const ValueKey('square-e2')));
@@ -254,6 +253,12 @@ void main() {
     await tester.tap(history);
     await tester.pumpAndSettle();
     expect(find.byType(MoveHistorySheet), findsOneWidget);
-    expect(find.descendant(of: find.byType(MoveHistorySheet), matching: find.text('e2e4')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(MoveHistorySheet),
+        matching: find.text('e2e4'),
+      ),
+      findsOneWidget,
+    );
   });
 }

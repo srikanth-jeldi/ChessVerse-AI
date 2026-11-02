@@ -358,49 +358,55 @@ class _CupState extends State<DailyPracticeCupScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            Material(
-              color: AppColors.surface,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Row(
-                  children: [
-                    if (Navigator.canPop(context)) const BackButton(),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Semantics(
-                          header: true,
-                          child: UiText(
-                            'Daily Practice Cup',
-                            style: Theme.of(context).textTheme.titleLarge,
-                            softWrap: true,
+            if (position == null)
+              Material(
+                color: AppColors.surface,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    children: [
+                      if (Navigator.canPop(context)) const BackButton(),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Semantics(
+                            header: true,
+                            child: UiText(
+                              'Daily Practice Cup',
+                              style: Theme.of(context).textTheme.titleLarge,
+                              softWrap: true,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: MaterialLocalizations.of(context)
-                          .refreshIndicatorSemanticLabel,
-                      onPressed: busy
-                          ? null
-                          : () => refresh(
-                              board: error != null
-                                  ? retryBoard
-                                  : position?['board'],
-                            ),
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  ],
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .refreshIndicatorSemanticLabel,
+                        onPressed: busy
+                            ? null
+                            : () => refresh(
+                                board: error != null
+                                    ? retryBoard
+                                    : position?['board'],
+                              ),
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.symmetric(
-                  vertical: 16,
+                  vertical: position == null ? 16 : 0,
                   horizontal: MediaQuery.sizeOf(context).width > 840
                       ? (MediaQuery.sizeOf(context).width - 800) / 2
-                      : 16,
+                      : position == null
+                      ? 16
+                      : 0,
                 ),
                 children: [
                   if (busy && position == null) const LinearProgressIndicator(),
@@ -505,6 +511,10 @@ class _CupState extends State<DailyPracticeCupScreen> {
                   ],
                   if (position != null)
                     PracticeMatchStudio(
+                      key: ValueKey(position!['board']),
+                      onRefresh: busy
+                          ? null
+                          : () => refresh(board: position!['board']),
                       board: boardView(),
                       flipped: flipped,
                       whiteName: name(currentGame['white']),

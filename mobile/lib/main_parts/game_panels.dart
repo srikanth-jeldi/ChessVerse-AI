@@ -305,6 +305,7 @@ class _StudioDockCard extends StatelessWidget {
 class _StudioCoachPanel extends StatelessWidget {
   const _StudioCoachPanel({
     required this.gameMode,
+    this.cup = false,
     required this.activeColor,
     required this.aiThinking,
     required this.coachEnabled,
@@ -329,6 +330,7 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.onBackToAcademy,
   });
 
+  final bool cup;
   final GameMode gameMode;
   final String activeColor;
   final bool aiThinking;
@@ -625,7 +627,7 @@ class _StudioCoachPanel extends StatelessWidget {
                             ),
                           ),
                   ],
-                  if (!compact) ...<Widget>[
+                  if (!compact && !cup) ...<Widget>[
                     const SizedBox(height: 10),
                     _CoachProgress(
                       progress: progress,
@@ -1259,7 +1261,7 @@ class OnlineQuickChatPlayerRow extends StatelessWidget {
 }
 
 /// Untimed Cup matches use the same player rails and studio panels as live games.
-class PracticeMatchStudio extends StatelessWidget {
+class PracticeMatchStudio extends StatefulWidget {
   const PracticeMatchStudio({
     super.key,
     required this.board,
@@ -1271,132 +1273,236 @@ class PracticeMatchStudio extends StatelessWidget {
     required this.inCheck,
     required this.moves,
     required this.onStandings,
+    required this.onRefresh,
   });
-
   final Widget board;
   final String whiteName, blackName, result;
   final bool flipped, whiteTurn, inCheck;
   final List<String> moves;
-  final VoidCallback? onStandings;
+  final VoidCallback? onStandings, onRefresh;
+  @override
+  State<PracticeMatchStudio> createState() => _PracticeMatchStudioState();
+}
+
+class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
+  bool voice = false;
+  bool showTurn = true;
+  Timer? turnTimer;
+  DateTime? lastAudioError;
+  void restartBanner() {
+    turnTimer?.cancel();
+    showTurn = true;
+    turnTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => showTurn = false);
+    });
+  }
+  CoachPersona coach = CoachPersona.mira;
+  String language = AppLanguageController.systemCode;
+  CloudNarrationService? narrator;
+  int epoch = 0;
 
   @override
-  Widget build(BuildContext context) {
-    final playing = result == '*';
-    final status = playing
-        ? uiText(context, whiteTurn ? 'White to move' : 'Black to move')
-        : result == '1/2-1/2'
-        ? uiText(context, 'Draw')
-        : result;
-    Widget rail(bool white) => _OnlinePlayerRail(
-      name: white ? whiteName : blackName,
-      photoUrl: null,
-      clock: '',
-      active: playing && white == whiteTurn,
-      pieceColor: white ? Colors.white : Colors.black,
+  void initState() {
+    super.initState();
+    restartBanner();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final enabled = await const AppPreferences().readBool(
+      'liveMoveVoice',
+      fallback: false,
     );
-    final play = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final selected = await CoachPersona.load();
+    final code = await AppLanguageController.selectedCode();
+    if (mounted)
+      setState(() {
+        voice = enabled;
+        coach = selected;
+        language = code;
+      });
+  }
+
+  String get code => AppLanguageController.resolveCode(language);
+  String get status => widget.result != '*'
+      ? (widget.result == '1/2-1/2'
+            ? localizeLiveCoach('Draw', code)
+            : widget.result)
+      : localizeLiveCoach(
+          widget.whiteTurn ? 'White to move' : 'Black to move',
+          code,
+        );
+  String get note => [
+    '${widget.whiteName} • ${widget.blackName}',
+    status,
+    if (widget.inCheck)
+      localizeLiveCoach(widget.result == '*' ? 'Check' : 'Checkmate', code),
+    if (widget.moves.isNotEmpty && widget.moves.last.length >= 4)
+      '${widget.moves.length.isOdd ? widget.whiteName : widget.blackName} · ${widget.moves.last.substring(0, 2)} → ${widget.moves.last.substring(2)}',
+  ].join(' · ');
+  Future<void> _speak() async {
+    final turn = ++epoch;
+    if (!voice) return;
+    try {
+      narrator ??= CloudNarrationService(preferImmediateLocal: false);
+      final played = await narrator!.speak(
+        text: note,
+        language: code,
+        voiceGender: coach.gender,
+        tone: coach.tone,
+        canSpeak: () =>
+            mounted &&
+            voice &&
+            epoch == turn &&
+            (ModalRoute.of(context)?.isCurrent ?? false),
+      );
+      if (!played) _audioFailed(turn);
+    } catch (_) {
+      _audioFailed(turn);
+    }
+  }
+
+  void _audioFailed(int turn) {
+    if (!mounted || !voice || turn != epoch || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    final now = DateTime.now();
+    if (lastAudioError != null && now.difference(lastAudioError!) < const Duration(seconds:30)) return;
+    lastAudioError = now;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: UiText(
+      'Voice could not play. Check your connection and media volume, then turn voice off and on to retry.')));
+  }
+  @override
+  void didUpdateWidget(covariant PracticeMatchStudio oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.whiteTurn != widget.whiteTurn || oldWidget.moves.length != widget.moves.length) restartBanner();
+    if (widget.moves.length > oldWidget.moves.length && voice)
+      unawaited(_speak());
+  }
+
+  @override
+  void dispose() {
+    epoch++;
+    turnTimer?.cancel();
+    unawaited(narrator?.dispose());
+    super.dispose();
+  }
+
+  Future<void> _toggle(bool value) async {
+    setState(() => voice = value);
+    epoch++;
+    if (value) {
+      unawaited(_speak());
+    } else {
+      await narrator?.stop();
+    }
+    await const AppPreferences().writeBool('liveMoveVoice', value);
+  }
+
+  Future<void> _changeCoach() async {
+    epoch++;
+    await narrator?.stop();
+    if (!mounted) return;
+    final chosen = await Navigator.of(context).push<CoachPersona>(
+      MaterialPageRoute(builder: (_) => CoachPickerScreen(languageCode: code)),
+    );
+    if (mounted && chosen != null) setState(() => coach = chosen);
+  }
+
+  Future<void> _language() async {
+    final picked = await selectAndSaveAiLanguage(context);
+    if (mounted && picked != null) setState(() => language = picked);
+  }
+
+  void _history() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => MoveHistorySheet(moves: widget.moves.reversed.toList()),
+  );
+  @override
+  Widget build(BuildContext context) {
+    final mine = widget.whiteTurn != widget.flipped;
+    final play = Stack(
       children: [
-        rail(flipped),
-        const SizedBox(height: 6),
-        board,
-        const SizedBox(height: 6),
-        rail(!flipped),
+        Listener(onPointerDown: (_) { if (showTurn) setState(() => showTurn = false); }, child: widget.board),
+        if (widget.result == '*' && mine && showTurn)
+          Positioned.fill(
+            child: _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)),
+          ),
       ],
     );
-    final last = moves.lastOrNull;
-    final panel = _StudioDockCard(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            UiText(
-              'AI Coach',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: const Color(0xFF63D2B8),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            CoachInsight(
-              enabled: true,
-              note: [
-                status,
-                if (inCheck && (playing || result == '1-0' || result == '0-1'))
-                  uiText(context, playing ? 'Check' : 'Checkmate'),
-                if (last != null && last.length >= 4)
-                  '${moves.length.isOdd ? whiteName : blackName} · ${last.substring(0, 2)} → ${last.substring(2)}',
-              ].join(' · '),
-            ),
-            const SizedBox(height: 12),
-            UiText(
-              'Move History',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (moves.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
+    final panel = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LiveVoiceToggle(enabled: voice, onChanged: _toggle),
+        TextButton.icon(
+          onPressed: _changeCoach,
+          icon: const Icon(Icons.record_voice_over),
+          label: UiText('Change coach: {0}', values: [coach.name]),
+        ),
+        _StudioCoachPanel(
+          cup: true,
+          gameMode: GameMode.online,
+          activeColor: status,
+          aiThinking: false,
+          coachEnabled: true,
+          coachNote: note,
+          languageCode: code,
+          onLanguage: _language,
+          evaluationPawns: 0,
+          lastMove: widget.moves.lastOrNull,
+          lastMoveOwner: null,
+          dailyProgress: 0,
+          dailyGoal: 0,
+          canUndo: false,
+          hintLabel: 'Hint',
+          canHint: false,
+          analyzeLabel: 'Move History',
+          onHint: () {},
+          onAnalyze: _history,
+          onTryAgain: widget.onRefresh,
+          onUndo: () {},
+          puzzleComplete: false,
+          onNextPuzzle: () {},
+          onBackToAcademy: () {},
+        ),
+        TextButton.icon(
+          onPressed: widget.onStandings,
+          icon: const Icon(Icons.emoji_events_outlined),
+          label: const UiText('Tournaments'),
+        ),
+      ],
+    );
+    return Column(
+      children: [
+        CompactHeader(
+          onHome: widget.onStandings ?? () {},
+          onPause: widget.onStandings,
+          onProfile: _changeCoach,
+          onReset: widget.onRefresh ?? () {},
+          onLogout: widget.onStandings ?? () {},
+          backLabel: 'Tournaments',
+          profileLabel: 'Change coach',
+          resetLabel: 'Refresh',
+          exitLabel: 'Tournaments',
+        ),
+        LayoutBuilder(
+          builder: (context, c) => c.maxWidth >= 720
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (
-                      var i = moves.length > 6
-                          ? (moves.length - 5) ~/ 2 * 2
-                          : 0;
-                      i < moves.length;
-                      i += 2
-                    )
-                      Text(
-                        '${i ~/ 2 + 1}. ${moves[i]} ${i + 1 < moves.length ? moves[i + 1] : ""}',
-                        textDirection: TextDirection.ltr,
-                      ),
+                    Expanded(flex: 3, child: play),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: panel),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    play,
+                    Padding(padding: const EdgeInsets.all(6), child: panel),
                   ],
                 ),
-              ),
-            Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) =>
-                        MoveHistorySheet(moves: moves.reversed.toList()),
-                  ),
-                  icon: const Icon(Icons.history),
-                  label: const UiText('Move History'),
-                ),
-                TextButton.icon(
-                  onPressed: onStandings,
-                  icon: const Icon(Icons.emoji_events_outlined),
-                  label: const UiText('Tournaments'),
-                ),
-              ],
-            ),
-          ],
         ),
-      ),
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 720) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: play),
-              const SizedBox(width: 14),
-              Expanded(flex: 2, child: panel),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [play, const SizedBox(height: 12), panel],
-        );
-      },
+      ],
     );
   }
 }
