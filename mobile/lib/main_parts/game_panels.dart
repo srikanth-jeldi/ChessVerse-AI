@@ -1370,12 +1370,14 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     if (!mounted ||
         !voice ||
         turn != epoch ||
-        !(ModalRoute.of(context)?.isCurrent ?? false))
+        !(ModalRoute.of(context)?.isCurrent ?? false)) {
       return;
+    }
     final now = DateTime.now();
     if (lastAudioError != null &&
-        now.difference(lastAudioError!) < const Duration(seconds: 30))
+        now.difference(lastAudioError!) < const Duration(seconds: 30)) {
       return;
+    }
     lastAudioError = now;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

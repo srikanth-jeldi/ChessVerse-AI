@@ -22,7 +22,7 @@ const _turns = <String, (String, String)>{
   'de': ('{name}, du bist am Zug.', 'Jetzt ist {name} am Zug.'),
   'el': ('{name}, είναι η σειρά σου.', 'Σειρά έχει ο παίκτης {name}.'),
   'es': ('{name}, te toca.', 'Le toca a {name}.'),
-  'fr': ("{name}, à toi de jouer.", "C’est à {name} de jouer."),
+  'fr': ('{name}, à toi de jouer.', 'C’est à {name} de jouer.'),
   'id': ('{name}, sekarang giliranmu.', 'Sekarang giliran {name}.'),
   'it': ('{name}, tocca a te.', 'Adesso tocca a {name}.'),
   'ja': ('{name}さん、あなたの番です。', '次は{name}さんの番です。'),

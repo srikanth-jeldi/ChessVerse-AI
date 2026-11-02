@@ -75,8 +75,9 @@ void main() {
       for (final mine in [true, false]) {
         final line = cupTurnAnnouncement(locale.code, 'Leo', mine: mine);
         expect(line, contains('Leo'));
-        if (locale.code != 'en')
+        if (locale.code != 'en') {
           expect(line, isNot(cupTurnAnnouncement('en', 'Leo', mine: mine)));
+        }
       }
     }
     expect(
