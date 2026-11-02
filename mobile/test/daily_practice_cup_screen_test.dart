@@ -1,11 +1,15 @@
 import 'package:chessverse_ai/core/app_language.dart';
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/live_coach_localizations.dart';
 import 'package:chessverse_ai/features/social/data/community_api.dart';
+import 'package:chessverse_ai/features/social/data/social_api.dart';
 import 'package:chessverse_ai/features/social/presentation/daily_practice_cup_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _PracticeApi extends CommunityApi {
+  SocialException? joinFailure;
   final state = {
     'id': 'cup', 'mySeat': 0,
     'seats': List.generate(6, (i) => {'name': 'Player $i', 'bot': i != 0}),
@@ -14,7 +18,10 @@ class _PracticeApi extends CommunityApi {
   String? played;
   int? expectedPly;
   @override
-  Future<Map<String,dynamic>> joinDailyPractice(String token) async => state;
+  Future<Map<String,dynamic>> joinDailyPractice(String token) async {
+    if (joinFailure != null) throw joinFailure!;
+    return state;
+  }
   @override
   Future<Map<String,dynamic>> dailyPracticeStandings(String token,String cup) async => state;
   @override
@@ -27,6 +34,55 @@ class _PracticeApi extends CommunityApi {
 }
 
 void main() {
+  for (final locale in AppLanguageController.supported.where((l)=>l.code!='system')) {
+    testWidgets('Cup error, retry and playable board fit at large text in ${locale.code}',(tester) async {
+      await tester.runAsync(()=>UiCopy.load(locale.code));
+      AppLanguageController.effectiveLanguageChanges.value=locale.code;
+      addTearDown(() async {
+        AppLanguageController.effectiveLanguageChanges.value='en';
+        await tester.runAsync(()=>UiCopy.load('en'));
+        tester.view.reset();
+      });
+      for(final size in [const Size(320,740),const Size(1000,650)]) {
+        tester.view.physicalSize=size;
+        tester.view.devicePixelRatio=1;
+        final api=_PracticeApi()..joinFailure=const SocialException('missing',statusCode:404);
+        await tester.pumpWidget(MaterialApp(builder:(context,child)=>MediaQuery(
+            data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(1.6)),
+            child:Directionality(textDirection:['ar','he','fa','ur'].contains(locale.code)?
+                TextDirection.rtl:TextDirection.ltr,child:child!)),
+          home:DailyPracticeCupScreen(key:UniqueKey(),api:api,token:'test')));
+        await tester.pumpAndSettle();
+        final title=find.text(UiCopy.text('Daily Practice Cup'));
+        final heading=tester.renderObject<RenderParagraph>(title);
+        expect(heading.didExceedMaxLines,isFalse,reason:'Title clipped at ${size.width}');
+        expect(find.text(UiCopy.text('Daily Practice Cup is temporarily unavailable.')),findsOneWidget);
+        api.joinFailure=null;
+        await tester.tap(find.text(UiCopy.text('Retry')));
+        await tester.pumpAndSettle();
+        final pair=find.text('Player 0  •  Player 5');
+        await tester.ensureVisible(pair);
+        await tester.tap(pair);
+        await tester.pumpAndSettle();
+        expect(find.text('a1'),findsOneWidget);
+        expect(tester.getCenter(find.text('a1')).dx, lessThan(tester.getCenter(find.text('h1')).dx));
+        expect(tester.takeException(),isNull);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+  }
+  testWidgets('missing cup service shows a readable retry that opens the lobby after recovery',(tester) async {
+    final api = _PracticeApi()..joinFailure = const SocialException('Community request failed.',statusCode:404);
+    await tester.pumpWidget(MaterialApp(home:DailyPracticeCupScreen(api:api,token:'test')));
+    await tester.pumpAndSettle();
+    expect(find.text('Daily Practice Cup is temporarily unavailable.'),findsOneWidget);
+    expect(find.textContaining('SocialException'),findsNothing);
+    api.joinFailure = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Player 0'),findsOneWidget);
+    expect(find.text('Retry'),findsNothing);
+  });
   testWidgets('registration shows only real entrants until the roster locks', (tester) async {
     final api=_PracticeApi();
     final full={...api.state};

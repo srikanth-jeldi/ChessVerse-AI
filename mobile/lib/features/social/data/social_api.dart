@@ -192,6 +192,7 @@ class SocialApi {
 }
 
 class SocialException implements Exception {
-  const SocialException(this.message);
+  const SocialException(this.message, {this.statusCode});
   final String message;
+  final int? statusCode;
 }

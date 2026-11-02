@@ -1,0 +1,4 @@
+<en-GB>
+Read the full coach explanation after your move. With voice coaching on, the AI gives the coach time to speak before replying.
+Daily Practice Cup headings now fit narrow screens and larger text. If the cup is unavailable, a clear message and Retry button help you reopen it.
+</en-GB>

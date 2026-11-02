@@ -472,17 +472,16 @@ class _StudioCoachPanel extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text(
+                              FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(
                                 localizeLiveCoach('AI Coach ✦', languageCode),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: const Color(0xFF63D2B8),
                                   fontFamily: 'serif',
                                   fontSize: compact ? 23 : 30,
                                   fontWeight: FontWeight.w800,
                                 ),
-                              ),
+                              )),
                               Text(
                                 localizeLiveCoach(modeLabel, languageCode),
                                 maxLines: compact ? 2 : 1,

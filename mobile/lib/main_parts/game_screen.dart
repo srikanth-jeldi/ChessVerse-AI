@@ -888,7 +888,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _speakMoveReview(
     String classification,
     int ply,
-    int epoch, {String? advice}
+    int epoch, {String? advice, bool Function()? voiceWindow}
   ) async {
     final language = AppLanguageController.resolveCode(_coachLanguageCode);
     await _liveVoice.review(
@@ -899,7 +899,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           !_computerPaused &&
           _gameMode == GameMode.computer &&
           epoch == _moveReviewEpoch &&
-          _moves.length <= ply + 1 &&
+          _moves.length == ply &&
+          (voiceWindow?.call() ?? true) &&
           language == AppLanguageController.resolveCode(_coachLanguageCode) &&
           (ModalRoute.of(context)?.isCurrent ?? false),
       speak: (source, canSpeak) => _playLiveVoice(
@@ -1706,6 +1707,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (_coachEnabled && _lastPlayerMove != null && _lastPlayerCoachNote != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Align(alignment: AlignmentDirectional.centerStart,
+                            child: Text(_localizedLiveCoachText(_lastPlayerCoachNote!, _coachLanguageCode),
+                              key: const ValueKey('live-player-move-explanation'),
+                              style: const TextStyle(color: Color(0xfff2ede4), fontSize: 16, height: 1.35)))),
                       LiveVoiceToggle(
                         enabled: _liveVoice.enabled,
                         onChanged: _toggleLiveVoice,
@@ -3503,15 +3511,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       });
     } else if (moveCommitted) {
       _scheduleComputerDraftSave();
+      final waitForCoach = _gameMode == GameMode.computer && _liveVoice.enabled &&
+          engineReviewFen != null && engineReviewMove != null && _gameResultTitle == null;
       if (engineReviewFen != null && engineReviewMove != null) {
-        unawaited(
-          _reviewPlayerMoveWithEngine(
+        final epoch = _moveReviewEpoch;
+        final ply = engineReviewPly!;
+        Future<void> review([bool Function()? window]) => _reviewPlayerMoveWithEngine(
             engineReviewFen!,
             engineReviewMove!,
-            engineReviewPly!,
+            ply,
+            voiceWindow: window,
             clockSecondsBefore: engineReviewClockSeconds,
-          ),
-        );
+          );
+        if (waitForCoach) {
+          unawaited(LiveMoveVoice.beforeOpponentReply(review: review, reply: () {
+            if (mounted && epoch == _moveReviewEpoch && _moves.length == ply) _scheduleAiMove();
+          }));
+        } else {
+          unawaited(review());
+        }
       }
       if (_moveQualityText != null) {
         _scheduleMoveQualityDismiss();
@@ -3520,7 +3538,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onlineUci != null &&
           onlineExpectedPly != null) {
         unawaited(_submitOnlineMove(onlineUci!, onlineExpectedPly!));
-      } else {
+      } else if (!waitForCoach) {
         _scheduleAiMove();
       }
       if (_gameMode == GameMode.local) {
@@ -3564,6 +3582,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String fen,
     String playedMove,
     int ply, {
+    bool Function()? voiceWindow,
     int? clockSecondsBefore,
   }) async {
     // Multiple half-moves can finish analysis out of order. They all belong
@@ -3665,8 +3684,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         LocalGameArchive.updateLatestGameReviews(_moveReviews);
         _notifyAnalysisReadyIfComplete();
       }
-      unawaited(_speakMoveReview(classification, ply, reviewEpoch,
-          advice: advice == null ? null : reviewText));
+      await _speakMoveReview(classification, ply, reviewEpoch, voiceWindow: voiceWindow,
+          advice: advice == null ? null : reviewText);
+      if (!mounted || reviewEpoch != _moveReviewEpoch) return;
       if (_moves.length <= reviewedBoardPly + 1) _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.

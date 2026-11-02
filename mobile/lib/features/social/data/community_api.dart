@@ -787,18 +787,17 @@ class CommunityApi {
               .get(uri, headers: headers)
               .timeout(const Duration(seconds: 15)),
       };
-      final Object decoded = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        final e = decoded is Map<String, dynamic>
-            ? decoded
-            : <String, dynamic>{};
-        throw SocialException(
-          e['message'] as String? ?? 'Community request failed.',
-        );
+        String message = 'Community request failed.';
+        try {
+          final body = jsonDecode(response.body);
+          if (body is Map && body['message'] is String) message = body['message'];
+        } on FormatException {
+          // Gateways can return an HTML error instead of the API's JSON.
+        }
+        throw SocialException(message, statusCode: response.statusCode);
       }
-      return decoded;
+      return response.body.isEmpty ? <String,dynamic>{} : jsonDecode(response.body);
     } on SocialException {
       rethrow;
     } on TimeoutException {

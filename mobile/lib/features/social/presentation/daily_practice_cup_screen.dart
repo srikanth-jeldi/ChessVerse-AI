@@ -6,6 +6,7 @@ import '../../../core/app_ui_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../analysis/presentation/animated_practice_pieces.dart';
 import '../data/community_api.dart';
+import '../data/social_api.dart';
 
 class DailyPracticeCupScreen extends StatefulWidget {
   const DailyPracticeCupScreen({
@@ -23,6 +24,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
   Map<String, dynamic>? cup, position;
   String? selected, error;
   bool busy = false;
+  int? retryBoard;
   Timer? poll;
 
   @override
@@ -42,6 +44,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
     poll?.cancel();
     setState(() {
       busy = true;
+      retryBoard = board;
       error = null;
     });
     try {
@@ -80,8 +83,16 @@ class _CupState extends State<DailyPracticeCupScreen> {
           poll = Timer(const Duration(seconds: 4), () => refresh(board: board));
         }
       }
-    } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+    } on SocialException catch (e) {
+      if (mounted) {
+        setState(() => error = switch (e.statusCode) {
+        401 => 'Your session has expired. Please sign in again.',
+        404 when cup == null => 'Daily Practice Cup is temporarily unavailable.',
+        _ => 'Unable to open your board. Please try again.',
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => error = 'Unable to open your board. Please try again.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -219,22 +230,32 @@ class _CupState extends State<DailyPracticeCupScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
-    appBar: AppBar(
-      title: const UiText('Daily Practice Cup'),
-      actions: [
+    body: SafeArea(child: Column(children: [
+      Material(color: AppColors.surface, child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal:4, vertical:6),
+        child: Row(children:[
+          if (Navigator.canPop(context)) const BackButton(),
+          Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal:12),
+            child: Semantics(header:true,child:UiText('Daily Practice Cup',
+                style:Theme.of(context).textTheme.titleLarge,softWrap:true)))),
         IconButton(
-          onPressed: busy ? null : () => refresh(board: position?['board']),
+          tooltip: MaterialLocalizations.of(context).refreshIndicatorSemanticLabel,
+          onPressed: busy ? null : () => refresh(board: error != null ? retryBoard : position?['board']),
           icon: const Icon(Icons.refresh),
         ),
-      ],
-    ),
-    body: SafeArea(
+        ]))),
+    Expanded(
       child: ListView(
         padding: EdgeInsets.symmetric(vertical:16, horizontal:
             MediaQuery.sizeOf(context).width > 840 ? (MediaQuery.sizeOf(context).width - 800)/2 : 16),
         children: [
           if (busy) const LinearProgressIndicator(),
-          if (error != null) Text(error!),
+          if (error != null) ...[
+            UiText(error!),
+            Align(alignment: AlignmentDirectional.centerStart, child: OutlinedButton.icon(
+              onPressed: busy ? null : () => refresh(board: retryBoard),
+              icon: const Icon(Icons.refresh), label: const UiText('Retry'))),
+          ],
           if (cup != null && position == null) ...[
             if ((cup!['lobbySeconds'] ?? 0) > 0) ...[
               Text('${uiText(context, 'Starts in')} · ${seats.length}/6',
@@ -307,6 +328,6 @@ class _CupState extends State<DailyPracticeCupScreen> {
           ],
         ],
       ),
-    ),
+    )])),
   );
 }

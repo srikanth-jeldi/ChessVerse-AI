@@ -2,6 +2,21 @@ import 'dart:async';
 
 /// Reuses completed engine reviews. Never launches analysis or queues speech.
 class LiveMoveVoice {
+  /// A slow review can still populate the saved report, but its audio may
+  /// start only while this move owns the turn.
+  static Future<void> beforeOpponentReply({
+    required Future<void> Function(bool Function() canSpeak) review,
+    required void Function() reply,
+    Duration budget = const Duration(seconds: 10),
+  }) async {
+    bool open = true;
+    try {
+      await review(() => open).timeout(budget, onTimeout: () {});
+    } finally {
+      open = false;
+      reply();
+    }
+  }
   int _generation = 0;
   int _lastPly = 0;
   bool enabled = false;

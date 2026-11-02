@@ -6,6 +6,31 @@ import 'package:chessverse_ai/core/audio/live_move_voice.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('opponent waits for narration to start; late audio cannot start after timeout', () async {
+    final playback = Completer<void>();
+    var replied = false;
+    late bool Function() allowed;
+    final turn = LiveMoveVoice.beforeOpponentReply(
+      review: (window) { allowed = window; return playback.future; },
+      reply: () { replied = true; },
+    );
+    expect(allowed(), isTrue);
+    expect(replied, isFalse);
+    playback.complete();
+    await turn;
+    expect(replied, isTrue);
+    expect(allowed(), isFalse);
+    final lateReview = Completer<void>();
+    var replies = 0;
+    await LiveMoveVoice.beforeOpponentReply(
+      review: (window) { allowed = window; return lateReview.future; },
+      reply: () { replies++; },
+      budget: Duration.zero,
+    );
+    expect(allowed(), isFalse);
+    lateReview.complete();
+    expect(replies, 1);
+  });
   test(
     'failed playback does not suppress the next move for 20 seconds',
     () async {
