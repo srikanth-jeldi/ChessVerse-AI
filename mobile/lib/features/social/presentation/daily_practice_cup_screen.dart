@@ -190,8 +190,9 @@ class _CupState extends State<DailyPracticeCupScreen> {
         );
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = 'Unable to open your board. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
