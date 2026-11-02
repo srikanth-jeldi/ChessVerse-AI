@@ -17,7 +17,16 @@ class DailyPracticeCupController {
 
     @PostMapping("/today")
     DailyPracticeCup.Cup join(@RequestHeader("Authorization") String token) {
-        return cups.join(auth.requireBearer(token));
+        return forPlayer(cups.join(auth.requireBearer(token)));
+    }
+
+    // Standings use all results. Only the two participants receive the moves.
+    private static DailyPracticeCup.Cup forPlayer(DailyPracticeCup.Cup cup) {
+        var visible = cup.games().stream().map(game ->
+                game.white() == cup.mySeat() || game.black() == cup.mySeat() ? game :
+                new DailyPracticeCup.Game(game.number(), game.round(), game.white(), game.black(),
+                        "", game.started(), game.result())).toList();
+        return new DailyPracticeCup.Cup(cup.id(), cup.mySeat(), cup.seats(), visible, cup.lobbySeconds());
     }
 
     record Turn(String move, Integer ply) {}
@@ -30,12 +39,14 @@ class DailyPracticeCupController {
 
     @GetMapping("/{cup}")
     DailyPracticeCup.Cup standings(@RequestHeader("Authorization") String token, @PathVariable UUID cup) {
-        return cups.standings(cup, auth.requireBearer(token).id());
+        return forPlayer(cups.standings(cup, auth.requireBearer(token).id()));
     }
 
     @PostMapping("/{cup}/boards/{board}")
     DailyPracticeCup.Position board(@RequestHeader("Authorization") String token, @PathVariable UUID cup,
                                     @PathVariable int board, @RequestBody Turn turn) {
-        return cups.enter(cup, board, auth.requireBearer(token).id(), turn.move(), turn.ply());
+        var position = cups.enter(cup, board, auth.requireBearer(token).id(), turn.move(), turn.ply());
+        return new DailyPracticeCup.Position(forPlayer(position.cup()), position.board(),
+                position.fen(), position.ply(), position.legal());
     }
 }

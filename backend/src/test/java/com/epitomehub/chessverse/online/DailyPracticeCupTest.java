@@ -66,6 +66,12 @@ class DailyPracticeCupTest {
         var joined=service.join(bob);
         assertEquals(cup.id(),joined.id());
         assertEquals(1,joined.mySeat());
+        var controller = new DailyPracticeCupController(auth, service);
+        org.mockito.Mockito.when(auth.requireBearer("Bearer second")).thenReturn(bob);
+        assertEquals("", controller.standings("Bearer second", cupId).games().stream()
+                .filter(g -> g.number() == 1).findFirst().orElseThrow().moves());
+        assertTrue(controller.standings("Bearer test", cupId).games().stream()
+                .filter(g -> g.number() == 1).findFirst().orElseThrow().moves().startsWith("e2e4"));
         assertTrue(joined.seats().get(5).isBot());
         assertThrows(OnlineMatchException.class,()->service.enter(cupId,1,bob.id(),null,null));
         assertEquals(cup.id(),service.join(alice).id());
