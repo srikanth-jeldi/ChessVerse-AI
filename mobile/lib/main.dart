@@ -25,6 +25,7 @@ import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
 import 'core/ai_personas.dart';
 import 'core/app_language.dart';
+import 'core/cup_turn_voice.dart';
 import 'core/coach_localizations.dart';
 import 'core/coach_extra_localizations.dart';
 import 'core/live_coach_localizations.dart';

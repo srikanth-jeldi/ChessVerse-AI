@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:chessverse_ai/core/app_language.dart';
+import 'package:chessverse_ai/core/cup_turn_voice.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/live_coach_localizations.dart';
 import 'package:chessverse_ai/features/social/data/community_api.dart';
 import 'package:chessverse_ai/features/social/data/social_api.dart';
 import 'package:chessverse_ai/features/social/presentation/daily_practice_cup_screen.dart';
-import 'package:chessverse_ai/main.dart' show ChessBoard, MoveHistorySheet;
+import 'package:chessverse_ai/main.dart'
+    show ChessBoard, MoveHistorySheet, PracticeMatchStudio;
 import 'package:chessverse_ai/core/widgets/player_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -66,6 +68,67 @@ class _PracticeApi extends CommunityApi {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  test('turn voice addresses the player or names the opponent in each coach language', () {
+    for (final locale in AppLanguageController.supported.where(
+      (l) => l.code != 'system',
+    )) {
+      for (final mine in [true, false]) {
+        final line = cupTurnAnnouncement(locale.code, 'Leo', mine: mine);
+        expect(line, contains('Leo'));
+        if (locale.code != 'en')
+          expect(line, isNot(cupTurnAnnouncement('en', 'Leo', mine: mine)));
+      }
+    }
+    expect(
+      cupTurnAnnouncement('te', 'లియో', mine: false),
+      'ఇప్పుడు లియో వంతు.',
+    );
+  });
+  testWidgets(
+    'turn banner expires, dismisses on touch and waits for a new turn',
+    (tester) async {
+      final banner = find.byKey(const ValueKey('prominent-turn-banner'));
+      Widget page(bool whiteTurn) => MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PracticeMatchStudio(
+              board: const SizedBox(
+                key: ValueKey('test-board'),
+                height: 160,
+                width: 320,
+                child: ColoredBox(color: Colors.black),
+              ),
+              whiteName: 'White',
+              blackName: 'Black',
+              flipped: false,
+              whiteTurn: whiteTurn,
+              result: '*',
+              inCheck: false,
+              moves: const [],
+              onStandings: null,
+              onRefresh: null,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(page(true));
+      expect(banner, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1801));
+      expect(banner, findsNothing);
+      await tester.pumpWidget(page(true));
+      expect(banner, findsNothing);
+      await tester.pumpWidget(page(false));
+      expect(banner, findsNothing);
+      await tester.pumpWidget(page(true));
+      expect(banner, findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('test-board')));
+      await tester.pump();
+      expect(banner, findsNothing);
+      await tester.pump(const Duration(seconds: 6));
+      expect(banner, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final locale in AppLanguageController.supported.where(
     (l) => l.code != 'system',
   )) {

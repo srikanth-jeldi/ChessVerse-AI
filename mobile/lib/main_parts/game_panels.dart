@@ -1296,6 +1296,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
       if (mounted) setState(() => showTurn = false);
     });
   }
+
   CoachPersona coach = CoachPersona.mira;
   String language = AppLanguageController.systemCode;
   CloudNarrationService? narrator;
@@ -1315,12 +1316,14 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     );
     final selected = await CoachPersona.load();
     final code = await AppLanguageController.selectedCode();
-    if (mounted)
+    if (mounted) {
       setState(() {
         voice = enabled;
         coach = selected;
         language = code;
       });
+      if (enabled) unawaited(_speak());
+    }
   }
 
   String get code => AppLanguageController.resolveCode(language);
@@ -1328,9 +1331,10 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
       ? (widget.result == '1/2-1/2'
             ? localizeLiveCoach('Draw', code)
             : widget.result)
-      : localizeLiveCoach(
-          widget.whiteTurn ? 'White to move' : 'Black to move',
+      : cupTurnAnnouncement(
           code,
+          widget.whiteTurn ? widget.whiteName : widget.blackName,
+          mine: widget.whiteTurn != widget.flipped,
         );
   String get note => [
     '${widget.whiteName} • ${widget.blackName}',
@@ -1346,7 +1350,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     try {
       narrator ??= CloudNarrationService(preferImmediateLocal: false);
       final played = await narrator!.speak(
-        text: note,
+        text: status,
         language: code,
         voiceGender: coach.gender,
         tone: coach.tone,
@@ -1363,19 +1367,37 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   }
 
   void _audioFailed(int turn) {
-    if (!mounted || !voice || turn != epoch || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    if (!mounted ||
+        !voice ||
+        turn != epoch ||
+        !(ModalRoute.of(context)?.isCurrent ?? false))
+      return;
     final now = DateTime.now();
-    if (lastAudioError != null && now.difference(lastAudioError!) < const Duration(seconds:30)) return;
+    if (lastAudioError != null &&
+        now.difference(lastAudioError!) < const Duration(seconds: 30))
+      return;
     lastAudioError = now;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: UiText(
-      'Voice could not play. Check your connection and media volume, then turn voice off and on to retry.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: UiText(
+          'Voice could not play. Check your connection and media volume, then turn voice off and on to retry.',
+        ),
+      ),
+    );
   }
+
   @override
   void didUpdateWidget(covariant PracticeMatchStudio oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.whiteTurn != widget.whiteTurn || oldWidget.moves.length != widget.moves.length) restartBanner();
-    if (widget.moves.length > oldWidget.moves.length && voice)
+    if (oldWidget.whiteTurn != widget.whiteTurn ||
+        oldWidget.moves.length != widget.moves.length) {
+      restartBanner();
+    }
+    if (voice &&
+        (widget.whiteTurn != oldWidget.whiteTurn ||
+            widget.result != oldWidget.result)) {
       unawaited(_speak());
+    }
   }
 
   @override
@@ -1422,7 +1444,12 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     final mine = widget.whiteTurn != widget.flipped;
     final play = Stack(
       children: [
-        Listener(onPointerDown: (_) { if (showTurn) setState(() => showTurn = false); }, child: widget.board),
+        Listener(
+          onPointerDown: (_) {
+            if (showTurn) setState(() => showTurn = false);
+          },
+          child: widget.board,
+        ),
         if (widget.result == '*' && mine && showTurn)
           Positioned.fill(
             child: _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)),
