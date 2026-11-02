@@ -104,6 +104,7 @@ class SavedGameRecord {
     required this.playedAt,
     required this.whitePlayer,
     required this.blackPlayer,
+    this.onlineMatchId,
     this.playerOutcome,
     this.playerSide,
     this.reviewScope = 'player',
@@ -124,6 +125,7 @@ class SavedGameRecord {
   final DateTime playedAt;
   final String whitePlayer;
   final String blackPlayer;
+  final String? onlineMatchId;
   final String? playerOutcome;
 
   /// The imported account's colour: `white` or `black`.
@@ -153,6 +155,7 @@ class SavedGameRecord {
           DateTime.now(),
       whitePlayer: json['whitePlayer'] as String? ?? 'White',
       blackPlayer: json['blackPlayer'] as String? ?? 'Black',
+      onlineMatchId: json['onlineMatchId'] as String?,
       playerOutcome: json['playerOutcome'] as String?,
       playerSide: json['playerSide'] as String?,
       reviewScope: json['reviewScope'] as String? ?? 'player',
@@ -179,6 +182,7 @@ class SavedGameRecord {
         'playedAt': playedAt.toUtc().toIso8601String(),
         'whitePlayer': whitePlayer,
         'blackPlayer': blackPlayer,
+        if (onlineMatchId != null) 'onlineMatchId': onlineMatchId,
         'playerOutcome': playerOutcome,
         'playerSide': playerSide,
         'reviewScope': reviewScope,
@@ -583,11 +587,16 @@ class LocalGameArchive {
     _profileUpdatedAt = null;
   }
 
-  static void addGame(SavedGameRecord record) {
-    if (excludeFromSavedGames(record)) return;
+  static bool addGame(SavedGameRecord record) {
+    if (excludeFromSavedGames(record)) return false;
+    if (record.onlineMatchId != null &&
+        _games.any((game) => game.onlineMatchId == record.onlineMatchId)) {
+      return false;
+    }
     _games.insert(0, record);
     unawaited(_persistGames());
     _notifyCloudChange();
+    return true;
   }
 
   static void removeGame(SavedGameRecord record) {
@@ -617,6 +626,7 @@ class LocalGameArchive {
     final SavedGameRecord current = _games.first;
     if (current.cloudAnalysisStatus == 'COMPLETED') return;
     _games[0] = SavedGameRecord(
+      onlineMatchId: current.onlineMatchId,
       mode: current.mode,
       result: current.result,
       detail: current.detail,
@@ -659,6 +669,7 @@ class LocalGameArchive {
     if (index < 0) return;
     final SavedGameRecord current = _games[index];
     _games[index] = SavedGameRecord(
+      onlineMatchId: current.onlineMatchId,
       mode: current.mode,
       result: current.result,
       detail: current.detail,
@@ -712,7 +723,8 @@ class LocalGameArchive {
     for (final game in restored) {
       if (excludeFromSavedGames(game)) continue;
       final index = _games.indexWhere(
-        (local) => local.playedAt.isAtSameMomentAs(game.playedAt),
+        (local) => local.playedAt.isAtSameMomentAs(game.playedAt) ||
+            (game.onlineMatchId != null && local.onlineMatchId == game.onlineMatchId),
       );
       if (index < 0) {
         _games.add(game);
@@ -1239,11 +1251,14 @@ class LocalGameArchive {
   }
 }
 
-List<SavedGameRecord> _decodeArchive(String raw) =>
-    (jsonDecode(raw) as List<dynamic>)
+List<SavedGameRecord> _decodeArchive(String raw) {
+  final seenOnlineRecords = <String>{};
+  return (jsonDecode(raw) as List<dynamic>)
         .whereType<Map<String, dynamic>>()
+        .where((row) => row['mode'] != 'Online' || seenOnlineRecords.add(jsonEncode(row)))
         .map(SavedGameRecord.fromJson)
         .toList(growable: false);
+}
 
 String _encodeArchive(List<SavedGameRecord> games) =>
     jsonEncode(games.map((game) => game.toJson()).toList(growable: false));

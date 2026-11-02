@@ -533,6 +533,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   }
 
   SavedGameRecord _onlineAsSavedGame(OnlineMatchDto match) => SavedGameRecord(
+    onlineMatchId: match.id,
     mode: 'Online',
     result: match.result ?? '*',
     detail: match.resultReason ?? 'Online arena match',

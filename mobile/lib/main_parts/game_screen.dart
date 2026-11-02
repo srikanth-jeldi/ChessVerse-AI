@@ -4884,7 +4884,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // but never add puzzle attempts to My Saved Games or cloud analysis.
     if (_gameMode == GameMode.puzzle) return;
     final DateTime archivedAt = DateTime.now();
-    LocalGameArchive.addGame(
+    final added = LocalGameArchive.addGame(
       SavedGameRecord(
         mode: switch (_gameMode) {
           GameMode.computer => 'Play vs AI',
@@ -4897,6 +4897,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         detail: _gameResultDetail ?? 'Game complete',
         moves: List<String>.from(_moves.reversed),
         playedAt: archivedAt,
+        onlineMatchId: _gameMode == GameMode.online ? _onlineMatch?.id : null,
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
         initialFen: _initialGameFen,
@@ -4909,7 +4910,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
-    unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
+    if (added) unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
     _notifyAnalysisReadyIfComplete();
   }
 

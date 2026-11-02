@@ -1,0 +1,4 @@
+<en-GB>
+Analysis now shows each saved game's result and local time. Reopening a finished online match no longer adds another entry for that match.
+Read your coach's full explanation after a move, with time for voice guidance before the AI replies. Daily Practice Cup headings fit smaller screens and larger text, with a retry option if the cup is unavailable.
+</en-GB>

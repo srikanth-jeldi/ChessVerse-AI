@@ -1365,9 +1365,7 @@ class _PremiumGameCard extends StatelessWidget {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: AnalysisReportStatus(
-                    game.moveReviews.isEmpty
-                        ? _d(context, 'latestEmpty')
-                        : _d(context, 'latestReport'),
+                    narrative(game.result),
                   ),
                 ),
               ] else
@@ -1387,9 +1385,7 @@ class _PremiumGameCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Flexible(
                       child: AnalysisReportStatus(
-                        game.moveReviews.isEmpty
-                            ? _d(context, 'latestEmpty')
-                            : _d(context, 'latestReport'),
+                        narrative(game.result),
                       ),
                     ),
                   ],
@@ -1401,7 +1397,7 @@ class _PremiumGameCard extends StatelessWidget {
                 children: <Widget>[
                   _Meta(
                     Icons.calendar_today_rounded,
-                    '${game.playedAt.day}/${game.playedAt.month}/${game.playedAt.year}',
+                    '${MaterialLocalizations.of(context).formatCompactDate(game.playedAt.toLocal())} · ${TimeOfDay.fromDateTime(game.playedAt.toLocal()).format(context)}',
                   ),
                   _Meta(Icons.bolt_rounded, game.mode),
                   if (game.moveReviews.isNotEmpty)
