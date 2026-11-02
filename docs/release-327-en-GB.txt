@@ -1,0 +1,5 @@
+<en-GB>
+After a mistake, your live coach shows how your opponent could reply and suggests a stronger move. Turn on voice coaching to hear the advice.
+Open Tournaments to join the six-player Daily Practice Cup. Players have one minute to join before computer opponents fill the remaining seats.
+Resume your board, follow the standings and see recent champions on Home.
+</en-GB>

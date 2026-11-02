@@ -827,13 +827,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String language,
     bool Function() current, {
     String tone = 'neutral',
+    String? localisedAdvice,
   }) async {
     try {
       final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
         jsonDecode(await rootBundle.loadString('assets/i18n/ui/$language.json'))
             as Map,
       );
-      final text = catalog[source];
+      final text = localisedAdvice ?? catalog[source];
       if (!current()) return false;
       _liveNarrator ??= CloudNarrationService(preferImmediateLocal: false);
       final played =
@@ -887,7 +888,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _speakMoveReview(
     String classification,
     int ply,
-    int epoch,
+    int epoch, {String? advice}
   ) async {
     final language = AppLanguageController.resolveCode(_coachLanguageCode);
     await _liveVoice.review(
@@ -905,6 +906,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _voiceCoach.review(classification, source),
         language,
         canSpeak,
+        localisedAdvice: advice,
         tone: switch (classification) {
           'Best' || 'Great' => _voiceCoach.tone,
           'Blunder' => 'caution',
@@ -3590,33 +3592,44 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (best
               ? 'You found the strongest continuation.'
               : '$recommendation was more accurate.');
-      final String reviewText = '$classification • $explanation';
       final int cp = (engine['evaluationAfterCp'] as num?)?.toInt() ?? 0;
       final int evaluationBeforeCp =
           (engine['evaluationBeforeCp'] as num?)?.toInt() ?? 0;
       final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
       final String opponentThreat = engine['opponentThreat'] as String? ?? '';
+      final evidence = engine['replyEvidence'];
+      final advice = isWeak && evidence is Map && evidence['attacker'] is String &&
+              opponentThreat.length >= 4
+          ? liveReplyAdvice(_coachLanguageCode, opponentThreat, bestMove, evidence)
+          : null;
+      final String reviewText = advice == null ? '$classification • $explanation' :
+          '${CoachLocalizations(_coachLanguageCode).source(classification)} • $advice';
       final List<String> principalVariation =
           (engine['principalVariation'] as List<dynamic>? ?? <dynamic>[])
               .whereType<String>()
               .toList(growable: false);
       setState(() {
-        _engineEvaluationPawns = cp / 100;
+        final currentPlayerMove = _moves.length <= reviewedBoardPly + 1;
         // Post-move review is textual. Board arrows are reserved for an
         // explicit Hint/Analyze request so a completed move never leaves two
         // competing motion trails on the board.
-        _coachArrowFrom = null;
-        _coachArrowTo = null;
-        if (_playerMoveScores.isNotEmpty) {
-          _playerMoveScores[_playerMoveScores.length - 1] =
+        final scoreIndex = _playerMoveScores.length - 1 -
+            ((_moves.length - reviewedBoardPly) ~/ 2);
+        if (scoreIndex >= 0 && scoreIndex < _playerMoveScores.length) {
+          _playerMoveScores[scoreIndex] =
               (100 - (centipawnLoss / 3).round()).clamp(0, 100);
         }
         // The coach card and the compact review label must have one verdict.
         // Previously the immediate heuristic could remain "Superb" while the
         // engine label changed to "Good", showing two grades for one move.
-        _moveQualityText = reviewText;
-        _moveQualityIsWeak = isWeak;
-        _lastPlayerCoachNote = reviewText;
+        if (currentPlayerMove) {
+          _engineEvaluationPawns = cp / 100;
+          _coachArrowFrom = null;
+          _coachArrowTo = null;
+          _moveQualityText = reviewText;
+          _moveQualityIsWeak = isWeak;
+          _lastPlayerCoachNote = reviewText;
+        }
         // A remote review may finish after the opponent has replied. Keep it
         // in the player's review summary, but never replace the current-board
         // status with commentary about an earlier position.
@@ -3652,8 +3665,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         LocalGameArchive.updateLatestGameReviews(_moveReviews);
         _notifyAnalysisReadyIfComplete();
       }
-      unawaited(_speakMoveReview(classification, ply, reviewEpoch));
-      _scheduleMoveQualityDismiss();
+      unawaited(_speakMoveReview(classification, ply, reviewEpoch,
+          advice: advice == null ? null : reviewText));
+      if (_moves.length <= reviewedBoardPly + 1) _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
       if (mounted &&

@@ -13,6 +13,7 @@ void main() {
     int? onlinePlayerCount,
     int? coinBalance,
     TournamentDto? nextTournament,
+    List<Map<String,dynamic>> winners = const [],
     VoidCallback? onSavedGames,
     VoidCallback? onImportGame,
     VoidCallback? onLocalGame,
@@ -25,6 +26,7 @@ void main() {
         onlinePlayerCount: onlinePlayerCount,
         coinBalance: coinBalance,
         nextTournament: nextTournament,
+        practiceWinners: winners,
         onPlayVsAi: onComputer,
         onAiPersonaSelected: onAiPersonaSelected,
         onDailyChallenge: () {},
@@ -41,6 +43,28 @@ void main() {
       ),
     );
   }
+
+  testWidgets('Home rotates confirmed human and computer champions', (tester) async {
+    final finished = DateTime.now().toUtc().toIso8601String();
+    for (final width in [390.0,1000.0]) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width,900);
+      await tester.pumpWidget(app(onComputer:(){},onOnline:(){},winners:[
+        {'name':'Alice','bot':false,'finishedAt':finished},
+        {'name':'Nova','bot':true,'finishedAt':finished},
+      ]));
+      await tester.pump();
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.textContaining('Just won'), findsOneWidget);
+      await tester.pump(const Duration(seconds:5));
+      await tester.pump(const Duration(milliseconds:300));
+      expect(find.text('Nova'), findsOneWidget);
+      expect(find.text('Nova · AI'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    }
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
 
   testWidgets('home exposes import and offline pass and play shortcuts', (
     WidgetTester tester,

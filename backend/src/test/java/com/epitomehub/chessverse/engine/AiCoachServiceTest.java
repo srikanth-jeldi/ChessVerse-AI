@@ -45,7 +45,7 @@ class AiCoachServiceTest {
         when(stockfish.reviewMove(any())).thenReturn(new EngineController.MoveReviewResponse(
                 "f2f3", "g1f3", "Blunder", 286, 20, -266,
                 "kingSafety", "d8h4", "The move exposes the king.",
-                List.of("g1f3", "d7d5", "e2e3"), 16));
+                List.of("g1f3", "d7d5", "e2e3"), 16, null));
     }
 
     @Test
@@ -81,7 +81,7 @@ class AiCoachServiceTest {
         UUID sessionId = UUID.randomUUID();
         EngineController.MoveReviewResponse evidence = new EngineController.MoveReviewResponse(
                 "e2e4", "g1f3", "Inaccuracy", 45, 20, -25,
-                "development", "d7d5", "Develop a piece.", List.of("g1f3", "d7d5"), 16);
+                "development", "d7d5", "Develop a piece.", List.of("g1f3", "d7d5"), 16, null);
         AiCoachInteraction prior = new AiCoachInteraction(
                 playerId, sessionId, "key", "Why develop first?", null, false,
                 "Because active pieces control more squares.", evidence);

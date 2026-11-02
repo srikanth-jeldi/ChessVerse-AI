@@ -31,6 +31,7 @@ import 'club_activity_screen.dart';
 import '../data/e2ee_chat_service.dart';
 import 'tournament_detail_screen.dart';
 import 'tournament_circuit_view.dart';
+import 'daily_practice_cup_screen.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
 import '../../notifications/data/notification_api.dart';
@@ -674,9 +675,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFF020D16),
     appBar: AppBar(
-      title: const UiText(
-        'COMMUNITY',
-        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.3),
+      title: UiText(
+        _section == 2 ? 'Tournaments' : 'COMMUNITY',
+        style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.3),
       ),
       actions: <Widget>[
         NotificationBellButton(
@@ -981,6 +982,9 @@ class _CommunitySection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (section == 2) {
       return TournamentCircuitView(
+        onDailyPractice: token.isEmpty ? null : () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => DailyPracticeCupScreen(api: api, token: token)),
+        ),
         tournaments: community.tournaments,
         fairPlayScore: community.fairPlayScore,
         circuitPoints: community.circuitPoints,

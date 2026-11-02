@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/community_api.dart';
+import 'tournament_format_cards.dart';
 
 class TournamentCircuitView extends StatelessWidget {
   const TournamentCircuitView({
@@ -15,6 +16,7 @@ class TournamentCircuitView extends StatelessWidget {
     required this.circuitPoints,
     required this.onOpen,
     required this.onRefresh,
+    this.onDailyPractice,
     super.key,
   });
 
@@ -23,6 +25,7 @@ class TournamentCircuitView extends StatelessWidget {
   final int circuitPoints;
   final ValueChanged<TournamentDto> onOpen;
   final Future<void> Function() onRefresh;
+  final VoidCallback? onDailyPractice;
 
   List<TournamentDto> get _currentTournaments {
     final bySeries = <String, TournamentDto>{};
@@ -100,6 +103,11 @@ class TournamentCircuitView extends StatelessWidget {
       onRefresh: onRefresh,
       child: CustomScrollView(
         slivers: <Widget>[
+          if (onDailyPractice != null)
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: TournamentFormatCards(onPractice:onDailyPractice!),
+            )),
           SliverToBoxAdapter(
             child: _CircuitHero(
               score: fairPlayScore,

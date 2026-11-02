@@ -29,6 +29,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.coinBalance,
     this.activityGames,
     this.nextTournament,
+    this.practiceWinners = const [],
     required this.onPlayVsAi,
     this.onAiPersonaSelected,
     required this.onDailyChallenge,
@@ -58,6 +59,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
+  final List<Map<String,dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -96,6 +98,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 coinBalance: coinBalance,
                 activityGames: activityGames,
                 nextTournament: nextTournament,
+              practiceWinners: practiceWinners,
                 onPlayVsAi: onPlayVsAi,
                 onAiPersonaSelected: onAiPersonaSelected,
                 onDailyChallenge: onDailyChallenge,
@@ -125,6 +128,7 @@ class HomeDashboardScreen extends StatelessWidget {
               coinBalance: coinBalance,
               activityGames: activityGames,
               nextTournament: nextTournament,
+              practiceWinners: practiceWinners,
               onPlayVsAi: onPlayVsAi,
               onAiPersonaSelected: onAiPersonaSelected,
               onDailyChallenge: onDailyChallenge,
@@ -161,6 +165,7 @@ class _MobileHome extends StatefulWidget {
     this.coinBalance,
     this.activityGames,
     this.nextTournament,
+    this.practiceWinners = const [],
     required this.onPlayVsAi,
     this.onAiPersonaSelected,
     required this.onDailyChallenge,
@@ -189,6 +194,7 @@ class _MobileHome extends StatefulWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
+  final List<Map<String,dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -254,6 +260,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           _ProgressPulse(games: widget.activityGames),
                     ),
                     const SizedBox(height: 10),
+                    if (widget.practiceWinners.isNotEmpty)
+                      _PracticeWinnerBanner(widget.practiceWinners, widget.onTournaments),
                     _HomeHeroCarousel(
                       controller: _heroController,
                       selectedIndex: _heroIndex,
@@ -499,6 +507,7 @@ class _WideHome extends StatefulWidget {
     this.coinBalance,
     this.activityGames,
     this.nextTournament,
+    this.practiceWinners = const [],
     required this.onPlayVsAi,
     this.onAiPersonaSelected,
     required this.onDailyChallenge,
@@ -527,6 +536,7 @@ class _WideHome extends StatefulWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
+  final List<Map<String,dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -607,6 +617,8 @@ class _WideHomeState extends State<_WideHome> {
                           ),
                         ),
                         SizedBox(height: compact ? 10 : 16),
+                        if (widget.practiceWinners.isNotEmpty)
+                          _PracticeWinnerBanner(widget.practiceWinners, widget.onTournaments),
                         _HomeHeroCarousel(
                           controller: _heroController,
                           selectedIndex: _heroIndex,
@@ -1882,6 +1894,51 @@ class _BrandWordmark extends StatelessWidget {
         height: 1,
         letterSpacing: 1.4,
         fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _PracticeWinnerBanner extends StatefulWidget {
+  const _PracticeWinnerBanner(this.results, this.onTap);
+  final List<Map<String,dynamic>> results;
+  final VoidCallback onTap;
+  @override
+  State<_PracticeWinnerBanner> createState() => _PracticeWinnerBannerState();
+}
+
+class _PracticeWinnerBannerState extends State<_PracticeWinnerBanner> {
+  Timer? rotation;
+  int index = 0;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    rotation?.cancel();
+    if (!MediaQuery.disableAnimationsOf(context) && TickerMode.valuesOf(context).enabled) {
+      rotation = Timer.periodic(const Duration(seconds:5), (_) {
+        if (widget.results.length > 1) setState(() => index++);
+      });
+    }
+  }
+  @override
+  void dispose() { rotation?.cancel(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final result = widget.results[index % widget.results.length];
+    final finished = DateTime.tryParse(result['finishedAt'] as String? ?? '')?.toLocal();
+    if (finished == null) return const SizedBox.shrink();
+    final age = DateTime.now().difference(finished);
+    if (age.isNegative || age >= const Duration(days:1)) return const SizedBox.shrink();
+    final locale = MaterialLocalizations.of(context);
+    final time = locale.formatTimeOfDay(TimeOfDay.fromDateTime(finished));
+    return Card(
+      child: ListTile(
+        onTap: widget.onTap,
+        leading: const Icon(Icons.emoji_events, color: Color(0xffedbd55)),
+        title: AnimatedSwitcher(duration: Duration(milliseconds:MediaQuery.disableAnimationsOf(context)?0:250),
+          child: Text(result['name'] as String, key: ValueKey(result['name']))),
+        subtitle: Text('${uiText(context, 'Daily Practice Cup')} · ${uiText(context, age < const Duration(minutes:5) ? 'Just won' : 'Champion')} · ${locale.formatShortDate(finished)} $time'),
+        trailing: result['bot'] == true ? Icon(Icons.smart_toy, semanticLabel:uiText(context,'AI')) : null,
       ),
     );
   }

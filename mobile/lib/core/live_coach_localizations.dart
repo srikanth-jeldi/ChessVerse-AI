@@ -223,6 +223,42 @@ String _piece(String name, String language) =>
     liveNarrativeKeys.take(7).contains(name.toLowerCase())
         ? _narrative(language, name.toLowerCase())
         : name;
+
+/// Describes a possible reply to the played move, not an observed capture.
+String liveReplyAdvice(String code, String reply, String best, Map evidence) {
+  final language = AppLanguageController.resolveCode(code);
+  final labels = CoachLocalizations(language);
+  String squares(String move) => '${move.substring(0, 2)} → ${move.substring(2)}';
+  final attacker = _piece((evidence['attacker'] as String).toLowerCase(), language);
+  final captured = evidence['captured'] as String?;
+  final suffix = evidence['mate'] == true ? '#' : evidence['check'] == true ? '+' : '';
+  final lines = <String>['${labels.text('immediateReply')}: $attacker ${squares(reply)}$suffix.'];
+  if (captured != null) {
+    lines.add(_captureOpportunity[language]!.replaceAll('{p}', _piece(captured.toLowerCase(), language)));
+  }
+  lines.add('${labels.text('alternative')}: ${squares(best)}.');
+  return lines.join(' ');
+}
+
+const _captureOpportunity = {
+  'en':'Your opponent can capture your {p}.', 'te':'ప్రత్యర్థి నీ {p}ని తీసుకోగలడు.',
+  'ar':'يمكن لخصمك أخذ هذه القطعة: {p}.', 'bn':'প্রতিপক্ষ তোমার এই ঘুঁটিটি নিতে পারে: {p}।',
+  'de':'Dein Gegner kann diese Figur schlagen: {p}.', 'el':'Ο αντίπαλος μπορεί να πάρει το κομμάτι σου: {p}.',
+  'es':'Tu rival puede capturar esta pieza: {p}.', 'fa':'حریف می‌تواند این مهرهٔ تو را بگیرد: {p}.',
+  'fr':'Ton adversaire peut prendre cette pièce : {p}.', 'gu':'વિરોધી તમારું આ મહોરું લઈ શકે છે: {p}.',
+  'he':'היריב יכול להכות את הכלי הזה שלך: {p}.', 'hi':'विरोधी तुम्हारा यह मोहरा ले सकता है: {p}।',
+  'id':'Lawan bisa menangkap buahmu ini: {p}.', 'it':'Il tuo avversario può catturare questo pezzo: {p}.',
+  'ja':'相手はあなたの駒（{p}）を取れます。', 'kn':'ಎದುರಾಳಿ ನಿಮ್ಮ ಈ ಕಾಯಿಯನ್ನು ತೆಗೆದುಕೊಳ್ಳಬಹುದು: {p}.',
+  'ko':'상대가 내 기물({p})을 잡을 수 있어요.', 'ml':'എതിരാളിക്ക് നിങ്ങളുടെ ഈ കരു പിടിക്കാം: {p}.',
+  'mr':'प्रतिस्पर्धी तुझा हा मोहरा घेऊ शकतो: {p}.', 'ms':'Lawan boleh menangkap buah anda ini: {p}.',
+  'nl':'Je tegenstander kan dit stuk slaan: {p}.', 'pa':'ਵਿਰੋਧੀ ਤੇਰਾ ਇਹ ਮੋਹਰਾ ਲੈ ਸਕਦਾ ਹੈ: {p}।',
+  'pl':'Przeciwnik może zbić twoją bierkę: {p}.', 'pt':'O adversário pode capturar esta peça: {p}.',
+  'ru':'Соперник может взять вашу фигуру: {p}.', 'sv':'Motståndaren kan slå din pjäs: {p}.',
+  'sw':'Mpinzani anaweza kukamata kete yako: {p}.', 'ta':'எதிராளி உங்களுடைய இந்தக் காயை வெட்டலாம்: {p}.',
+  'th':'คู่ต่อสู้สามารถกินหมากตัวนี้ของคุณได้: {p}', 'tr':'Rakibin bu taşını alabilir: {p}.',
+  'uk':'Суперник може взяти вашу фігуру: {p}.', 'ur':'حریف آپ کا یہ مہرہ لے سکتا ہے: {p}۔',
+  'vi':'Đối thủ có thể bắt quân này của bạn: {p}.', 'zh':'对手可以吃掉你的棋子（{p}）。',
+};
 final _moveAction = RegExp(
     r'^(Pawn|Knight|Bishop|Rook|Queen|King|Piece) moved from ([a-h][1-8]) to ([a-h][1-8])\.$');
 final _captureAction = RegExp(

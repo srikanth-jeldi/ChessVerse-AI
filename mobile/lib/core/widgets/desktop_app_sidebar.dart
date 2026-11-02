@@ -2,6 +2,7 @@ import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../desktop_navigation_bridge.dart';
 
 /// Shared 258px desktop/tablet navigation used by the supplied web references.
 class DesktopAppSidebar extends StatelessWidget {
@@ -81,6 +82,12 @@ class DesktopAppSidebar extends StatelessWidget {
             label: uiText(context, 'Profile'),
             onTap: onProfile,
           ),
+          if (onFriends != null)
+            (
+              icon: Icons.emoji_events_rounded,
+              label: uiText(context, 'Tournaments'),
+              onTap: () => DesktopNavigationBridge.open(context, 8),
+            ),
           if (onFriends != null)
             (
               icon: Icons.groups_2_rounded,

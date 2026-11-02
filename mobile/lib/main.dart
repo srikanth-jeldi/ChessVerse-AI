@@ -245,7 +245,7 @@ _primaryNavigationDestinations = <NavigationDestination>[
   NavigationDestination(icon: Icon(Icons.extension_rounded), label: 'Puzzles'),
   NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
-  NavigationDestination(icon: Icon(Icons.groups_2_rounded), label: 'Community'),
+  NavigationDestination(icon: Icon(Icons.emoji_events_rounded), label: 'Tournaments'),
 ];
 
 class _GlassBottomNavigation extends StatelessWidget {
@@ -414,8 +414,10 @@ class _SplashGateState extends State<SplashGate> {
   int? _onlinePlayerCount;
   int? _coinBalance;
   TournamentDto? _nextTournament;
+  List<Map<String,dynamic>> _practiceWinners = const [];
   int _primaryDestination = 0;
   int _communitySection = 0;
+  int _tournamentMenuVisit = 0;
 
   @override
   void initState() {
@@ -720,10 +722,25 @@ class _SplashGateState extends State<SplashGate> {
     _presenceTimer?.cancel();
     unawaited(_refreshOnlinePresence(token));
     unawaited(_refreshNextTournament(token));
+    unawaited(_refreshPracticeWinners(token));
     _presenceTimer = Timer.periodic(
       const Duration(seconds: 20),
-      (_) => unawaited(_refreshOnlinePresence(token)),
+      (timer) {
+        unawaited(_refreshOnlinePresence(token));
+        if (timer.tick % 3 == 0 && _primaryDestination == 0) {
+          unawaited(_refreshPracticeWinners(token));
+        }
+      },
     );
+  }
+
+  Future<void> _refreshPracticeWinners(String token) async {
+    try {
+      final winners = await const CommunityApi().recentPracticeWinners(token);
+      if (mounted) setState(() => _practiceWinners = winners);
+    } catch (_) {
+      // The rest of Home works when the results feed is unavailable.
+    }
   }
 
   Future<void> _refreshNextTournament(String token) async {
@@ -1066,7 +1083,19 @@ class _SplashGateState extends State<SplashGate> {
     final int? destination = DesktopNavigationBridge.request.value;
     if (destination == null || !mounted || _stage != _RootStage.home) return;
     DesktopNavigationBridge.request.value = null;
+    if (destination == 8) {
+      _selectPrimaryDestination(5);
+      return;
+    }
     if (destination >= 0 && destination <= 5) {
+      if (destination == 5) {
+        setState(() {
+          _communitySection = 0;
+          _primaryDestination = 5;
+          _tournamentMenuVisit++;
+        });
+        return;
+      }
       setState(() => _primaryDestination = destination);
       return;
     }
@@ -1279,6 +1308,7 @@ class _SplashGateState extends State<SplashGate> {
         onlinePlayerCount: _onlinePlayerCount,
         coinBalance: _coinBalance,
         nextTournament: _nextTournament,
+        practiceWinners: _practiceWinners,
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
         onAiPersonaSelected: (String name) => _chooseSideAndOpen(
           context,
@@ -1439,6 +1469,7 @@ class _SplashGateState extends State<SplashGate> {
         },
       ),
       SocialHubScreen(
+        key: ValueKey(_tournamentMenuVisit),
         initialSection: _communitySection,
         onOpenMatch: (OnlineMatchDto match) async {
           final StoredAuthSession? session = await const AuthSessionStore()
@@ -1525,7 +1556,9 @@ class _SplashGateState extends State<SplashGate> {
             body: Row(
               children: <Widget>[
                 DesktopAppSidebar(
-                  selected: desktopSections[_primaryDestination],
+                  selected: _primaryDestination == 5 && _communitySection == 2
+                      ? uiText(context, 'Tournaments')
+                      : desktopSections[_primaryDestination],
                   onHome: () => selectDestination(0),
                   onPlay: () => selectDestination(1),
                   onMyGames: () => _push(
@@ -1545,7 +1578,11 @@ class _SplashGateState extends State<SplashGate> {
                   onPuzzles: () => selectDestination(2),
                   onLearn: () => selectDestination(3),
                   onProfile: () => selectDestination(4),
-                  onFriends: () => selectDestination(5),
+                  onFriends: () => setState(() {
+                    _communitySection = 0;
+                    _primaryDestination = 5;
+                    _tournamentMenuVisit++;
+                  }),
                   onCollection: () => _openRewardsCenter(context),
                 ),
                 Expanded(child: content),
@@ -1654,13 +1691,19 @@ class _SplashGateState extends State<SplashGate> {
     if (destination == 1) {
       unawaited(DailyReminderService.instance.recordPlayOpened());
     }
-    setState(() => _primaryDestination = destination);
+    setState(() {
+      if (destination == 5) {
+        _communitySection = 2;
+        _tournamentMenuVisit++;
+      }
+      _primaryDestination = destination;
+    });
   }
 
   void _closeSettingsAndSelect(BuildContext context, int destination) {
     Navigator.of(context).pop();
     if (!mounted) return;
-    setState(() => _primaryDestination = destination);
+    _selectPrimaryDestination(destination);
   }
 
   Future<void> _openLanguageCentre(BuildContext context) => _push(

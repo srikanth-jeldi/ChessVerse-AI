@@ -10,6 +10,15 @@ import org.springframework.http.HttpStatus;
 
 class StockfishServiceTest {
     @Test
+    void describesOnlyALegalReplyAfterThePlayedMove() {
+        String fen = "6k1/8/8/2b5/8/8/5R1P/6K1 w - - 0 1";
+        var reply = StockfishService.replyEvidence(fen, "h2h3", "c5f2");
+        assertEquals("BISHOP", reply.attacker());
+        assertEquals("ROOK", reply.captured());
+        assertEquals(true, reply.check());
+        assertEquals(null, StockfishService.replyEvidence(fen,"h2h3","c5c2"));
+    }
+    @Test
     void rejectsUnsafeFenBeforeStartingEngine() {
         StockfishService service = new StockfishService("missing-stockfish", 1);
 

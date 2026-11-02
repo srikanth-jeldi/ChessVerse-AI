@@ -87,6 +87,9 @@ class EngineController {
             String opponentThreat,
             String explanation,
             List<String> principalVariation,
-            int depth) {
+            int depth,
+            ReplyEvidence replyEvidence) {
     }
+
+    record ReplyEvidence(String attacker, String captured, boolean check, boolean mate) {}
 }

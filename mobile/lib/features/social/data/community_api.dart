@@ -417,6 +417,19 @@ class CommunityDto {
 }
 
 class CommunityApi {
+  Future<List<Map<String,dynamic>>> recentPracticeWinners(String token) async =>
+      (await _requestList(token, 'GET', '/api/v1/community/practice-cups/winners'))
+          .cast<Map<String,dynamic>>();
+  Future<Map<String, dynamic>> joinDailyPractice(String token) =>
+      _request(token, 'POST', '/api/v1/community/practice-cups/today');
+
+  Future<Map<String, dynamic>> dailyPracticeStandings(String token, String cup) =>
+      _request(token, 'GET', '/api/v1/community/practice-cups/$cup');
+
+  Future<Map<String, dynamic>> practiceBoard(String token, String cup, int board,
+          {String? move, int? ply}) =>
+      _request(token, 'POST', '/api/v1/community/practice-cups/$cup/boards/$board',
+          body: {'move': move, 'ply': ply});
   const CommunityApi();
   Future<List<SocialChallengeDto>> clubChallenges(
     String token,

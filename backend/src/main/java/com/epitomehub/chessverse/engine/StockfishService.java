@@ -189,7 +189,7 @@ public class StockfishService implements GamePositionAnalyzer {
                     "",
                     "You found the strongest continuation.",
                     List.of(playedMove),
-                    ANALYSIS_DEPTHS.get(request.level() - 1));
+                    ANALYSIS_DEPTHS.get(request.level() - 1), null);
         }
 
         int depth = ANALYSIS_DEPTHS.get(request.level() - 1);
@@ -229,7 +229,26 @@ public class StockfishService implements GamePositionAnalyzer {
                 threat,
                 explanation,
                 before.principalVariation(),
-                depth);
+                depth,
+                replyEvidence(fen, playedMove, threat));
+    }
+
+    static EngineController.ReplyEvidence replyEvidence(String fen, String playedMove, String threat) {
+        if (threat == null || !SAFE_UCI_MOVE.matcher(threat).matches()) return null;
+        Board board = new Board();
+        board.loadFromFen(fen);
+        Move played = new Move(playedMove, board.getSideToMove());
+        if (!board.legalMoves().contains(played) || !board.doMove(played)) return null;
+        Move reply = new Move(threat, board.getSideToMove());
+        if (!board.legalMoves().contains(reply)) return null;
+        Piece attacker = board.getPiece(reply.getFrom());
+        Piece captured = board.getPiece(reply.getTo());
+        String target = captured == Piece.NONE ? null : captured.getPieceType().name();
+        if (target == null && attacker.getPieceType() == com.github.bhlangonijr.chesslib.PieceType.PAWN
+                && reply.getFrom().getFile() != reply.getTo().getFile()) target = "PAWN";
+        if (!board.doMove(reply)) return null;
+        return new EngineController.ReplyEvidence(attacker.getPieceType().name(), target,
+                board.isKingAttacked(), board.isMated());
     }
 
     @Override
