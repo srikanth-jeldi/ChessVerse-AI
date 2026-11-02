@@ -3,8 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_ui_localizations.dart';
+import '../../../core/app_preferences.dart';
+import '../../../core/chess_piece_appearance.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../analysis/presentation/animated_practice_pieces.dart';
+import '../../../main.dart'
+    show
+        boardSkinForTheme,
+        BoardSkin,
+        BoardStage,
+        ChessBoard,
+        ChessPiece,
+        ChessRules,
+        boardPalettes,
+        gamePiecesFromFen;
+import '../../../core/widgets/player_avatar.dart';
+import '../../analysis/domain/pgn_position_reconstructor.dart'
+    show replayUciLine;
 import '../data/community_api.dart';
 import '../data/social_api.dart';
 
@@ -25,12 +39,52 @@ class _CupState extends State<DailyPracticeCupScreen> {
   String? selected, error;
   bool busy = false;
   int? retryBoard;
+  BoardSkin skin = BoardSkin.royalWalnut;
+  bool coordinates = true;
   Timer? poll;
+  String? lastFrom, lastTo, captureSquare;
+  ChessPiece? moved, captured;
+
+  void recordTransition(String fen, String uci) {
+    final before = gamePiecesFromFen(fen);
+    lastFrom = uci.substring(0, 2);
+    lastTo = uci.substring(2, 4);
+    moved = before[lastFrom];
+    captureSquare = lastTo;
+    if (moved?.code == 'P' &&
+        lastFrom![0] != lastTo![0] &&
+        before[lastTo] == null) {
+      captureSquare = '${lastTo![0]}${lastFrom![1]}';
+    }
+    captured = before[captureSquare];
+  }
 
   @override
   void initState() {
     super.initState();
+    loadBoardPreferences();
     refresh();
+  }
+
+  Future<void> loadBoardPreferences() async {
+    const prefs = AppPreferences();
+    final values = await Future.wait([
+      prefs.readString('boardTheme', fallback: 'Royal Walnut'),
+      prefs.readString('pieceStyle', fallback: 'Premium 3D'),
+      prefs.readString('pieceSize', fallback: 'Extra Large'),
+      prefs.readString('pieceFinish', fallback: 'classic-staunton'),
+      prefs.readBool('coordinates', fallback: true),
+    ]);
+    if (!mounted) return;
+    ChessPieceAppearanceController.current.value = ChessPieceAppearance(
+      style: ChessPieceAppearanceController.styleFromLabel(values[1] as String),
+      size: ChessPieceAppearanceController.sizeFromLabel(values[2] as String),
+      finish: values[3] as String,
+    );
+    setState(() {
+      skin = boardSkinForTheme(values[0] as String);
+      coordinates = values[4] as bool;
+    });
   }
 
   @override
@@ -60,7 +114,10 @@ class _CupState extends State<DailyPracticeCupScreen> {
           });
           final seconds = (data['lobbySeconds'] as int?) ?? 0;
           if (seconds > 0) {
-            poll = Timer(Duration(seconds: seconds.clamp(1,5)), () => refresh());
+            poll = Timer(
+              Duration(seconds: seconds.clamp(1, 5)),
+              () => refresh(),
+            );
           } else if (games.any((game) => game['result'] == '*')) {
             poll = Timer(const Duration(seconds: 10), () => refresh());
           }
@@ -74,6 +131,44 @@ class _CupState extends State<DailyPracticeCupScreen> {
           ply: move == null ? null : position!['ply'],
         );
         if (!mounted) return;
+        final previous = position;
+        final previousPly = previous?['ply'] as int? ?? 0;
+        final ply = data['ply'] as int;
+        final game = (data['cup']['games'] as List).firstWhere(
+          (g) => g['number'] == board,
+        );
+        final history = (game['moves'] as String? ?? '')
+            .split(' ')
+            .where((m) => m.isNotEmpty)
+            .toList();
+        if (previous?['board'] == board &&
+            ply > previousPly &&
+            history.length == ply) {
+          final pending = history.sublist(previousPly);
+          final frames = replayUciLine(previous!['fen'], pending);
+          if (frames.length == pending.length + 1) {
+            for (var i = 0; i < pending.length; i++) {
+              recordTransition(frames[i], pending[i]);
+              if (i + 1 < pending.length) {
+                setState(() {
+                  selected = null;
+                  position = {
+                    ...previous,
+                    'fen': frames[i + 1],
+                    'ply': previousPly + i + 1,
+                  };
+                });
+                await Future<void>.delayed(
+                  Duration(milliseconds: captured == null ? 400 : 520),
+                );
+                if (!mounted) return;
+              }
+            }
+          }
+        } else if (previous?['board'] != board) {
+          lastFrom = lastTo = captureSquare = null;
+          moved = captured = null;
+        }
         setState(() {
           position = data;
           cup = data['cup'];
@@ -85,14 +180,18 @@ class _CupState extends State<DailyPracticeCupScreen> {
       }
     } on SocialException catch (e) {
       if (mounted) {
-        setState(() => error = switch (e.statusCode) {
-        401 => 'Your session has expired. Please sign in again.',
-        404 when cup == null => 'Daily Practice Cup is temporarily unavailable.',
-        _ => 'Unable to open your board. Please try again.',
-        });
+        setState(
+          () => error = switch (e.statusCode) {
+            401 => 'Your session has expired. Please sign in again.',
+            404 when cup == null =>
+              'Daily Practice Cup is temporarily unavailable.',
+            _ => 'Unable to open your board. Please try again.',
+          },
+        );
       }
     } catch (_) {
-      if (mounted) setState(() => error = 'Unable to open your board. Please try again.');
+      if (mounted)
+        setState(() => error = 'Unable to open your board. Please try again.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -138,67 +237,41 @@ class _CupState extends State<DailyPracticeCupScreen> {
     }
   }
 
-  Widget boardView() => Directionality(
-    textDirection: TextDirection.ltr,
-    child: AspectRatio(
-      aspectRatio: 1,
-      child: Stack(
-        children: [
-          GridView.builder(
-            primary: false,
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 8,
-            ),
-            itemCount: 64,
-            itemBuilder: (_, index) {
-              final row = flipped ? 7 - index ~/ 8 : index ~/ 8,
-                  col = flipped ? 7 - index % 8 : index % 8;
-              final square = '${String.fromCharCode(97 + col)}${8 - row}';
-              return GestureDetector(
-                onTap: () => tapSquare(square),
-                child: ColoredBox(
-                  color: selected == square
-                      ? Colors.tealAccent
-                      : (row + col).isEven
-                      ? const Color(0xffd8c5a7)
-                      : const Color(0xff6d4a32),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Text(
-                      square,
-                      style: const TextStyle(fontSize: 9, color: Colors.black),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          Positioned.fill(
-            child: AnimatedPracticePieces(
-              fen: position!['fen'],
-              flipped: flipped,
-              pieceBuilder: (piece) {
-                const types = {
-                  'k': 'king',
-                  'q': 'queen',
-                  'r': 'rook',
-                  'b': 'bishop',
-                  'n': 'knight',
-                  'p': 'pawn',
-                };
-                return Image.asset(
-                  'assets/pieces/staunton_${piece == piece.toUpperCase() ? 'white' : 'black'}_${types[piece.toLowerCase()]}.png',
-                  fit: BoxFit.contain,
-                );
-              },
-            ),
-          ),
-        ],
+  Widget boardView() {
+    final fen = position!['fen'] as String;
+    final pieces = gamePiecesFromFen(fen);
+    final white = fen.split(' ')[1] == 'w';
+    final checked = ChessRules.isKingInCheck(white, pieces)
+        ? ChessRules.kingSquare(white, pieces)
+        : null;
+    final palette = boardPalettes[skin]!;
+    return BoardStage(
+      palette: palette,
+      child: ChessBoard(
+        pieces: pieces,
+        selectedSquare: selected,
+        legalTargets: {
+          if (selected != null)
+            for (final uci in (position!['legal'] as List).cast<String>())
+              if (uci.startsWith(selected!)) uci.substring(2, 4),
+        },
+        lastFromSquare: lastFrom,
+        lastToSquare: lastTo,
+        lastCaptureSquare: captured == null ? null : captureSquare,
+        lastMovedPiece: moved,
+        lastCapturedPiece: captured,
+        moveSequence: position!['ply'],
+        checkedKingSquare: checked,
+        decisiveSquare: null,
+        coachArrowFrom: null,
+        coachArrowTo: null,
+        flipped: flipped,
+        showCoordinates: coordinates,
+        palette: palette,
+        onSquareTap: tapSquare,
       ),
-    ),
-  );
+    );
+  }
 
   Widget standings() {
     final scores = List<double>.filled(6, 0);
@@ -216,10 +289,8 @@ class _CupState extends State<DailyPracticeCupScreen> {
       children: [
         for (final i in order)
           ListTile(
-            leading: Icon(
-              seats[i]['bot'] == true ? Icons.smart_toy : Icons.person,
-              semanticLabel: seats[i]['bot'] == true ? uiText(context, 'AI') : null,
-            ),
+            leading: PlayerAvatar(name: name(i)),
+            subtitle: seats[i]['bot'] == true ? const UiText('AI') : null,
             title: Text(name(i)),
             trailing: Text('${scores[i]}'),
           ),
@@ -230,104 +301,184 @@ class _CupState extends State<DailyPracticeCupScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
-    body: SafeArea(child: Column(children: [
-      Material(color: AppColors.surface, child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal:4, vertical:6),
-        child: Row(children:[
-          if (Navigator.canPop(context)) const BackButton(),
-          Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal:12),
-            child: Semantics(header:true,child:UiText('Daily Practice Cup',
-                style:Theme.of(context).textTheme.titleLarge,softWrap:true)))),
-        IconButton(
-          tooltip: MaterialLocalizations.of(context).refreshIndicatorSemanticLabel,
-          onPressed: busy ? null : () => refresh(board: error != null ? retryBoard : position?['board']),
-          icon: const Icon(Icons.refresh),
-        ),
-        ]))),
-    Expanded(
-      child: ListView(
-        padding: EdgeInsets.symmetric(vertical:16, horizontal:
-            MediaQuery.sizeOf(context).width > 840 ? (MediaQuery.sizeOf(context).width - 800)/2 : 16),
+    body: SafeArea(
+      child: Column(
         children: [
-          if (busy) const LinearProgressIndicator(),
-          if (error != null) ...[
-            UiText(error!),
-            Align(alignment: AlignmentDirectional.centerStart, child: OutlinedButton.icon(
-              onPressed: busy ? null : () => refresh(board: retryBoard),
-              icon: const Icon(Icons.refresh), label: const UiText('Retry'))),
-          ],
-          if (cup != null && position == null) ...[
-            if ((cup!['lobbySeconds'] ?? 0) > 0) ...[
-              Text('${uiText(context, 'Starts in')} · ${seats.length}/6',
-                style: const TextStyle(color:AppColors.accentGold,fontWeight:FontWeight.bold)),
-              TweenAnimationBuilder<double>(
-                key: ValueKey(cup!['lobbySeconds']),
-                tween: Tween(begin:(cup!['lobbySeconds'] as int).toDouble(),end:0),
-                duration: Duration(seconds:cup!['lobbySeconds']),
-                builder: (_, remaining, _) => Text('${remaining.ceil() ~/ 60}:${(remaining.ceil() % 60).toString().padLeft(2,'0')}',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(color:AppColors.textPrimary,fontWeight:FontWeight.w800)),
-              ),
-              LinearProgressIndicator(value:seats.length/6,color:const Color(0xff62ddca)),
-              for (final seat in seats) ListTile(leading: const Icon(Icons.person), title: Text(seat['name'])),
-            ] else ...[
-              const UiText('YOUR BOARD',style:TextStyle(color:AppColors.accentGold,
-                fontWeight:FontWeight.w800,letterSpacing:1.4)),
-              const SizedBox(height:8),
-            ],
-            for (final g in games.where(
-              (g) =>
-                  g['white'] == cup!['mySeat'] || g['black'] == cup!['mySeat'],
-            ))
-              Card(
-                color:AppColors.surface,
-                shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16),
-                  side:BorderSide(color:g['result']=='*'?const Color(0xff388d83):AppColors.border)),
-                child: ListTile(
-                  onTap: busy ? null : () => refresh(board: g['number']),
-                  leading: CircleAvatar(backgroundColor:AppColors.surfaceLight,
-                    child:Text('${g['round']}',style:const TextStyle(color:AppColors.accentGold))),
-                  title: Text('${name(g['white'])}  •  ${name(g['black'])}'),
-                  subtitle: g['result']=='*'?const UiText('Enter / Resume game'):null,
-                  trailing: g['result'] == '*'
-                      ? const Icon(Icons.play_arrow)
-                      : Text(g['result']),
-                ),
-              ),
-            if (games.isNotEmpty) standings(),
-          ],
-          if (position != null) ...[
-            Text(
-              '${name(currentGame['white'])}  •  ${name(currentGame['black'])}',
-            ),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 580),
-                child: boardView(),
+          Material(
+            color: AppColors.surface,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Row(
+                children: [
+                  if (Navigator.canPop(context)) const BackButton(),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Semantics(
+                        header: true,
+                        child: UiText(
+                          'Daily Practice Cup',
+                          style: Theme.of(context).textTheme.titleLarge,
+                          softWrap: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context)
+                        .refreshIndicatorSemanticLabel,
+                    onPressed: busy
+                        ? null
+                        : () => refresh(
+                            board: error != null
+                                ? retryBoard
+                                : position?['board'],
+                          ),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
               ),
             ),
-            if (currentGame['result'] != '*')
-              Center(
-                child: Text(
-                  currentGame['result'],
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              )
-            else
-              Center(
-                child: UiText(
-                  (position!['fen'] as String).split(' ')[1] == 'w'
-                      ? 'White to move'
-                      : 'Black to move',
-                ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.symmetric(
+                vertical: 16,
+                horizontal: MediaQuery.sizeOf(context).width > 840
+                    ? (MediaQuery.sizeOf(context).width - 800) / 2
+                    : 16,
               ),
-            TextButton.icon(
-              onPressed: busy ? null : () => refresh(),
-              icon: const Icon(Icons.list),
-              label: const UiText('Tournaments'),
+              children: [
+                if (busy) const LinearProgressIndicator(),
+                if (error != null) ...[
+                  UiText(error!),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : () => refresh(board: retryBoard),
+                      icon: const Icon(Icons.refresh),
+                      label: const UiText('Retry'),
+                    ),
+                  ),
+                ],
+                if (cup != null && position == null) ...[
+                  if ((cup!['lobbySeconds'] ?? 0) > 0) ...[
+                    Text(
+                      '${uiText(context, 'Starts in')} · ${seats.length}/6',
+                      style: const TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey(cup!['lobbySeconds']),
+                      tween: Tween(
+                        begin: (cup!['lobbySeconds'] as int).toDouble(),
+                        end: 0,
+                      ),
+                      duration: Duration(seconds: cup!['lobbySeconds']),
+                      builder: (_, remaining, _) => Text(
+                        '${remaining.ceil() ~/ 60}:${(remaining.ceil() % 60).toString().padLeft(2, '0')}',
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    LinearProgressIndicator(
+                      value: seats.length / 6,
+                      color: const Color(0xff62ddca),
+                    ),
+                    for (final seat in seats)
+                      ListTile(
+                        leading: PlayerAvatar(name: seat['name']),
+                        title: Text(seat['name']),
+                      ),
+                  ] else ...[
+                    const UiText(
+                      'YOUR BOARD',
+                      style: TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  for (final g in games.where(
+                    (g) =>
+                        g['white'] == cup!['mySeat'] ||
+                        g['black'] == cup!['mySeat'],
+                  ))
+                    Card(
+                      color: AppColors.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: g['result'] == '*'
+                              ? const Color(0xff388d83)
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: ListTile(
+                        onTap: busy ? null : () => refresh(board: g['number']),
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.surfaceLight,
+                          child: Text(
+                            '${g['round']}',
+                            style: const TextStyle(color: AppColors.accentGold),
+                          ),
+                        ),
+                        title: Text(
+                          '${name(g['white'])}  •  ${name(g['black'])}',
+                        ),
+                        subtitle: g['result'] == '*'
+                            ? const UiText('Enter / Resume game')
+                            : null,
+                        trailing: g['result'] == '*'
+                            ? const Icon(Icons.play_arrow)
+                            : Text(g['result']),
+                      ),
+                    ),
+                  if (games.isNotEmpty) standings(),
+                ],
+                if (position != null) ...[
+                  Text(
+                    '${name(currentGame['white'])}  •  ${name(currentGame['black'])}',
+                  ),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 580),
+                      child: boardView(),
+                    ),
+                  ),
+                  if (currentGame['result'] != '*')
+                    Center(
+                      child: Text(
+                        currentGame['result'],
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    )
+                  else
+                    Center(
+                      child: UiText(
+                        (position!['fen'] as String).split(' ')[1] == 'w'
+                            ? 'White to move'
+                            : 'Black to move',
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: busy ? null : () => refresh(),
+                    icon: const Icon(Icons.list),
+                    label: const UiText('Tournaments'),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
-    )])),
+    ),
   );
 }

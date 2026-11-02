@@ -1087,3 +1087,59 @@ class ChessRules {
     return targets;
   }
 }
+
+Map<String, ChessPiece> gamePiecesFromFen(String fen) {
+    final String board = fen.trim().split(RegExp(r'\s+')).first;
+    final List<String> ranks = board.split('/');
+    if (ranks.length != 8) {
+      throw StateError('Invalid curated puzzle FEN: $fen');
+    }
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{};
+    const String files = 'abcdefgh';
+    for (int rankIndex = 0; rankIndex < 8; rankIndex++) {
+      int fileIndex = 0;
+      for (final int rune in ranks[rankIndex].runes) {
+        final String token = String.fromCharCode(rune);
+        final int? empty = int.tryParse(token);
+        if (empty != null) {
+          fileIndex += empty;
+          continue;
+        }
+        if (fileIndex >= 8 || !'prnbqkPRNBQK'.contains(token)) {
+          throw StateError('Invalid curated puzzle FEN: $fen');
+        }
+        final bool white = token == token.toUpperCase();
+        pieces['${files[fileIndex]}${8 - rankIndex}'] = ChessPiece(
+          token.toUpperCase(),
+          white,
+        );
+        fileIndex++;
+      }
+      if (fileIndex != 8) {
+        throw StateError('Invalid curated puzzle FEN: $fen');
+      }
+    }
+    if (!ChessRules.hasOneKingPerSide(pieces)) {
+      throw StateError('Invalid chess FEN (expected one king per side): $fen');
+    }
+    return pieces;
+  }
+
+BoardSkin boardSkinForTheme(String boardTheme) => switch (boardTheme) {
+              'Ocean Teal' => BoardSkin.oceanTeal,
+              'Midnight Sapphire' => BoardSkin.midnightSapphire,
+              'Royal Emerald' || 'Emerald Arena' => BoardSkin.emeraldArena,
+              'Amethyst Clash' => BoardSkin.amethystClash,
+              'Desert Gold' => BoardSkin.desertGold,
+              'Frost Marble' => BoardSkin.frostMarble,
+              'Jade Dynasty' => BoardSkin.jadeDynasty,
+              'Azure Temple' => BoardSkin.azureTemple,
+              'Volcanic Obsidian' => BoardSkin.volcanicObsidian,
+              'Rose Quartz' => BoardSkin.roseQuartz,
+              'Celestial Silver' => BoardSkin.celestialSilver,
+              'Jade Glass' => BoardSkin.jadeGlass,
+              'Tournament' => BoardSkin.tournament,
+              'Marble' => BoardSkin.marble,
+              'Sapphire' || 'Neon Arena' => BoardSkin.sapphire,
+              _ => BoardSkin.royalWalnut,
+            };

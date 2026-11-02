@@ -1,0 +1,4 @@
+<en-GB>
+Daily Practice Cup now uses the regular chessboard, your chosen pieces and board theme, and the same move and capture animations. Player avatars appear in the cup standings.
+Analysis shows each saved game's result and local time, and keeps online rematches separate.
+</en-GB>

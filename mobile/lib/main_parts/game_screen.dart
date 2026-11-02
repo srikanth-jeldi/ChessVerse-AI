@@ -1231,24 +1231,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _showCoordinates = values[3] as bool;
       _skin = _onlineMatch?.isTournamentMatch == true
           ? tournamentBoardSkin(_onlineMatch?.tournamentName)
-          : switch (boardTheme) {
-              'Ocean Teal' => BoardSkin.oceanTeal,
-              'Midnight Sapphire' => BoardSkin.midnightSapphire,
-              'Royal Emerald' || 'Emerald Arena' => BoardSkin.emeraldArena,
-              'Amethyst Clash' => BoardSkin.amethystClash,
-              'Desert Gold' => BoardSkin.desertGold,
-              'Frost Marble' => BoardSkin.frostMarble,
-              'Jade Dynasty' => BoardSkin.jadeDynasty,
-              'Azure Temple' => BoardSkin.azureTemple,
-              'Volcanic Obsidian' => BoardSkin.volcanicObsidian,
-              'Rose Quartz' => BoardSkin.roseQuartz,
-              'Celestial Silver' => BoardSkin.celestialSilver,
-              'Jade Glass' => BoardSkin.jadeGlass,
-              'Tournament' => BoardSkin.tournament,
-              'Marble' => BoardSkin.marble,
-              'Sapphire' || 'Neon Arena' => BoardSkin.sapphire,
-              _ => BoardSkin.royalWalnut,
-            };
+          : boardSkinForTheme(boardTheme);
     });
     ChessSoundService.instance.enabled = _soundEnabled;
   }
@@ -3057,7 +3040,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
     if (challenge.initialFen != null) {
-      return _piecesFromFen(challenge.initialFen!);
+      return gamePiecesFromFen(challenge.initialFen!);
     }
     final String queenFile = dailyChallengeQueenFileForPattern(
       challenge.pattern,
@@ -3110,43 +3093,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     base.remove('${queenFile}2');
     base.remove('${queenFile}3');
     return base;
-  }
-
-  Map<String, ChessPiece> _piecesFromFen(String fen) {
-    final String board = fen.trim().split(RegExp(r'\s+')).first;
-    final List<String> ranks = board.split('/');
-    if (ranks.length != 8) {
-      throw StateError('Invalid curated puzzle FEN: $fen');
-    }
-    final Map<String, ChessPiece> pieces = <String, ChessPiece>{};
-    const String files = 'abcdefgh';
-    for (int rankIndex = 0; rankIndex < 8; rankIndex++) {
-      int fileIndex = 0;
-      for (final int rune in ranks[rankIndex].runes) {
-        final String token = String.fromCharCode(rune);
-        final int? empty = int.tryParse(token);
-        if (empty != null) {
-          fileIndex += empty;
-          continue;
-        }
-        if (fileIndex >= 8 || !'prnbqkPRNBQK'.contains(token)) {
-          throw StateError('Invalid curated puzzle FEN: $fen');
-        }
-        final bool white = token == token.toUpperCase();
-        pieces['${files[fileIndex]}${8 - rankIndex}'] = ChessPiece(
-          token.toUpperCase(),
-          white,
-        );
-        fileIndex++;
-      }
-      if (fileIndex != 8) {
-        throw StateError('Invalid curated puzzle FEN: $fen');
-      }
-    }
-    if (!ChessRules.hasOneKingPerSide(pieces)) {
-      throw StateError('Invalid chess FEN (expected one king per side): $fen');
-    }
-    return pieces;
   }
 
   void _applyDailyCompletionState() {
@@ -4504,7 +4450,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final Map<String, ChessPiece> resetPieces = _isTacticsMode
         ? _dailyStartingPosition(challenge)
         : _gameMode == GameMode.computer
-        ? _piecesFromFen(_initialGameFen)
+        ? gamePiecesFromFen(_initialGameFen)
         : Map<String, ChessPiece>.from(_initialPieces);
     _aiWatchdogTimer?.cancel();
     _aiMoveEpoch++;
@@ -5205,7 +5151,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         barrierDismissible: false,
         builder: (BuildContext context) => ReviewedPositionRetryDialog(
           fen: fen,
-          initialPieces: _piecesFromFen(fen),
+          initialPieces: gamePiecesFromFen(fen),
           whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
           bestMove: bestMove,
           explanation: _reviewPracticeExplanation(insight, language),
@@ -5260,7 +5206,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder: (BuildContext context) => ReviewedPositionRetryDialog(
         fen: puzzle.fenBefore,
-        initialPieces: _piecesFromFen(puzzle.fenBefore),
+        initialPieces: gamePiecesFromFen(puzzle.fenBefore),
         whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
         bestMove: puzzle.bestMove,
         languageCode: language,
