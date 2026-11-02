@@ -42,6 +42,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
   BoardSkin skin = BoardSkin.royalWalnut;
   bool coordinates = true;
   Timer? poll;
+  String? previewFen;
   String? lastFrom, lastTo, captureSquare;
   ChessPiece? moved, captured;
 
@@ -123,6 +124,21 @@ class _CupState extends State<DailyPracticeCupScreen> {
           }
         }
       } else {
+        Future<void>? animation;
+        if (move != null && position != null) {
+          final fen = position!['fen'] as String;
+          final frames = replayUciLine(fen, [move]);
+          if (frames.length == 2) {
+            setState(() {
+              recordTransition(fen, move);
+              selected = null;
+              previewFen = frames.last;
+            });
+            animation = Future<void>.delayed(
+              Duration(milliseconds: captured == null ? 400 : 520),
+            );
+          }
+        }
         final data = await widget.api.practiceBoard(
           widget.token,
           cup!['id'],
@@ -130,6 +146,8 @@ class _CupState extends State<DailyPracticeCupScreen> {
           move: move,
           ply: move == null ? null : position!['ply'],
         );
+        if (!mounted) return;
+        if (animation != null) await animation;
         if (!mounted) return;
         final previous = position;
         final previousPly = previous?['ply'] as int? ?? 0;
@@ -147,11 +165,14 @@ class _CupState extends State<DailyPracticeCupScreen> {
           final pending = history.sublist(previousPly);
           final frames = replayUciLine(previous!['fen'], pending);
           if (frames.length == pending.length + 1) {
-            for (var i = 0; i < pending.length; i++) {
+            final alreadyShown = previewFen != null && pending.isNotEmpty &&
+                pending.first == move && frames[1] == previewFen;
+            for (var i = alreadyShown ? 1 : 0; i < pending.length; i++) {
               recordTransition(frames[i], pending[i]);
               if (i + 1 < pending.length) {
                 setState(() {
                   selected = null;
+                  previewFen = null;
                   position = {
                     ...previous,
                     'fen': frames[i + 1],
@@ -170,6 +191,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
           moved = captured = null;
         }
         setState(() {
+          previewFen = null;
           position = data;
           cup = data['cup'];
           selected = null;
@@ -194,7 +216,16 @@ class _CupState extends State<DailyPracticeCupScreen> {
         setState(() => error = 'Unable to open your board. Please try again.');
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() {
+          if (previewFen != null) {
+            previewFen = null;
+            lastFrom = lastTo = captureSquare = null;
+            moved = captured = null;
+          }
+          busy = false;
+        });
+      }
     }
   }
 
@@ -239,12 +270,15 @@ class _CupState extends State<DailyPracticeCupScreen> {
   }
 
   Widget boardView() {
-    final fen = position!['fen'] as String;
+    final fen = previewFen ?? position!['fen'] as String;
     final pieces = gamePiecesFromFen(fen);
     final white = fen.split(' ')[1] == 'w';
     final checked = ChessRules.isKingInCheck(white, pieces)
         ? ChessRules.kingSquare(white, pieces)
         : null;
+    final checkmate = checked != null &&
+        currentGame['result'] == (white ? '0-1' : '1-0') &&
+        (position!['legal'] as List).isEmpty;
     final palette = boardPalettes[skin]!;
     return BoardStage(
       palette: palette,
@@ -261,9 +295,11 @@ class _CupState extends State<DailyPracticeCupScreen> {
         lastCaptureSquare: captured == null ? null : captureSquare,
         lastMovedPiece: moved,
         lastCapturedPiece: captured,
-        moveSequence: position!['ply'],
+        moveSequence: (position!['ply'] as int) + (previewFen == null ? 0 : 1),
         checkedKingSquare: checked,
-        decisiveSquare: null,
+        decisiveSquare: checkmate ? lastTo : null,
+        fallenKingSquare: checkmate ? checked : null,
+        fallenKingWhite: checkmate ? white : null,
         coachArrowFrom: null,
         coachArrowTo: null,
         flipped: flipped,
@@ -350,7 +386,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
                     : 16,
               ),
               children: [
-                if (busy) const LinearProgressIndicator(),
+                if (busy && position == null) const LinearProgressIndicator(),
                 if (error != null) ...[
                   UiText(error!),
                   Align(

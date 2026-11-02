@@ -1,0 +1,3 @@
+<en-GB>
+Daily Practice Cup pieces now start moving as soon as you tap a legal destination. Your move and the opponent's reply animate in order, and the board stays still while the server confirms the turn. Checkmate uses the regular game's finishing effect.
+</en-GB>

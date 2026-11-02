@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:chessverse_ai/core/app_language.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/live_coach_localizations.dart';
@@ -12,6 +13,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _PracticeApi extends CommunityApi {
+  Completer<void>? holdMove;
   SocialException? joinFailure;
   final state = {
     'id': 'cup',
@@ -44,6 +46,7 @@ class _PracticeApi extends CommunityApi {
   }) async {
     played = move;
     expectedPly = ply;
+    if (move != null && holdMove != null) await holdMove!.future;
     if (move != null) {
       ((state['games'] as List).first as Map)['moves'] = 'e2e4 e8e7';
     }
@@ -226,12 +229,15 @@ void main() {
     expect(find.textContaining('· AI'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('square-e2')));
     await tester.tap(find.byKey(const ValueKey('square-e2')));
+    api.holdMove = Completer<void>();
     await tester.tap(find.byKey(const ValueKey('square-e4')));
     await tester.pump();
     expect(
       tester.widget<ChessBoard>(find.byType(ChessBoard)).lastToSquare,
       'e4',
     );
+    expect(find.byKey(const ValueKey('moving-piece-true-P')), findsOneWidget);
+    api.holdMove!.complete();
     await tester.pump(const Duration(milliseconds: 520));
     await tester.pumpAndSettle();
     final board = tester.widget<ChessBoard>(find.byType(ChessBoard));
