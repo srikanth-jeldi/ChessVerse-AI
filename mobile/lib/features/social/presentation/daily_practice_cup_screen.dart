@@ -11,6 +11,7 @@ import '../../../main.dart'
         boardSkinForTheme,
         BoardSkin,
         BoardStage,
+        PracticeMatchStudio,
         ChessBoard,
         ChessPiece,
         ChessRules,
@@ -165,8 +166,11 @@ class _CupState extends State<DailyPracticeCupScreen> {
           final pending = history.sublist(previousPly);
           final frames = replayUciLine(previous!['fen'], pending);
           if (frames.length == pending.length + 1) {
-            final alreadyShown = previewFen != null && pending.isNotEmpty &&
-                pending.first == move && frames[1] == previewFen;
+            final alreadyShown =
+                previewFen != null &&
+                pending.isNotEmpty &&
+                pending.first == move &&
+                frames[1] == previewFen;
             for (var i = alreadyShown ? 1 : 0; i < pending.length; i++) {
               recordTransition(frames[i], pending[i]);
               if (i + 1 < pending.length) {
@@ -276,7 +280,8 @@ class _CupState extends State<DailyPracticeCupScreen> {
     final checked = ChessRules.isKingInCheck(white, pieces)
         ? ChessRules.kingSquare(white, pieces)
         : null;
-    final checkmate = checked != null &&
+    final checkmate =
+        checked != null &&
         currentGame['result'] == (white ? '0-1' : '1-0') &&
         (position!['legal'] as List).isEmpty;
     final palette = boardPalettes[skin]!;
@@ -338,183 +343,196 @@ class _CupState extends State<DailyPracticeCupScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
-    body: SafeArea(
-      child: Column(
-        children: [
-          Material(
-            color: AppColors.surface,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              child: Row(
-                children: [
-                  if (Navigator.canPop(context)) const BackButton(),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Semantics(
-                        header: true,
-                        child: UiText(
-                          'Daily Practice Cup',
-                          style: Theme.of(context).textTheme.titleLarge,
-                          softWrap: true,
+    body: DecoratedBox(
+      decoration: BoxDecoration(
+        image: position == null
+            ? null
+            : const DecorationImage(
+                image: AssetImage(
+                  'assets/backgrounds/grandmaster-table-v1.webp',
+                ),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(Colors.black54, BlendMode.darken),
+              ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Material(
+              color: AppColors.surface,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Row(
+                  children: [
+                    if (Navigator.canPop(context)) const BackButton(),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Semantics(
+                          header: true,
+                          child: UiText(
+                            'Daily Practice Cup',
+                            style: Theme.of(context).textTheme.titleLarge,
+                            softWrap: true,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: MaterialLocalizations.of(context)
-                        .refreshIndicatorSemanticLabel,
-                    onPressed: busy
-                        ? null
-                        : () => refresh(
-                            board: error != null
-                                ? retryBoard
-                                : position?['board'],
-                          ),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(
-                vertical: 16,
-                horizontal: MediaQuery.sizeOf(context).width > 840
-                    ? (MediaQuery.sizeOf(context).width - 800) / 2
-                    : 16,
-              ),
-              children: [
-                if (busy && position == null) const LinearProgressIndicator(),
-                if (error != null) ...[
-                  UiText(error!),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: OutlinedButton.icon(
-                      onPressed: busy ? null : () => refresh(board: retryBoard),
-                      icon: const Icon(Icons.refresh),
-                      label: const UiText('Retry'),
-                    ),
-                  ),
-                ],
-                if (cup != null && position == null) ...[
-                  if ((cup!['lobbySeconds'] ?? 0) > 0) ...[
-                    Text(
-                      '${uiText(context, 'Starts in')} · ${seats.length}/6',
-                      style: const TextStyle(
-                        color: AppColors.accentGold,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TweenAnimationBuilder<double>(
-                      key: ValueKey(cup!['lobbySeconds']),
-                      tween: Tween(
-                        begin: (cup!['lobbySeconds'] as int).toDouble(),
-                        end: 0,
-                      ),
-                      duration: Duration(seconds: cup!['lobbySeconds']),
-                      builder: (_, remaining, _) => Text(
-                        '${remaining.ceil() ~/ 60}:${(remaining.ceil() % 60).toString().padLeft(2, '0')}',
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w800,
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(context)
+                          .refreshIndicatorSemanticLabel,
+                      onPressed: busy
+                          ? null
+                          : () => refresh(
+                              board: error != null
+                                  ? retryBoard
+                                  : position?['board'],
                             ),
-                      ),
+                      icon: const Icon(Icons.refresh),
                     ),
-                    LinearProgressIndicator(
-                      value: seats.length / 6,
-                      color: const Color(0xff62ddca),
-                    ),
-                    for (final seat in seats)
-                      ListTile(
-                        leading: PlayerAvatar(name: seat['name']),
-                        title: Text(seat['name']),
-                      ),
-                  ] else ...[
-                    const UiText(
-                      'YOUR BOARD',
-                      style: TextStyle(
-                        color: AppColors.accentGold,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                   ],
-                  for (final g in games.where(
-                    (g) =>
-                        g['white'] == cup!['mySeat'] ||
-                        g['black'] == cup!['mySeat'],
-                  ))
-                    Card(
-                      color: AppColors.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: g['result'] == '*'
-                              ? const Color(0xff388d83)
-                              : AppColors.border,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: MediaQuery.sizeOf(context).width > 840
+                      ? (MediaQuery.sizeOf(context).width - 800) / 2
+                      : 16,
+                ),
+                children: [
+                  if (busy && position == null) const LinearProgressIndicator(),
+                  if (error != null) ...[
+                    UiText(error!),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => refresh(board: retryBoard),
+                        icon: const Icon(Icons.refresh),
+                        label: const UiText('Retry'),
+                      ),
+                    ),
+                  ],
+                  if (cup != null && position == null) ...[
+                    if ((cup!['lobbySeconds'] ?? 0) > 0) ...[
+                      Text(
+                        '${uiText(context, 'Starts in')} · ${seats.length}/6',
+                        style: const TextStyle(
+                          color: AppColors.accentGold,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: ListTile(
-                        onTap: busy ? null : () => refresh(board: g['number']),
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.surfaceLight,
-                          child: Text(
-                            '${g['round']}',
-                            style: const TextStyle(color: AppColors.accentGold),
+                      TweenAnimationBuilder<double>(
+                        key: ValueKey(cup!['lobbySeconds']),
+                        tween: Tween(
+                          begin: (cup!['lobbySeconds'] as int).toDouble(),
+                          end: 0,
+                        ),
+                        duration: Duration(seconds: cup!['lobbySeconds']),
+                        builder: (_, remaining, _) => Text(
+                          '${remaining.ceil() ~/ 60}:${(remaining.ceil() % 60).toString().padLeft(2, '0')}',
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                      LinearProgressIndicator(
+                        value: seats.length / 6,
+                        color: const Color(0xff62ddca),
+                      ),
+                      for (final seat in seats)
+                        ListTile(
+                          leading: PlayerAvatar(name: seat['name']),
+                          title: Text(seat['name']),
+                        ),
+                    ] else ...[
+                      const UiText(
+                        'YOUR BOARD',
+                        style: TextStyle(
+                          color: AppColors.accentGold,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    for (final g in games.where(
+                      (g) =>
+                          g['white'] == cup!['mySeat'] ||
+                          g['black'] == cup!['mySeat'],
+                    ))
+                      Card(
+                        color: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: g['result'] == '*'
+                                ? const Color(0xff388d83)
+                                : AppColors.border,
                           ),
                         ),
-                        title: Text(
-                          '${name(g['white'])}  •  ${name(g['black'])}',
+                        child: ListTile(
+                          onTap: busy
+                              ? null
+                              : () => refresh(board: g['number']),
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.surfaceLight,
+                            child: Text(
+                              '${g['round']}',
+                              style: const TextStyle(
+                                color: AppColors.accentGold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            '${name(g['white'])}  •  ${name(g['black'])}',
+                          ),
+                          subtitle: g['result'] == '*'
+                              ? const UiText('Enter / Resume game')
+                              : null,
+                          trailing: g['result'] == '*'
+                              ? const Icon(Icons.play_arrow)
+                              : Text(g['result']),
                         ),
-                        subtitle: g['result'] == '*'
-                            ? const UiText('Enter / Resume game')
-                            : null,
-                        trailing: g['result'] == '*'
-                            ? const Icon(Icons.play_arrow)
-                            : Text(g['result']),
                       ),
+                    if (games.isNotEmpty) standings(),
+                  ],
+                  if (position != null)
+                    PracticeMatchStudio(
+                      board: boardView(),
+                      flipped: flipped,
+                      whiteName: name(currentGame['white']),
+                      blackName: name(currentGame['black']),
+                      whiteTurn:
+                          ((previewFen ?? position!['fen']) as String).split(
+                            ' ',
+                          )[1] ==
+                          'w',
+                      result: currentGame['result'],
+                      inCheck: ChessRules.isKingInCheck(
+                        ((previewFen ?? position!['fen']) as String).split(
+                              ' ',
+                            )[1] ==
+                            'w',
+                        gamePiecesFromFen(previewFen ?? position!['fen']),
+                      ),
+                      moves: (currentGame['moves'] as String? ?? '')
+                          .split(' ')
+                          .where((m) => m.isNotEmpty)
+                          .toList(),
+                      onStandings: busy ? null : () => refresh(),
                     ),
-                  if (games.isNotEmpty) standings(),
                 ],
-                if (position != null) ...[
-                  Text(
-                    '${name(currentGame['white'])}  •  ${name(currentGame['black'])}',
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 580),
-                      child: boardView(),
-                    ),
-                  ),
-                  if (currentGame['result'] != '*')
-                    Center(
-                      child: Text(
-                        currentGame['result'],
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                    )
-                  else
-                    Center(
-                      child: UiText(
-                        (position!['fen'] as String).split(' ')[1] == 'w'
-                            ? 'White to move'
-                            : 'Black to move',
-                      ),
-                    ),
-                  TextButton.icon(
-                    onPressed: busy ? null : () => refresh(),
-                    icon: const Icon(Icons.list),
-                    label: const UiText('Tournaments'),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

@@ -1,11 +1,12 @@
 import 'dart:async';
+
 import 'package:chessverse_ai/core/app_language.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/live_coach_localizations.dart';
 import 'package:chessverse_ai/features/social/data/community_api.dart';
 import 'package:chessverse_ai/features/social/data/social_api.dart';
 import 'package:chessverse_ai/features/social/presentation/daily_practice_cup_screen.dart';
-import 'package:chessverse_ai/main.dart' show ChessBoard;
+import 'package:chessverse_ai/main.dart' show ChessBoard, MoveHistorySheet;
 import 'package:chessverse_ai/core/widgets/player_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -225,7 +226,9 @@ void main() {
     await tester.ensureVisible(pairing);
     await tester.tap(pairing);
     await tester.pumpAndSettle();
-    expect(pairing, findsOneWidget);
+    expect(find.text('Player 0'), findsOneWidget);
+    expect(find.text('Player 5'), findsOneWidget);
+    expect(find.text('AI Coach'), findsOneWidget);
     expect(find.textContaining('· AI'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('square-e2')));
     await tester.tap(find.byKey(const ValueKey('square-e2')));
@@ -246,5 +249,11 @@ void main() {
     expect(board.pieces.containsKey('e4'), isTrue);
     expect(api.played, 'e2e4');
     expect(api.expectedPly, 0);
+    final history = find.widgetWithText(OutlinedButton, 'Move History');
+    await tester.ensureVisible(history);
+    await tester.tap(history);
+    await tester.pumpAndSettle();
+    expect(find.byType(MoveHistorySheet), findsOneWidget);
+    expect(find.descendant(of: find.byType(MoveHistorySheet), matching: find.text('e2e4')), findsOneWidget);
   });
 }

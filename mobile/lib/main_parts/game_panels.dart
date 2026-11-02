@@ -472,16 +472,20 @@ class _StudioCoachPanel extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(
-                                localizeLiveCoach('AI Coach ✦', languageCode),
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: const Color(0xFF63D2B8),
-                                  fontFamily: 'serif',
-                                  fontSize: compact ? 23 : 30,
-                                  fontWeight: FontWeight.w800,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  localizeLiveCoach('AI Coach ✦', languageCode),
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: const Color(0xFF63D2B8),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 23 : 30,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              )),
+                              ),
                               Text(
                                 localizeLiveCoach(modeLabel, languageCode),
                                 maxLines: compact ? 2 : 1,
@@ -1254,6 +1258,149 @@ class OnlineQuickChatPlayerRow extends StatelessWidget {
         );
 }
 
+/// Untimed Cup matches use the same player rails and studio panels as live games.
+class PracticeMatchStudio extends StatelessWidget {
+  const PracticeMatchStudio({
+    super.key,
+    required this.board,
+    required this.whiteName,
+    required this.blackName,
+    required this.flipped,
+    required this.whiteTurn,
+    required this.result,
+    required this.inCheck,
+    required this.moves,
+    required this.onStandings,
+  });
+
+  final Widget board;
+  final String whiteName, blackName, result;
+  final bool flipped, whiteTurn, inCheck;
+  final List<String> moves;
+  final VoidCallback? onStandings;
+
+  @override
+  Widget build(BuildContext context) {
+    final playing = result == '*';
+    final status = playing
+        ? uiText(context, whiteTurn ? 'White to move' : 'Black to move')
+        : result == '1/2-1/2'
+        ? uiText(context, 'Draw')
+        : result;
+    Widget rail(bool white) => _OnlinePlayerRail(
+      name: white ? whiteName : blackName,
+      photoUrl: null,
+      clock: '',
+      active: playing && white == whiteTurn,
+      pieceColor: white ? Colors.white : Colors.black,
+    );
+    final play = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        rail(flipped),
+        const SizedBox(height: 6),
+        board,
+        const SizedBox(height: 6),
+        rail(!flipped),
+      ],
+    );
+    final last = moves.lastOrNull;
+    final panel = _StudioDockCard(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            UiText(
+              'AI Coach',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: const Color(0xFF63D2B8),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            CoachInsight(
+              enabled: true,
+              note: [
+                status,
+                if (inCheck && (playing || result == '1-0' || result == '0-1'))
+                  uiText(context, playing ? 'Check' : 'Checkmate'),
+                if (last != null && last.length >= 4)
+                  '${moves.length.isOdd ? whiteName : blackName} · ${last.substring(0, 2)} → ${last.substring(2)}',
+              ].join(' · '),
+            ),
+            const SizedBox(height: 12),
+            UiText(
+              'Move History',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (moves.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    for (
+                      var i = moves.length > 6
+                          ? (moves.length - 5) ~/ 2 * 2
+                          : 0;
+                      i < moves.length;
+                      i += 2
+                    )
+                      Text(
+                        '${i ~/ 2 + 1}. ${moves[i]} ${i + 1 < moves.length ? moves[i + 1] : ""}',
+                        textDirection: TextDirection.ltr,
+                      ),
+                  ],
+                ),
+              ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) =>
+                        MoveHistorySheet(moves: moves.reversed.toList()),
+                  ),
+                  icon: const Icon(Icons.history),
+                  label: const UiText('Move History'),
+                ),
+                TextButton.icon(
+                  onPressed: onStandings,
+                  icon: const Icon(Icons.emoji_events_outlined),
+                  label: const UiText('Tournaments'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 720) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: play),
+              const SizedBox(width: 14),
+              Expanded(flex: 2, child: panel),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [play, const SizedBox(height: 12), panel],
+        );
+      },
+    );
+  }
+}
+
 class _OnlinePlayerRail extends StatelessWidget {
   const _OnlinePlayerRail({
     required this.name,
@@ -1346,28 +1493,31 @@ class _OnlinePlayerRail extends StatelessWidget {
               ),
             ),
           ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 8 : 12,
-              vertical: compact ? 3 : 5,
-            ),
-            decoration: BoxDecoration(
-              color: active ? const Color(0xFF63D2B8) : const Color(0xFF24272A),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              clock,
-              style: TextStyle(
-                color: active ? const Color(0xFF071A17) : Colors.white,
-                fontSize: compact ? 14 : 18,
-                fontWeight: FontWeight.w900,
-                fontFeatures: const <ui.FontFeature>[
-                  ui.FontFeature.tabularFigures(),
-                ],
+          if (clock.isNotEmpty)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 12,
+                vertical: compact ? 3 : 5,
+              ),
+              decoration: BoxDecoration(
+                color: active
+                    ? const Color(0xFF63D2B8)
+                    : const Color(0xFF24272A),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                clock,
+                style: TextStyle(
+                  color: active ? const Color(0xFF071A17) : Colors.white,
+                  fontSize: compact ? 14 : 18,
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const <ui.FontFeature>[
+                    ui.FontFeature.tabularFigures(),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

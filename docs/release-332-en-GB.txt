@@ -1,0 +1,3 @@
+<en-GB>
+Daily Practice Cup matches now use the regular match layout. See both players beside the board, follow the turn and last move in the coach panel, and open the full move history without leaving the match.
+</en-GB>
