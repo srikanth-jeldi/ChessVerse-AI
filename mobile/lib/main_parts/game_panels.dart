@@ -1274,9 +1274,15 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   DateTime? lastAudioError;
   void restartBanner() {
     turnTimer?.cancel();
-    showTurn = true;
-    turnTimer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) setState(() => showTurn = false);
+    showTurn = widget.result == '*' && widget.whiteTurn != widget.flipped;
+    if (showTurn) scheduleBanner();
+  }
+
+  void scheduleBanner() {
+    turnTimer = Timer(showTurn ? const Duration(milliseconds: 1800) : const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => showTurn = !showTurn);
+      scheduleBanner();
     });
   }
 
@@ -1375,7 +1381,8 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   void didUpdateWidget(covariant PracticeMatchStudio oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.whiteTurn != widget.whiteTurn ||
-        oldWidget.moves.length != widget.moves.length) {
+        oldWidget.moves.length != widget.moves.length ||
+        oldWidget.result != widget.result) {
       restartBanner();
     }
     if (voice &&
@@ -1434,6 +1441,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
             ? _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)) : null)),
         Listener(
           onPointerDown: (_) {
+            turnTimer?.cancel();
             if (showTurn) setState(() => showTurn = false);
           },
           child: widget.board,

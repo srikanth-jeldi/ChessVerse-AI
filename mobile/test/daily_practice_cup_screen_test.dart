@@ -86,7 +86,7 @@ void main() {
     );
   });
   testWidgets(
-    'turn banner expires, dismisses on touch and waits for a new turn',
+    'turn banner repeats above the idle board until touched or the turn changes',
     (tester) async {
       final banner = find.byKey(const ValueKey('prominent-turn-banner'));
       Widget page(bool whiteTurn) => MaterialApp(
@@ -120,6 +120,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1801));
       expect(banner, findsNothing);
       await tester.pumpWidget(page(true));
+      expect(banner, findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      expect(banner, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1800));
+      expect(banner, findsNothing);
+      await tester.tap(find.byKey(const ValueKey('test-board')));
+      await tester.pump(const Duration(seconds: 6));
       expect(banner, findsNothing);
       await tester.pumpWidget(page(false));
       expect(banner, findsNothing);

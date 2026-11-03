@@ -1,3 +1,3 @@
 <en-GB>
-Daily Practice Cup lobbies now introduce one AI opponent every ten seconds while real players can still join. Turn reminders appear above the board. Daily Streak rewards have their own page, and switching voice coaching off collapses the coach panel.
+Daily Practice Cup lobbies now introduce one AI opponent every ten seconds while real players can still join. Turn reminders repeat above the board while you wait and clear when you touch a piece. Daily Streak rewards have their own page, and switching voice coaching off collapses the coach panel.
 </en-GB>
