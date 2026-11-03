@@ -112,7 +112,13 @@ class DailyPracticeCup {
         var starts=db.queryForObject("select starts_at from practice_cup where id=?",Timestamp.class,id);
         long remaining=Math.max(0,(starts.getTime()-System.currentTimeMillis()+999)/1000);
         if (remaining>0) {
-            return new Cup(id,mine.number(),seats.stream().filter(s->!s.isBot()).toList(),List.of(),remaining);
+            // Humans claim the lowest available seat. Reveal reserved bots from
+            // the opposite end so later arrivals keep the existing roster stable.
+            long visibleBots = Math.max(0, 60 - remaining) / 10;
+            var roster = seats.stream()
+                    .filter(s -> !s.isBot() || s.number() >= seats.size() - visibleBots)
+                    .toList();
+            return new Cup(id,mine.number(),roster,List.of(),remaining);
         }
         return new Cup(id,mine.number(),seats,games,0);
     }

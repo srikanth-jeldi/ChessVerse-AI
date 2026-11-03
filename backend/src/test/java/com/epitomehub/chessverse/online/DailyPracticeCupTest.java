@@ -42,9 +42,23 @@ class DailyPracticeCupTest {
         assertTrue(cup.games().isEmpty());
         UUID cupId=cup.id();
         assertThrows(OnlineMatchException.class,()->service.enter(cupId,1,alice.id(),null,null));
+        // Age the same live cup instead of sleeping a minute in the test.
+        for (int elapsed : new int[]{9,10,19,20,30,40,50,59}) {
+            db.update("update practice_cup set starts_at=? where id=?",
+                    java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(60-elapsed)), cupId);
+            var roster=service.standings(cupId,alice.id());
+            assertEquals(elapsed/10,roster.seats().stream().filter(DailyPracticeCup.Seat::isBot).count());
+            assertTrue(roster.games().isEmpty());
+        }
+        db.update("update practice_cup set starts_at=? where id=?",
+                java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(39)), cupId);
+        var visibleBots=service.standings(cupId,alice.id()).seats().stream()
+                .filter(DailyPracticeCup.Seat::isBot).toList();
         var lobby=service.join(bob);
         assertEquals(cup.id(),lobby.id());
-        assertEquals(2,lobby.seats().size());
+        assertEquals(4,lobby.seats().size());
+        assertTrue(lobby.seats().containsAll(visibleBots));
+        assertTrue(lobby.seats().stream().anyMatch(seat -> bob.id().equals(seat.player())));
         db.update("update practice_cup set starts_at=? where id=?",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)),cupId);
         cup=service.standings(cupId,alice.id());
         assertEquals(4,cup.seats().stream().filter(DailyPracticeCup.Seat::isBot).count());

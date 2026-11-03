@@ -117,7 +117,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
           final seconds = (data['lobbySeconds'] as int?) ?? 0;
           if (seconds > 0) {
             poll = Timer(
-              Duration(seconds: seconds.clamp(1, 5)),
+              Duration(seconds: ((seconds - 1) % 10 + 1).clamp(1, 5)),
               () => refresh(),
             );
           } else if (games.any((game) => game['result'] == '*')) {
@@ -456,6 +456,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
                         ListTile(
                           leading: PlayerAvatar(name: seat['name']),
                           title: Text(seat['name']),
+                          subtitle: seat['bot'] == true ? const UiText('AI') : null,
                         ),
                     ] else ...[
                       const UiText(
