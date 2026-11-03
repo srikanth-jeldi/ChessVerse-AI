@@ -602,30 +602,12 @@ class _StudioCoachPanel extends StatelessWidget {
                               ),
                             ),
                           )
-                        : SizedBox(
-                            height: 160,
-                            child: _CoachInsightCard(
-                              icon: Icons.chat_bubble_rounded,
-                              accent: const Color(0xFF63D2B8),
-                              alignStart: true,
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  coachEnabled
-                                      ? coachNote
-                                      : localizeLiveCoach(
-                                          'Turn Coach on from Game controls to receive move-by-move explanations.',
-                                          languageCode,
-                                        ),
-                                  style: TextStyle(
-                                    color: const Color(0xFFF2EDE4),
-                                    fontFamily: 'serif',
-                                    fontSize: compact ? 14 : 16,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                        : _CoachInsightCard(
+                            icon: Icons.chat_bubble_rounded, accent: const Color(0xFF63D2B8),
+                            alignStart:true, child: Text(coachEnabled ? coachNote :
+                              localizeLiveCoach('Turn Coach on from Game controls to receive move-by-move explanations.', languageCode),
+                              style: const TextStyle(color:Color(0xFFF2EDE4),fontFamily:'serif',fontSize:16,height:1.35))),
+
                   ],
                   if (!compact && !cup) ...<Widget>[
                     const SizedBox(height: 10),
@@ -1286,6 +1268,7 @@ class PracticeMatchStudio extends StatefulWidget {
 
 class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   bool voice = false;
+  bool silentCoachExpanded = false;
   bool showTurn = true;
   Timer? turnTimer;
   DateTime? lastAudioError;
@@ -1411,7 +1394,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   }
 
   Future<void> _toggle(bool value) async {
-    setState(() => voice = value);
+    setState(() { voice = value; silentCoachExpanded = false; });
     epoch++;
     if (value) {
       unawaited(_speak());
@@ -1444,7 +1427,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   @override
   Widget build(BuildContext context) {
     final mine = widget.whiteTurn != widget.flipped;
-    final play = Stack(
+    final play = Column(
       children: [
         Listener(
           onPointerDown: (_) {
@@ -1453,21 +1436,20 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
           child: widget.board,
         ),
         if (widget.result == '*' && mine && showTurn)
-          Positioned.fill(
-            child: _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)),
-          ),
+          _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)),
       ],
     );
     final panel = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LiveVoiceToggle(enabled: voice, onChanged: _toggle),
-        TextButton.icon(
+        LiveVoiceToggle(enabled: voice, onChanged: _toggle, expanded:silentCoachExpanded,
+          onExpand:() => setState(() => silentCoachExpanded = !silentCoachExpanded)),
+        if (voice) TextButton.icon(
           onPressed: _changeCoach,
           icon: const Icon(Icons.record_voice_over),
           label: UiText('Change coach: {0}', values: [coach.name]),
         ),
-        _StudioCoachPanel(
+        if (voice || silentCoachExpanded) _StudioCoachPanel(
           cup: true,
           gameMode: GameMode.online,
           activeColor: status,
@@ -1493,6 +1475,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
           onNextPuzzle: () {},
           onBackToAcademy: () {},
         ),
+        if (!voice && !silentCoachExpanded) TextButton.icon(onPressed:_history, icon:const Icon(Icons.history), label:const UiText('Move History')),
         TextButton.icon(
           onPressed: widget.onStandings,
           icon: const Icon(Icons.emoji_events_outlined),

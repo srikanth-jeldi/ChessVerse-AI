@@ -780,6 +780,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('daily board scrolls through the coach to a separate streak page', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MaterialApp(home:GameScreen(initiallySignedIn:true,
+      useRemoteEngine:false, initialGameMode:GameMode.daily)));
+    await tester.pump(const Duration(milliseconds:500));
+    final link = find.widgetWithText(TextButton, 'Daily Streak');
+    final scroll = find.byKey(const ValueKey('portrait-game-scroll-view'));
+    await tester.drag(scroll,const Offset(0,-1800));
+    await tester.pump(const Duration(milliseconds:400));
+    expect(link.hitTestable(), findsOneWidget);
+    expect(find.text('+40'), findsNothing);
+    await tester.tap(link);
+    await tester.pump(const Duration(milliseconds:350));
+    await tester.pump();
+    expect(find.text('+40'), findsOneWidget);
+  });
+
   testWidgets('daily challenge opens the current tactics board', (
     WidgetTester tester,
   ) async {
@@ -833,6 +852,11 @@ void main() {
     final Size boardSize = tester.getSize(find.byType(ChessBoard));
     expect(boardSize.width, greaterThan(405));
     expect(boardSize.height, closeTo(boardSize.width, 2));
+    expect(find.text('AI TRAINING • 3-LEVEL HINTS • GAME REVIEW'), findsNothing);
+    final expand = find.byKey(const ValueKey('toggle-text-coach'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pump();
     expect(
       find.text('AI TRAINING • 3-LEVEL HINTS • GAME REVIEW'),
       findsOneWidget,
@@ -874,6 +898,10 @@ void main() {
       find.byKey(const ValueKey<String>('idle-hint-target')),
       findsOneWidget,
     );
+    final expand = find.byKey(const ValueKey('toggle-text-coach'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pump();
     expect(find.textContaining('Blue lights suggest'), findsWidgets);
   });
 
@@ -1419,6 +1447,10 @@ void main() {
 
     await tester.pump();
     await tester.pumpAndSettle();
+    final expand = find.byKey(const ValueKey('toggle-text-coach'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pump();
     await tester.ensureVisible(find.text('Analyze'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Analyze'));

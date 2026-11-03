@@ -772,6 +772,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _coachNote = 'Select a coin to see legal moves.';
   String _coachLanguageCode = AppLanguageController.systemCode;
   bool _coachLanguageLoaded = false;
+  bool _silentCoachExpanded = false;
   final LiveMoveVoice _liveVoice = LiveMoveVoice();
   CloudNarrationService? _liveNarrator;
   CoachPersona _voiceCoach = CoachPersona.mira;
@@ -799,7 +800,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _toggleLiveVoice(bool enabled) async {
-    setState(() => _liveVoice.enabled = enabled);
+    setState(() { _liveVoice.enabled = enabled; _silentCoachExpanded = false; });
     if (!enabled) _stopLiveVoice();
     try {
       await const AppPreferences().writeBool('liveMoveVoice', enabled);
@@ -1686,11 +1687,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       onBackToAcademy: () => Navigator.of(context).pop(),
                     );
               if (_gameMode == GameMode.computer) {
-                studioCoach = SingleChildScrollView(
-                  child: Column(
+                studioCoach = Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_coachEnabled && _lastPlayerMove != null && _lastPlayerCoachNote != null)
+                      if ((_liveVoice.enabled || _silentCoachExpanded) && _coachEnabled && _lastPlayerMove != null && _lastPlayerCoachNote != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                           child: Align(alignment: AlignmentDirectional.centerStart,
@@ -1700,8 +1700,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       LiveVoiceToggle(
                         enabled: _liveVoice.enabled,
                         onChanged: _toggleLiveVoice,
+                        expanded: _silentCoachExpanded,
+                        onExpand: () => setState(() => _silentCoachExpanded = !_silentCoachExpanded),
                       ),
-                      TextButton.icon(
+                      if (_liveVoice.enabled) TextButton.icon(
                         onPressed: _changeVoiceCoach,
                         icon: const Icon(Icons.record_voice_over),
                         label: UiText(
@@ -1709,16 +1711,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           values: [_voiceCoach.name],
                         ),
                       ),
-                      studioCoach,
+                      if (_liveVoice.enabled || _silentCoachExpanded) studioCoach,
                     ],
-                  ),
                 );
-              }
-              if (_gameMode == GameMode.daily) {
-                studioCoach = SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday),
-                  studioCoach,
-                ]));
               }
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
@@ -1729,6 +1724,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           _onlineMatch!.yourColor.toLowerCase(),
                 _ => true,
               };
+              final content = studioCoach;
+              final boundedCoach = _gameMode == GameMode.local || _gameMode == GameMode.online;
+              final detail = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (_signedIn && _gameResultTitle == null && yourTurn && _turnBannerVisible)
+                  _TurnBanner(label: _localizedLiveCoachText(_gameMode == GameMode.local
+                    ? (_localWhiteToMove ? 'PLAYER 1 • WHITE' : 'PLAYER 2 • BLACK') : 'YOUR TURN', _coachLanguageCode)),
+                if (boundedCoach) Expanded(child:content) else content,
+                if (_gameMode == GameMode.daily) _streakLink(),
+              ]);
+              studioCoach = LayoutBuilder(builder: (_, limits) =>
+                limits.hasBoundedHeight && !boundedCoach ? SingleChildScrollView(child: detail) : detail);
+
               return Padding(
                 padding: pagePadding,
                 child: KeyedSubtree(
@@ -1932,51 +1939,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              SizedBox(
-                                key: const ValueKey<String>('mobile-ai-coach'),
-                                height:
-                                    (constraints.maxHeight * 0.46).clamp(
-                                      360.0,
-                                      440.0,
-                                    ) *
-                                    math.max(
-                                      1.0,
-                                      MediaQuery.textScalerOf(context)
-                                              .scale(16) /
-                                          16,
-                                    ),
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    6,
-                                    0,
-                                    6,
-                                    0,
-                                  ),
-                                  child: studioCoach,
-                                ),
-                              ),
+                              SizedBox(key: const ValueKey<String>('mobile-ai-coach'),
+                                height: boundedCoach ? (constraints.maxHeight * .46).clamp(360.0, 440.0) *
+                                  math.max(1.0, MediaQuery.textScalerOf(context).scale(16) / 16) : null,
+                                child: Padding(padding:const EdgeInsets.symmetric(horizontal:6),child:studioCoach)),
                             ],
                           ),
                         ),
-                      if (_signedIn &&
-                          _gameResultTitle == null &&
-                          yourTurn &&
-                          _turnBannerVisible)
-                        Positioned(
-                          top: wide ? wideHeaderHeight + 12 : 66,
-                          left: wide ? 24 : 12,
-                          right: wide ? widePanelWidth + 42 : 12,
-                          child: _TurnBanner(
-                            label: _localizedLiveCoachText(
-                              _gameMode == GameMode.local
-                                  ? (_localWhiteToMove
-                                        ? 'PLAYER 1 • WHITE'
-                                        : 'PLAYER 2 • BLACK')
-                                  : 'YOUR TURN',
-                              _coachLanguageCode,
-                            ),
-                          ),
-                        ),
+
                       if (_signedIn &&
                           _gameMode == GameMode.online &&
                           _onlineMatch?.isActive == true &&
@@ -2100,7 +2070,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 ? _onlineMatch?.coinsEarned
                                 : null,
                             dailyRewardSummary: _gameMode == GameMode.daily
-                                ? DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday) : null,
+                                ? _streakLink() : null,
                             onNewGame: _startGameAfterResult,
                             newGameLabel:
                                 _onlineMatch?.isTournamentMatch == true
@@ -3094,6 +3064,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     base.remove('${queenFile}3');
     return base;
   }
+
+  Widget _streakLink() => TextButton.icon(
+    icon: const Icon(Icons.local_fire_department_outlined),
+    label: const UiText('Daily Streak'),
+    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(appBar: AppBar(title: const UiText('Daily Streak')),
+        body: SafeArea(child: ListView(children: [
+          DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday),
+        ]))))),
+  );
 
   void _applyDailyCompletionState() {
     if (!_dailyCompletedToday || _gameMode != GameMode.daily) {
