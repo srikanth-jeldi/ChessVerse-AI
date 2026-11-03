@@ -44,6 +44,22 @@ void main() {
     );
   }
 
+  testWidgets('Home flame opens the dedicated Daily Streak rewards page', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(onOnline: () {}, onComputer: () {}));
+    final flame = find.byKey(const ValueKey('home-open-daily-streak'));
+    await tester.ensureVisible(flame);
+    await tester.tap(flame);
+    await tester.pumpAndSettle();
+    expect(find.text('+10'), findsOneWidget);
+    expect(find.text('+40'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(flame, findsOneWidget);
+  });
+
   testWidgets('Home rotates confirmed human and computer champions', (tester) async {
     final finished = DateTime.now().toUtc().toIso8601String();
     for (final width in [390.0,1000.0]) {

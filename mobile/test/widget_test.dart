@@ -780,7 +780,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('daily board scrolls through the coach to a separate streak page', (tester) async {
+  testWidgets('daily board scrolls to its final controls without the streak rewards', (tester) async {
     tester.view.physicalSize = const Size(360, 720);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -791,12 +791,9 @@ void main() {
     final scroll = find.byKey(const ValueKey('portrait-game-scroll-view'));
     await tester.drag(scroll,const Offset(0,-1800));
     await tester.pump(const Duration(milliseconds:400));
-    expect(link.hitTestable(), findsOneWidget);
+    expect(link, findsNothing);
     expect(find.text('+40'), findsNothing);
-    await tester.tap(link);
-    await tester.pump(const Duration(milliseconds:350));
-    await tester.pump();
-    expect(find.text('+40'), findsOneWidget);
+    expect(find.text('Try again').hitTestable(), findsOneWidget);
   });
 
   testWidgets('daily challenge opens the current tactics board', (

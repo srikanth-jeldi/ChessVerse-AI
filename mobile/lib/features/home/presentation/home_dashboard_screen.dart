@@ -1,4 +1,5 @@
 import '../../analysis/presentation/daily_routine_card.dart';
+import '../../daily_challenge/widgets/daily_puzzle_streak.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -941,18 +942,21 @@ class _ProgressPulse extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            if (wide || rewards.streak > 0) ...<Widget>[
-              const SizedBox(width: 12),
-              const Icon(
-                Icons.local_fire_department_rounded,
-                color: Color(0xFFFF9B45),
-                size: 19,
-              ),
-              Text(
-                '${rewards.streak}',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
+            IconButton(
+              key: const ValueKey('home-open-daily-streak'),
+              tooltip: uiText(context, 'Daily Streak'),
+              icon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF9B45)),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const UiText('Daily Streak')),
+                  body: SafeArea(child: ListView(children: [
+                    DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak,
+                      completedToday: LocalGameArchive.isDailyChallengeLocked),
+                  ])),
+                ),
+              )),
+            ),
+            if (rewards.streak > 0) Text('${rewards.streak}'),
           ],
         ),
       ),

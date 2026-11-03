@@ -1,0 +1,3 @@
+<en-GB>
+Open your seven-day Daily Streak rewards from the flame beside XP on Home. Daily Challenge now scrolls to the final controls. Switch voice coaching off to collapse the coach, or expand it for silent reading. Your turn reminder repeats above the board until you touch it. Daily Practice Cup adds one AI opponent every ten seconds during registration.
+</en-GB>

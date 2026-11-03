@@ -1737,7 +1737,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final boundedCoach = _gameMode == GameMode.local || _gameMode == GameMode.online;
               final detail = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 if (boundedCoach) Expanded(child:content) else content,
-                if (_gameMode == GameMode.daily) _streakLink(),
               ]);
               studioCoach = LayoutBuilder(builder: (_, limits) =>
                 limits.hasBoundedHeight && !boundedCoach ? SingleChildScrollView(child: detail) : detail);
@@ -2075,8 +2074,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             coinsEarned: _gameMode == GameMode.online
                                 ? _onlineMatch?.coinsEarned
                                 : null,
-                            dailyRewardSummary: _gameMode == GameMode.daily
-                                ? _streakLink() : null,
                             onNewGame: _startGameAfterResult,
                             newGameLabel:
                                 _onlineMatch?.isTournamentMatch == true
@@ -3070,16 +3067,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     base.remove('${queenFile}3');
     return base;
   }
-
-  Widget _streakLink() => TextButton.icon(
-    icon: const Icon(Icons.local_fire_department_outlined),
-    label: const UiText('Daily Streak'),
-    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => Scaffold(appBar: AppBar(title: const UiText('Daily Streak')),
-        body: SafeArea(child: ListView(children: [
-          DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak, completedToday: _dailyCompletedToday),
-        ]))))),
-  );
 
   void _applyDailyCompletionState() {
     if (!_dailyCompletedToday || _gameMode != GameMode.daily) {
