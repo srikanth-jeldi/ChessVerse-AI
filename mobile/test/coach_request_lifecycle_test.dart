@@ -15,6 +15,7 @@ void main() {
       (tester) async {
         FlutterSecureStorage.setMockInitialValues({
           'settings.coachLanguage': 'en',
+          'settings.liveMoveVoice': 'true',
         });
         ComputerGameStore.resetForTesting();
         tester.view.physicalSize = const Size(1400, 1000);

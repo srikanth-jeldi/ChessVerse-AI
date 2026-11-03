@@ -114,6 +114,9 @@ void main() {
       );
       await tester.pumpWidget(page(true));
       expect(banner, findsOneWidget);
+      expect(tester.getBottomLeft(find.byKey(const ValueKey('board-top-turn-slot'))).dy,
+          lessThanOrEqualTo(tester.getTopLeft(find.byKey(const ValueKey('test-board'))).dy));
+
       await tester.pump(const Duration(milliseconds: 1801));
       expect(banner, findsNothing);
       await tester.pumpWidget(page(true));

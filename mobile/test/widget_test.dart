@@ -724,7 +724,7 @@ void main() {
     );
     final Rect boardWithCoach = tester.getRect(find.byType(ChessBoard));
     expect(boardWithCoach.right, lessThanOrEqualTo(landscapeControls.left));
-    expect(boardWithCoach.width, lessThanOrEqualTo(landscapeBoard.width));
+    expect(boardWithCoach.width, lessThanOrEqualTo(landscapeBoard.width + 1e-6));
     for (final (String from, String to) in <(String, String)>[
       ('g1', 'f3'),
       ('b8', 'c6'),

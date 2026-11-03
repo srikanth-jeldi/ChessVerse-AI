@@ -1429,14 +1429,15 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     final mine = widget.whiteTurn != widget.flipped;
     final play = Column(
       children: [
+        SizedBox(key:const ValueKey('board-top-turn-slot'), height:MediaQuery.textScalerOf(context).scale(22) * 1.4,
+          child: ClipRect(child: widget.result == '*' && mine && showTurn
+            ? _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)) : null)),
         Listener(
           onPointerDown: (_) {
             if (showTurn) setState(() => showTurn = false);
           },
           child: widget.board,
         ),
-        if (widget.result == '*' && mine && showTurn)
-          _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)),
       ],
     );
     final panel = Column(

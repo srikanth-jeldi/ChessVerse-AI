@@ -1536,14 +1536,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   ? constraints.maxWidth *
                         (_landscapeCoachCollapsed ? 0.94 : 0.68)
                   : constraints.maxWidth - pagePadding.horizontal;
+              final turnHeight = _signedIn ? MediaQuery.textScalerOf(context).scale(22) * 1.4 : 0.0;
               final double boardHeight = wide
                   ? availableHeight -
                         wideHeaderHeight -
                         wideDockHeight -
-                        arenaRailsHeight -
+                        arenaRailsHeight - turnHeight -
                         18
                   : compactLandscape
-                  ? availableHeight - mobileHeaderHeight - 4
+                  ? availableHeight - mobileHeaderHeight - turnHeight - 4
                   : boardWidth;
               // Portrait is a vertically scrolling composition. Limiting its
               // board by the viewport height left only ~145px for the online
@@ -1724,12 +1725,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           _onlineMatch!.yourColor.toLowerCase(),
                 _ => true,
               };
+              final playArea = Column(children: [
+                SizedBox(key:const ValueKey('board-top-turn-slot'), height: turnHeight, child: ClipRect(child:
+                  _signedIn && _gameResultTitle == null && yourTurn && _turnBannerVisible
+                    ? _TurnBanner(label: _localizedLiveCoachText(_gameMode == GameMode.local
+                      ? (_localWhiteToMove ? 'PLAYER 1 • WHITE' : 'PLAYER 2 • BLACK') : 'YOUR TURN', _coachLanguageCode))
+                    : null)),
+                Expanded(child:arenaBoard),
+              ]);
               final content = studioCoach;
               final boundedCoach = _gameMode == GameMode.local || _gameMode == GameMode.online;
               final detail = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                if (_signedIn && _gameResultTitle == null && yourTurn && _turnBannerVisible)
-                  _TurnBanner(label: _localizedLiveCoachText(_gameMode == GameMode.local
-                    ? (_localWhiteToMove ? 'PLAYER 1 • WHITE' : 'PLAYER 2 • BLACK') : 'YOUR TURN', _coachLanguageCode)),
                 if (boundedCoach) Expanded(child:content) else content,
                 if (_gameMode == GameMode.daily) _streakLink(),
               ]);
@@ -1788,8 +1794,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                             width: boardDimension,
                                             height:
                                                 boardDimension +
-                                                arenaRailsHeight,
-                                            child: arenaBoard,
+                                                arenaRailsHeight + turnHeight,
+                                            child: playArea,
                                           ),
                                         ),
                                       ),
@@ -1854,8 +1860,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         child: SizedBox(
                                           width: boardDimension,
                                           height:
-                                              boardDimension + arenaRailsHeight,
-                                          child: arenaBoard,
+                                              boardDimension + arenaRailsHeight + turnHeight,
+                                          child: playArea,
                                         ),
                                       ),
                                     ),
@@ -1934,8 +1940,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               Center(
                                 child: SizedBox(
                                   width: boardDimension,
-                                  height: boardDimension + arenaRailsHeight,
-                                  child: arenaBoard,
+                                  height: boardDimension + arenaRailsHeight + turnHeight,
+                                  child: playArea,
                                 ),
                               ),
                               const SizedBox(height: 8),

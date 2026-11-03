@@ -114,8 +114,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(tester.getTopLeft(find.text('YOUR TURN')).dy,
-        greaterThanOrEqualTo(tester.getBottomLeft(find.byType(ChessBoard)).dy));
+    expect(tester.getBottomLeft(find.byKey(const ValueKey('board-top-turn-slot'))).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.byType(ChessBoard)).dy));
     expect(find.text('YOUR TURN'), findsOneWidget);
     expect(find.textContaining('You play'), findsNothing);
     expect(
