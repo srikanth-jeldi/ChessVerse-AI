@@ -1536,7 +1536,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   ? constraints.maxWidth *
                         (_landscapeCoachCollapsed ? 0.94 : 0.68)
                   : constraints.maxWidth - pagePadding.horizontal;
-              final turnHeight = _signedIn ? MediaQuery.textScalerOf(context).scale(22) * 1.4 : 0.0;
+              final turnHeight = _signedIn && _gameResultTitle == null ? MediaQuery.textScalerOf(context).scale(22) * 1.4 : 0.0;
               final double boardHeight = wide
                   ? availableHeight -
                         wideHeaderHeight -
