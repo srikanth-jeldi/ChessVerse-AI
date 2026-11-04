@@ -145,12 +145,23 @@ class DailyPracticeCup {
                 throw new OnlineMatchException(HttpStatus.CONFLICT,"Refresh the board before moving.");
             apply(board,move); moves.add(move); result=result(board);
         }
+        Timestamp replyAt=db.queryForObject(
+                "select bot_reply_at from practice_cup_game where cup_id=? and board_no=?",
+                Timestamp.class,id,number);
         if(result.equals("*") && !(board.getSideToMove()==Side.WHITE?whiteHuman:blackHuman)) {
-            Move bot=botMove(board);
-            board.doMove(bot); moves.add(bot.toString()); result=result(board);
+            if(replyAt==null) {
+                replyAt=Timestamp.from(Instant.now().plusMillis(
+                        java.util.concurrent.ThreadLocalRandom.current().nextLong(3000,6001)));
+            } else if(!replyAt.toInstant().isAfter(Instant.now())) {
+                Move bot=botMove(board);
+                board.doMove(bot); moves.add(bot.toString()); result=result(board);
+                replyAt=null;
+            }
+        } else {
+            replyAt=null;
         }
-        db.update("update practice_cup_game set started=true,moves=?,result=? where cup_id=? and board_no=?",
-                String.join(" ",moves),result,id,number);
+        db.update("update practice_cup_game set started=true,moves=?,result=?,bot_reply_at=? where cup_id=? and board_no=?",
+                String.join(" ",moves),result,replyAt,id,number);
         List<String> legal=result.equals("*")?board.legalMoves().stream().map(Move::toString).toList():List.of();
         Cup updated=snapshot(id,player);
         recordFinish(updated);

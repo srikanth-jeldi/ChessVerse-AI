@@ -22,7 +22,8 @@ class DailyPracticeCupTest {
         db.execute("create table player_account(id uuid primary key)");
         new ResourceDatabasePopulator(new ClassPathResource(
                 "db/migration/V97__daily_practice_cup.sql"),new ClassPathResource(
-                "db/migration/V98__practice_cup_lobby_and_finish.sql")).execute(ds);
+                "db/migration/V98__practice_cup_lobby_and_finish.sql"),new ClassPathResource(
+                "db/migration/V99__practice_cup_reply_delay.sql")).execute(ds);
         var alice=new AuthenticatedPlayer(UUID.randomUUID(),"alice","Alice",null);
         var bob=new AuthenticatedPlayer(UUID.randomUUID(),"bob","Bob",null);
         db.update("insert into player_account values(?),(?)",alice.id(),bob.id());
@@ -74,6 +75,16 @@ class DailyPracticeCupTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cup.seats[5].bot").value(true))
                 .andExpect(jsonPath("$.legal").isArray()).andExpect(jsonPath("$.ply").value(0));
         var next=service.enter(cup.id(),1,alice.id(),"e2e4",0);
+        assertEquals(1,next.ply());
+        var due=db.queryForObject("select bot_reply_at from practice_cup_game where cup_id=? and board_no=1",
+                java.sql.Timestamp.class,cupId);
+        assertTrue(due.toInstant().isAfter(java.time.Instant.now()));
+        assertEquals(next.fen(),service.enter(cupId,1,alice.id(),null,null).fen());
+        assertEquals(due,db.queryForObject("select bot_reply_at from practice_cup_game where cup_id=? and board_no=1",
+                java.sql.Timestamp.class,cupId));
+        db.update("update practice_cup_game set bot_reply_at=? where cup_id=? and board_no=1",
+                java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)),cupId);
+        next=service.enter(cupId,1,alice.id(),null,null);
         assertEquals(2,next.ply());
         assertThrows(OnlineMatchException.class,()->service.enter(cupId,1,alice.id(),"e2e4",0));
         assertEquals(next.fen(),service.enter(cup.id(),1,alice.id(),null,null).fen());
