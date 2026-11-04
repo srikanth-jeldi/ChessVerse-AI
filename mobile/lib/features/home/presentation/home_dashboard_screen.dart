@@ -259,7 +259,7 @@ class _MobileHomeState extends State<_MobileHome> {
                     ValueListenableBuilder<int>(
                       valueListenable: LocalGameArchive.activityRevision,
                       builder: (_, _, _) =>
-                          _ProgressPulse(games: widget.activityGames),
+                          _ProgressPulse(games: widget.activityGames, onPractice:widget.onDailyChallenge),
                     ),
                     const SizedBox(height: 10),
                     if (widget.practiceWinners.isNotEmpty)
@@ -619,6 +619,7 @@ class _WideHomeState extends State<_WideHome> {
                           valueListenable: LocalGameArchive.activityRevision,
                           builder: (_, _, _) => _ProgressPulse(
                             wide: true,
+                            onPractice:widget.onDailyChallenge,
                             games: widget.activityGames,
                           ),
                         ),
@@ -897,7 +898,8 @@ class _WideHomeState extends State<_WideHome> {
 }
 
 class _ProgressPulse extends StatelessWidget {
-  const _ProgressPulse({this.wide = false, this.games});
+  const _ProgressPulse({this.wide = false, this.games, required this.onPractice});
+  final VoidCallback onPractice;
   final bool wide;
   final List<SavedGameRecord>? games;
 
@@ -913,19 +915,10 @@ class _ProgressPulse extends StatelessWidget {
         key: const ValueKey('home-open-daily-streak'),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const UiText('Daily Streak')),
-              body: SafeArea(
-                child: ListView(
-                  children: [
-                    DailyPuzzleStreak(
-                      streak: LocalGameArchive.stats().dailyStreak,
-                      completedToday: LocalGameArchive.isDailyChallengeLocked,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            builder: (streakContext) => DailyStreakScreen(onPractice: () {
+              Navigator.of(streakContext).pop();
+              onPractice();
+            }),
           ),
         ),
         child: Container(
@@ -1957,8 +1950,9 @@ class _PracticeWinnerBannerState extends State<_PracticeWinnerBanner> {
         ?.toLocal();
     if (finished == null) return const SizedBox.shrink();
     final age = DateTime.now().difference(finished);
-    if (age.isNegative || age >= const Duration(days: 1))
+    if (age.isNegative || age >= const Duration(days: 1)) {
       return const SizedBox.shrink();
+    }
     final locale = MaterialLocalizations.of(context);
     final time = locale.formatTimeOfDay(TimeOfDay.fromDateTime(finished));
     return Card(

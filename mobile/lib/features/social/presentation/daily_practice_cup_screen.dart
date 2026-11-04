@@ -315,6 +315,11 @@ class _CupState extends State<DailyPracticeCupScreen> {
     );
   }
 
+  Widget _computerBadge() => Container(
+    padding:const EdgeInsets.symmetric(horizontal:8,vertical:3),
+    decoration:BoxDecoration(border:Border.all(color:Colors.white24),borderRadius:BorderRadius.circular(8)),
+    child:const UiText('AI',style:TextStyle(fontSize:11,color:Colors.white70)));
+
   Widget standings() {
     final scores = List<double>.filled(6, 0);
     for (final g in games) {
@@ -332,9 +337,9 @@ class _CupState extends State<DailyPracticeCupScreen> {
         for (final i in order)
           ListTile(
             leading: PlayerAvatar(name: name(i)),
-            subtitle: seats[i]['bot'] == true ? const UiText('AI') : null,
+
             title: Text(name(i)),
-            trailing: Text('${scores[i]}'),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children:[if(seats[i]['bot'] == true) _computerBadge(), const SizedBox(width:8), Text('${scores[i]}')]),
           ),
       ],
     );
@@ -456,7 +461,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
                         ListTile(
                           leading: PlayerAvatar(name: seat['name']),
                           title: Text(seat['name']),
-                          subtitle: seat['bot'] == true ? const UiText('AI') : null,
+                          trailing: seat['bot'] == true ? _computerBadge() : null,
                         ),
                     ] else ...[
                       const UiText(

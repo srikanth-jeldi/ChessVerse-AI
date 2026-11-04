@@ -80,3 +80,51 @@ class DailyPuzzleStreak extends StatelessWidget {
     );
   }
 }
+
+class DailyStreakScreen extends StatelessWidget {
+  const DailyStreakScreen({super.key, required this.onPractice});
+  final VoidCallback onPractice;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const UiText('Daily Streak')),
+    body: SafeArea(child: ValueListenableBuilder<int>(
+      valueListenable: LocalGameArchive.activityRevision,
+      builder: (context, _, child) {
+        final streak = LocalGameArchive.stats().dailyStreak;
+        final done = LocalGameArchive.isDailyChallengeLocked;
+        final day = done && streak > 0 ? (streak - 1) % 7 + 1 : streak % 7;
+        final nextDay = (streak % 7) + 1;
+        return ListView(padding: const EdgeInsets.all(16), children: [
+          Container(padding:const EdgeInsets.all(20), decoration: BoxDecoration(
+            gradient:const LinearGradient(colors:[Color(0xFF163C46),Color(0xFF081629)]),
+            borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFFE7B54D))),
+            child:Column(children:[
+              const Icon(Icons.local_fire_department, size:58, color:Color(0xFFFFBB55)),
+              Text('$streak',style:Theme.of(context).textTheme.displayMedium),
+              const UiText('Daily Streak'),
+              const SizedBox(height:12),
+              const UiText('Build your streak with today’s challenge',textAlign:TextAlign.center),
+            ])),
+          const SizedBox(height:16),
+          Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(
+            crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+              Row(children:[const Expanded(child:UiText('Progress')),Text('$day / 7')]),
+              const SizedBox(height:10),LinearProgressIndicator(value:day / 7,minHeight:8),
+              const SizedBox(height:10),
+              Row(children:[const Expanded(child:UiText('Next')),const Icon(Icons.monetization_on,color:Color(0xFFE7B54D)),
+                Text(' ${dailyPuzzleRewardCoins(nextDay)}')]),
+            ]))),
+          DailyPuzzleStreak(streak:streak,completedToday:done),
+          Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(
+            crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+              Row(children:[Icon(done ? Icons.check_circle : Icons.extension,color:const Color(0xFF55DFCC)),
+                const SizedBox(width:10),Expanded(child:UiText(done ? 'Completed' : 'Today’s tactical challenge'))]),
+              const SizedBox(height:12),
+              FilledButton.icon(onPressed:onPractice,icon:const Icon(Icons.play_arrow),label:const UiText('Daily Puzzle')),
+            ]))),
+        ]);
+      },
+    )),
+  );
+}
