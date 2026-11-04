@@ -1,11 +1,34 @@
+import 'package:flutter/material.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/analysis/domain/pgn_position_reconstructor.dart';
-import 'package:chessverse_ai/main.dart' show ChessRules, ChessPiece;
+import 'package:chessverse_ai/main.dart' show ChessRules, ChessPiece, GameScreen, GameMode, GameResultOverlay;
 import 'package:chessverse_ai/features/puzzles/domain/puzzle_catalog.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('completed daily challenge opens result and Done returns home', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'chessverse_daily_completed_at_v1': DateTime.now().toUtc().toIso8601String(),
+    });
+    await LocalGameArchive.init();
+    LocalGameArchive.markDailyChallengeComplete('completed-test');
+    await tester.pumpWidget(MaterialApp(home:Builder(builder:(context)=>Scaffold(
+      body:TextButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(
+        builder:(_)=>const GameScreen(initiallySignedIn:true,useRemoteEngine:false,initialGameMode:GameMode.daily))),
+        child:const Text('Home'))))));
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GameResultOverlay), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    await tester.ensureVisible(find.text('Done'));
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GameScreen), findsNothing);
+    expect(find.text('Home'), findsOneWidget);
+    await LocalGameArchive.clearDeviceUserData();
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   test('all rotating daily solutions are legal and finish in checkmate', () {
     final checked = <String>{};

@@ -55,6 +55,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('+10'), findsWidgets);
     expect(find.text('+40'), findsOneWidget);
+    final play = find.widgetWithText(FilledButton, 'Daily Puzzle');
+    expect(tester.getBottomLeft(play).dy, lessThanOrEqualTo(720));
+    expect(tester.getBottomLeft(play).dy, lessThanOrEqualTo(720));
+
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(flame, findsOneWidget);

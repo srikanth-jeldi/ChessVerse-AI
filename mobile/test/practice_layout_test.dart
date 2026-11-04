@@ -101,6 +101,9 @@ void main() {
         expect(tester.takeException(), isNull);
         final action = find.widgetWithText(FilledButton, UiCopy.text('Daily Puzzle'));
         await tester.scrollUntilVisible(action, 300, scrollable: find.byType(Scrollable).first);
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        expect(action.hitTestable(), findsOneWidget);
         await tester.tap(action);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());

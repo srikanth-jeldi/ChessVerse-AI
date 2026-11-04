@@ -1369,6 +1369,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (dismissResultFirst) {
+          if (_gameMode == GameMode.daily && _dailyCompletedToday) {
+            DesktopNavigationBridge.open(context, 0);
+            return;
+          }
           setState(() => _resultVisible = false);
           return;
         }
@@ -3077,7 +3081,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _gameResultDetail =
         '$streak ${streak == 1 ? 'day' : 'days'} streak. '
         '${_dailyUnlockMessage()}';
-    _resultVisible = false;
+    _resultVisible = true;
     _coachNote = _dailyUnlockMessage();
   }
 
