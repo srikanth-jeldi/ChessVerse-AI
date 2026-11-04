@@ -691,9 +691,10 @@ class AuthOverlay extends StatelessWidget {
 }
 
 class _TurnBanner extends StatelessWidget {
-  const _TurnBanner({required this.label});
+  const _TurnBanner({required this.label, required this.playerName});
 
   final String label;
+  final String playerName;
 
   @override
   Widget build(BuildContext context) {
@@ -702,7 +703,7 @@ class _TurnBanner extends StatelessWidget {
         alignment: const Alignment(0, -0.72),
         child: Semantics(
           liveRegion: true,
-          label: label,
+          label: '$playerName · $label',
           child: TweenAnimationBuilder<double>(
             key: const ValueKey<String>('prominent-turn-banner'),
             tween: Tween<double>(begin: 0, end: 1),
@@ -717,16 +718,38 @@ class _TurnBanner extends StatelessWidget {
                 ),
               );
             },
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Color(0xFF4DA8FF),
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.2,
-                shadows: <Shadow>[
-                  Shadow(color: Colors.black, blurRadius: 12),
-                  Shadow(color: Color(0xFF0756A6), blurRadius: 24),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: Text(
+                      playerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF4DA8FF),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Text(' · ', style: TextStyle(color: Color(0xFF4DA8FF))),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Color(0xFF4DA8FF),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.2,
+                      shadows: <Shadow>[
+                        Shadow(color: Colors.black, blurRadius: 12),
+                        Shadow(color: Color(0xFF0756A6), blurRadius: 24),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

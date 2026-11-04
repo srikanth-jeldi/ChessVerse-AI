@@ -1438,7 +1438,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
       children: [
         SizedBox(key:const ValueKey('board-top-turn-slot'), height:widget.result == '*' ? MediaQuery.textScalerOf(context).scale(22) * 1.4 : 0,
           child: ClipRect(child: widget.result == '*' && mine && showTurn
-            ? _TurnBanner(label: localizeLiveCoach('YOUR TURN', code)) : null)),
+            ? _TurnBanner(playerName: widget.whiteTurn ? widget.whiteName : widget.blackName, label: localizeLiveCoach('YOUR TURN', code)) : null)),
         Listener(
           onPointerDown: (_) {
             turnTimer?.cancel();

@@ -1,5 +1,6 @@
 import '../../analysis/presentation/daily_routine_card.dart';
 import '../../daily_challenge/widgets/daily_puzzle_streak.dart';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 
 import 'dart:async';
@@ -60,7 +61,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
-  final List<Map<String,dynamic>> practiceWinners;
+  final List<Map<String, dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -99,7 +100,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 coinBalance: coinBalance,
                 activityGames: activityGames,
                 nextTournament: nextTournament,
-              practiceWinners: practiceWinners,
+                practiceWinners: practiceWinners,
                 onPlayVsAi: onPlayVsAi,
                 onAiPersonaSelected: onAiPersonaSelected,
                 onDailyChallenge: onDailyChallenge,
@@ -139,7 +140,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onFriendsGame: onFriendsGame,
               onAnalysis: onAnalysis,
               onPuzzles: onPuzzles,
-                onRoutinePuzzle: onRoutinePuzzle,
+              onRoutinePuzzle: onRoutinePuzzle,
               onSavedGames: onSavedGames,
               onLearnChess: onLearnChess,
               onProfile: onProfile,
@@ -195,7 +196,7 @@ class _MobileHome extends StatefulWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
-  final List<Map<String,dynamic>> practiceWinners;
+  final List<Map<String, dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -262,7 +263,10 @@ class _MobileHomeState extends State<_MobileHome> {
                     ),
                     const SizedBox(height: 10),
                     if (widget.practiceWinners.isNotEmpty)
-                      _PracticeWinnerBanner(widget.practiceWinners, widget.onTournaments),
+                      _PracticeWinnerBanner(
+                        widget.practiceWinners,
+                        widget.onTournaments,
+                      ),
                     _HomeHeroCarousel(
                       controller: _heroController,
                       selectedIndex: _heroIndex,
@@ -472,7 +476,8 @@ class _MobileHomeState extends State<_MobileHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    if (widget.onRoutinePuzzle != null) DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
+                    if (widget.onRoutinePuzzle != null)
+                      DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
                     const MistakeBankEntryCard(),
                     const SizedBox(height: 12),
                     ValueListenableBuilder<int>(
@@ -537,7 +542,7 @@ class _WideHome extends StatefulWidget {
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
-  final List<Map<String,dynamic>> practiceWinners;
+  final List<Map<String, dynamic>> practiceWinners;
   final VoidCallback onPlayVsAi;
   final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
@@ -619,7 +624,10 @@ class _WideHomeState extends State<_WideHome> {
                         ),
                         SizedBox(height: compact ? 10 : 16),
                         if (widget.practiceWinners.isNotEmpty)
-                          _PracticeWinnerBanner(widget.practiceWinners, widget.onTournaments),
+                          _PracticeWinnerBanner(
+                            widget.practiceWinners,
+                            widget.onTournaments,
+                          ),
                         _HomeHeroCarousel(
                           controller: _heroController,
                           selectedIndex: _heroIndex,
@@ -855,7 +863,8 @@ class _WideHomeState extends State<_WideHome> {
                           ],
                         ),
                         const SizedBox(height: 18),
-                        if (widget.onRoutinePuzzle != null) DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
+                        if (widget.onRoutinePuzzle != null)
+                          DailyRoutineCard(onPuzzle: widget.onRoutinePuzzle!),
                         const MistakeBankEntryCard(),
                         const SizedBox(height: 18),
                         ValueListenableBuilder<int>(
@@ -900,64 +909,73 @@ class _ProgressPulse extends StatelessWidget {
     return Semantics(
       label:
           'Level ${rewards.level}, ${rewards.xp} XP, ${rewards.streak} day streak',
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xD90A1B2B),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x664BDAC7)),
+      child: InkWell(
+        key: const ValueKey('home-open-daily-streak'),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const UiText('Daily Streak')),
+              body: SafeArea(
+                child: ListView(
+                  children: [
+                    DailyPuzzleStreak(
+                      streak: LocalGameArchive.stats().dailyStreak,
+                      completedToday: LocalGameArchive.isDailyChallengeLocked,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-        child: Row(
-          children: <Widget>[
-            const Icon(
-              Icons.workspace_premium_rounded,
-              color: Color(0xFFE7B54D),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: UiText(
-                'LEVEL {0}',
-                values: [rewards.level],
-                style: const TextStyle(fontWeight: FontWeight.w900),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: wide ? 20 : 14,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xD90A1B2B),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x664BDAC7)),
+          ),
+          child: Row(
+            children: <Widget>[
+              const Icon(
+                Icons.local_fire_department_rounded,
+                color: Color(0xFFE7B54D),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: rewards.levelProgress,
-                  minHeight: 7,
-                  backgroundColor: const Color(0xFF263C4D),
-                  color: const Color(0xFF54DECA),
+              const SizedBox(width: 10),
+              Flexible(
+                child: UiText(
+                  'LEVEL {0}',
+                  values: [rewards.level],
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            UiText(
-              '{0} XP',
-              values: [rewards.xp],
-              style: const TextStyle(
-                color: Color(0xFF54DECA),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            IconButton(
-              key: const ValueKey('home-open-daily-streak'),
-              tooltip: uiText(context, 'Daily Streak'),
-              icon: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF9B45)),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const UiText('Daily Streak')),
-                  body: SafeArea(child: ListView(children: [
-                    DailyPuzzleStreak(streak: LocalGameArchive.stats().dailyStreak,
-                      completedToday: LocalGameArchive.isDailyChallengeLocked),
-                  ])),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: rewards.levelProgress,
+                    minHeight: 7,
+                    backgroundColor: const Color(0xFF263C4D),
+                    color: const Color(0xFF54DECA),
+                  ),
                 ),
-              )),
-            ),
-            if (rewards.streak > 0) Text('${rewards.streak}'),
-          ],
+              ),
+              const SizedBox(width: 12),
+              UiText(
+                '{0} XP',
+                values: [rewards.xp],
+                style: const TextStyle(
+                  color: Color(0xFF54DECA),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (rewards.streak > 0) Text('${rewards.streak}'),
+            ],
+          ),
         ),
       ),
     );
@@ -1905,7 +1923,7 @@ class _BrandWordmark extends StatelessWidget {
 
 class _PracticeWinnerBanner extends StatefulWidget {
   const _PracticeWinnerBanner(this.results, this.onTap);
-  final List<Map<String,dynamic>> results;
+  final List<Map<String, dynamic>> results;
   final VoidCallback onTap;
   @override
   State<_PracticeWinnerBanner> createState() => _PracticeWinnerBannerState();
@@ -1918,31 +1936,47 @@ class _PracticeWinnerBannerState extends State<_PracticeWinnerBanner> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     rotation?.cancel();
-    if (!MediaQuery.disableAnimationsOf(context) && TickerMode.valuesOf(context).enabled) {
-      rotation = Timer.periodic(const Duration(seconds:5), (_) {
+    if (!MediaQuery.disableAnimationsOf(context) &&
+        TickerMode.valuesOf(context).enabled) {
+      rotation = Timer.periodic(const Duration(seconds: 5), (_) {
         if (widget.results.length > 1) setState(() => index++);
       });
     }
   }
+
   @override
-  void dispose() { rotation?.cancel(); super.dispose(); }
+  void dispose() {
+    rotation?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final result = widget.results[index % widget.results.length];
-    final finished = DateTime.tryParse(result['finishedAt'] as String? ?? '')?.toLocal();
+    final finished = DateTime.tryParse(result['finishedAt'] as String? ?? '')
+        ?.toLocal();
     if (finished == null) return const SizedBox.shrink();
     final age = DateTime.now().difference(finished);
-    if (age.isNegative || age >= const Duration(days:1)) return const SizedBox.shrink();
+    if (age.isNegative || age >= const Duration(days: 1))
+      return const SizedBox.shrink();
     final locale = MaterialLocalizations.of(context);
     final time = locale.formatTimeOfDay(TimeOfDay.fromDateTime(finished));
     return Card(
       child: ListTile(
         onTap: widget.onTap,
         leading: const Icon(Icons.emoji_events, color: Color(0xffedbd55)),
-        title: AnimatedSwitcher(duration: Duration(milliseconds:MediaQuery.disableAnimationsOf(context)?0:250),
-          child: Text(result['name'] as String, key: ValueKey(result['name']))),
-        subtitle: Text('${uiText(context, 'Daily Practice Cup')} · ${uiText(context, age < const Duration(minutes:5) ? 'Just won' : 'Champion')} · ${locale.formatShortDate(finished)} $time'),
-        trailing: result['bot'] == true ? Icon(Icons.smart_toy, semanticLabel:uiText(context,'AI')) : null,
+        title: AnimatedSwitcher(
+          duration: Duration(
+            milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 250,
+          ),
+          child: Text(result['name'] as String, key: ValueKey(result['name'])),
+        ),
+        subtitle: Text(
+          '${uiText(context, 'Daily Practice Cup')} · ${uiText(context, age < const Duration(minutes: 5) ? 'Just won' : 'Champion')} · ${locale.formatShortDate(finished)} $time',
+        ),
+        trailing: result['bot'] == true
+            ? Icon(Icons.smart_toy, semanticLabel: uiText(context, 'AI'))
+            : null,
       ),
     );
   }
