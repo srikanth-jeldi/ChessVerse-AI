@@ -1728,7 +1728,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final playArea = Column(children: [
                 SizedBox(key:const ValueKey('board-top-turn-slot'), height: turnHeight, child: ClipRect(child:
                   _signedIn && _gameResultTitle == null && yourTurn && _turnBannerVisible
-                    ? _TurnBanner(playerName: sideToMoveWhite ? _whitePlayerName : _blackPlayerName, label: _localizedLiveCoachText(_gameMode == GameMode.local
+                    ? _TurnBanner(label: _localizedLiveCoachText(_gameMode == GameMode.local
                       ? (_localWhiteToMove ? 'PLAYER 1 • WHITE' : 'PLAYER 2 • BLACK') : 'YOUR TURN', _coachLanguageCode))
                     : null)),
                 Expanded(child:arenaBoard),

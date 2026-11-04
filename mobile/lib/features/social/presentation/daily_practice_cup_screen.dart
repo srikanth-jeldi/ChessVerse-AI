@@ -338,8 +338,8 @@ class _CupState extends State<DailyPracticeCupScreen> {
           ListTile(
             leading: PlayerAvatar(name: name(i)),
 
-            title: Text(name(i)),
-            trailing: Row(mainAxisSize: MainAxisSize.min, children:[if(seats[i]['bot'] == true) _computerBadge(), const SizedBox(width:8), Text('${scores[i]}')]),
+            title: Wrap(spacing:8,runSpacing:4,crossAxisAlignment:WrapCrossAlignment.center, children:[Text(name(i)), if(seats[i]['bot'] == true) _computerBadge()]),
+            trailing: Text('${scores[i]}'),
           ),
       ],
     );
@@ -460,8 +460,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
                       for (final seat in seats)
                         ListTile(
                           leading: PlayerAvatar(name: seat['name']),
-                          title: Text(seat['name']),
-                          trailing: seat['bot'] == true ? _computerBadge() : null,
+                          title: Wrap(spacing:8,runSpacing:4,crossAxisAlignment:WrapCrossAlignment.center, children:[Text(seat['name']), if(seat['bot'] == true) _computerBadge()]),
                         ),
                     ] else ...[
                       const UiText(
