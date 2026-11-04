@@ -53,7 +53,7 @@ void main() {
     await tester.ensureVisible(flame);
     await tester.tap(flame);
     await tester.pumpAndSettle();
-    expect(find.text('+10'), findsOneWidget);
+    expect(find.text('+10'), findsWidgets);
     expect(find.text('+40'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();

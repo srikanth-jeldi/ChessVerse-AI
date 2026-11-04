@@ -1,0 +1,4 @@
+<en-GB>
+A new gold-and-navy Daily Streak page brings together your streak, seven-day progress, next coin reward and daily puzzle. Open it from the flame on Home.
+Coach controls collapse when voice is off. Turn reminders repeat above the board, and Daily Challenge controls scroll clearly into view.
+</en-GB>

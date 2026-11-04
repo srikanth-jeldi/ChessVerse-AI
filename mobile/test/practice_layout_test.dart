@@ -96,6 +96,13 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        await tester.pumpWidget(app(DailyStreakScreen(onPractice: () {})));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final action = find.widgetWithText(FilledButton, UiCopy.text('Daily Puzzle'));
+        await tester.scrollUntilVisible(action, 300, scrollable: find.byType(Scrollable).first);
+        await tester.tap(action);
+        expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
     );
