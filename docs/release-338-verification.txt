@@ -1,0 +1,98 @@
+RELEASE HOLD - candidate only; final device/performance validation pending.
+
+ChessVerseAI 1.3.71 (338) - release verification, 4 November 2026
+
+Included changes
+- Gold/navy design updates, Collection wallet and tabs, removed decorative badge above Collection heading.
+- Home shortcut grid uses three columns; daily practice cards and screen spacing updated.
+- Muting automatic coach audio keeps the written AI Coach content available.
+- Android board sounds use BytesSource rather than the UrlSource file-provider path.
+- Collection header king and miniature fallback pieces decode at bounded sizes.
+  Board and badge catalogue artwork was already resized; it retains its existing size.
+- ARM32, ARM64 and x86_64 remain supported. No native library removal for size savings.
+
+Validation scope
+- Targeted automated suite: 2,294 tests passed, including all-language screen layouts,
+  loaded/error/dialog/keyboard interaction matrix, Collection, enlarged text, voice layout,
+  bottom spacing, audio and startup regressions.
+- F41 physical-device English Collection smoke test: header icon removal, wallet,
+  Boards / 3D pieces / Badges tabs, and scrolling to the last badge checked.
+  No overflow exceptions found in the inspected test-app log buffer.
+- All screens in all 34 languages have NOT been manually verified on a physical device.
+- Full regression, static analysis and artifact verification results are recorded below
+  after completion.
+
+Stability and performance limitations
+- The identified Play vitals audio ANR cluster was observed on old builds 249/311.
+  The BytesSource change avoids that specific main-thread ContentResolver/Binder path;
+  it is a mitigation, not evidence that every ANR is resolved.
+- Existing historical events remain in Play/Firebase reporting windows. Validate the
+  new version separately after rollout; do not close issues only to clear the list.
+- F41 DEBUG activity cold launch: 8,093 ms (am start -W). This is not release startup
+  timing, not time-to-interactive, and not a valid comparison to Play startup metrics.
+- Debug test-app PSS after UI exploration: approximately 701 MiB. Debug/JIT overhead
+  makes this unsuitable as a production memory benchmark.
+- Production cold/warm startup and frame-time improvement are not yet confirmed.
+- This release does not include the unfinished replacement of every premium chess piece.
+
+Completed regression results
+- Full non-golden suite: 3,813 passed, 3 skipped, 5 failures initially.
+- Four stale collapse expectations were updated to match audio-only mute behavior.
+- Post-game layout test explicitly disables sound in stored preferences so a native
+  audio mock cannot leave a pending prepare timer during a visual-only test.
+- All affected files plus Collection localization rerun: 153 passed, zero failures.
+- flutter analyze --no-pub: No issues found.
+- Release builds after tests must regenerate platform tooling: omit --no-pub.
+  Flutter 3.47.4 otherwise preserves the debug integration_test registration while
+  Gradle correctly excludes that dev-only plugin from release dependencies.
+
+Artifact verification
+- Release AAB compiled successfully; version 1.3.71, code 338, production package
+  com.epitomehub.chessverse, production AdMob app ID, not debuggable.
+- jarsigner: jar verified (normal self-signed Android upload certificate warnings).
+- ELF validation: 12 native libraries, all ARM32/ARM64/x86_64 present.
+- All 294 protected asset/native paths from 337 remain; all 34 language catalogues
+  remain and preserve existing keys with nonempty translations.
+- Strict byte-for-byte baseline check did NOT pass: libdartjni/libflutter payloads
+  differ from archived 337; no native files were removed. See completeness.json.
+- Bundletool maximum compressed download estimates (decimal MB):
+  armeabi-v7a 24.807; arm64-v8a 25.028; x86_64 25.211.
+  The strict 25,000,000-byte target is therefore NOT met on ARM64/x86_64.
+- Dart symbols and SHA256 are included beside the AAB.
+- F41 disconnected before final release performance measurement. No new claim of
+  release startup/frame-time improvement or complete physical 34-language coverage.
+
+Follow-up device audit
+- F41 rediscovered at 192.168.0.192:46741. Fixture audit executed 94 cases
+  without reported test failures before being deliberately stopped for stronger
+  end-of-scroll assertions. This is not 34-language full completion.
+- Screenshot review raised a question about Profile bottom reachability. Added
+  an explicit extentAfter <= 1 assertion to the device audit, pending rerun.
+- Focused profile/home/Cup rerun built and installed but device went offline;
+  Dart VM WebSocket disconnected before cases ran. Reconnect refused (10061).
+- Installed production app is Play-signed; local upload signing certificate differs.
+  Exact-AAB auth/ads/push testing requires a Play internal-testing install; existing
+  production app/data were not removed.
+- RELEASE HOLD remains. No complete device/performance sign-off.
+
+Latest follow-up
+- F41 reconnected at 192.168.0.192:32999. Focused English Profile/Home/Cup
+  rerun passed all 3 cases, including extentAfter <= 1 at the scroll end.
+- Expanded the multilingual device inventory to include Collection.
+- Corrected the audit to exclude intentionally non-scrollable decorative grids
+  from scroll-end assertions; containing pages remain subject to the check.
+- Full 34-language fixture audit restarted but did not finish; no sign-off.
+  Live log: .build-tmp/release338-device-full.log.
+  Captures: .build-tmp/device338-full/chessverse-ui-audit/.
+- User agreed to upload 338 to Play internal testing. Installation and live
+  authentication/ads/push checks are still pending; no production rollout approved.
+
+Git hand-off status
+- Latest full device run stopped at 73 passed, 1 failed, remaining cases incomplete.
+  English academy_lesson failed the scroll-end assertion (381.51 remaining).
+  This requires investigation of the gesture target versus actual screen reachability.
+  Do not describe the physical 34-language audit as complete or all passing.
+- New metallic coin-stack/button-slate experiment was deferred at the user's request;
+  it is excluded from the committed application. Local copies are retained in
+  .build-tmp/deferred-collection-polish for later work.
+- Build 338 remains an internal-test candidate, not production-approved.

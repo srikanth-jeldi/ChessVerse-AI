@@ -18,6 +18,7 @@ import '../../../main.dart'
         boardPalettes,
         gamePiecesFromFen;
 import '../../../core/widgets/player_avatar.dart';
+import '../../../core/widgets/chessverse_card.dart';
 import '../../analysis/domain/pgn_position_reconstructor.dart'
     show replayUciLine;
 import '../data/community_api.dart';
@@ -332,7 +333,10 @@ class _CupState extends State<DailyPracticeCupScreen> {
     }
     final order = List.generate(6, (i) => i)
       ..sort((a, b) => scores[b].compareTo(scores[a]));
-    return Column(
+    return ChessVerseCard(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
       children: [
         for (final i in order)
           ListTile(
@@ -342,6 +346,7 @@ class _CupState extends State<DailyPracticeCupScreen> {
             trailing: Text('${scores[i]}'),
           ),
       ],
+      ),
     );
   }
 
@@ -478,16 +483,9 @@ class _CupState extends State<DailyPracticeCupScreen> {
                           g['white'] == cup!['mySeat'] ||
                           g['black'] == cup!['mySeat'],
                     ))
-                      Card(
-                        color: AppColors.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color: g['result'] == '*'
-                                ? const Color(0xff388d83)
-                                : AppColors.border,
-                          ),
-                        ),
+                      ChessVerseCard(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
                         child: ListTile(
                           onTap: busy
                               ? null

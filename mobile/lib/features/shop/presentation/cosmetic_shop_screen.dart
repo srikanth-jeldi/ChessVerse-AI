@@ -256,12 +256,15 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         backgroundColor: const Color(0xFF061524),
         bottomNavigationBar: const BannerAdSlot(),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF0B1520),
+          backgroundColor: const Color(0xFF031521),
+          centerTitle: true,
+          foregroundColor: const Color(0xFFFFD978),
           title: Text(
             _s('collection'),
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
+              color: Color(0xFFFFD978),
+              fontFamily: 'Georgia',
+              fontSize: 24,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.3,
             ),
@@ -278,7 +281,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             gradient: RadialGradient(
               center: Alignment.topCenter,
               radius: 1.2,
-              colors: [Color(0xFF101E2C), Color(0xFF0B1520), Color(0xFF0B1520)],
+              colors: [Color(0xFF123E50), Color(0xFF041C2B), Color(0xFF020D16)],
             ),
           ),
           child: _busy && _shop == null
@@ -378,7 +381,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 wide ? 40 : 16,
                 16,
                 wide ? 40 : 16,
-                120,
+                24 + MediaQuery.paddingOf(context).bottom,
               ),
               sliver: _category == 'FRAME'
                   ? SliverList(
@@ -420,28 +423,65 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Widget _hero(ShopDto s) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        _s('collection'),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 26,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.7,
-        ),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        '${_s('boards')} · ${_s('pieces')} · ${_s('badges')}',
-        style: TextStyle(color: Color(0xFF9EACBB), fontSize: 13, height: 1.5),
+      Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _s('collection'),
+                  style: const TextStyle(
+                    color: Color(0xFFFFF4D8),
+                    fontFamily: 'Georgia',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    shadows: [Shadow(color: Color(0x556ACFE3), blurRadius: 12)],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_s('boards')} · ${_s('pieces')} · ${_s('badges')}',
+                  style: const TextStyle(
+                    color: Color(0xFFC6DFEA),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ExcludeSemantics(
+            child: Image.asset(
+              'assets/pieces/premium_individual/inferno-gold/black/king.webp',
+              width: 78,
+              height: 120,
+              cacheWidth: 256,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 22),
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF101F2E),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF2A3947)),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF153C4E), Color(0xFF041B2B), Color(0xFF082734)],
+          ),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFFE9BF63), width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x30FFCC66),
+              blurRadius: 16,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -456,15 +496,18 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                         _s('wallet'),
                         style: TextStyle(
                           color: Color(0xFFA7B4C2),
-                          fontSize: 10,
-                          letterSpacing: 1.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       SizedBox(height: 5),
                       Text(
                         _s('coins'),
-                        style: TextStyle(color: Colors.white, fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -501,7 +544,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       ? _claimDaily
                       : null,
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFE8C779),
+                    foregroundColor: const Color(0xFF62E8D5),
                     disabledForegroundColor: const Color(0xFF788796),
                   ),
                   child: Text(
@@ -512,34 +555,51 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed:
-                  _busy ||
-                      _preparingRewardAd ||
-                      _verifyingReward ||
-                      _rewardedCooldownRemaining() > Duration.zero ||
-                      (_rewards?.rewardedAdsRemaining ?? 0) <= 0
-                  ? null
-                  : () => _watchAd(s),
-              icon: Icon(
-                _preparingRewardAd || _verifyingReward
-                    ? Icons.hourglass_top_rounded
-                    : Icons.play_circle_outline_rounded,
-                size: 21,
-              ),
-              label: _rewardVideoLabel(),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 52),
-                backgroundColor: const Color(0xFFDEC18A),
-                foregroundColor: const Color(0xFF15202B),
-                disabledBackgroundColor: const Color(0xFF1D2C3A),
-                disabledForegroundColor: const Color(0xFF9AAABA),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFE0A634),
+                    Color(0xFFFFE8A0),
+                    Color(0xFFF5BE43),
+                  ],
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFE6A2)),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x40FFC95C), blurRadius: 12),
+                ],
+              ),
+              child: FilledButton.icon(
+                onPressed:
+                    _busy ||
+                        _preparingRewardAd ||
+                        _verifyingReward ||
+                        _rewardedCooldownRemaining() > Duration.zero ||
+                        (_rewards?.rewardedAdsRemaining ?? 0) <= 0
+                    ? null
+                    : () => _watchAd(s),
+                icon: Icon(
+                  _preparingRewardAd || _verifyingReward
+                      ? Icons.hourglass_top_rounded
+                      : Icons.play_circle_outline_rounded,
+                  size: 21,
+                ),
+                label: _rewardVideoLabel(),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 52),
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: const Color(0xFF15202B),
+                  disabledBackgroundColor: const Color(0xFF1D2C3A),
+                  disabledForegroundColor: const Color(0xFF9AAABA),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
               ),
             ),
@@ -786,6 +846,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     child: Wrap(
       spacing: 10,
+      runSpacing: 10,
       children: [
         for (final t in ['BOARD', 'PIECES', 'FRAME'])
           ChoiceChip(
@@ -796,7 +857,18 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             }),
             selected: _category == t,
             onSelected: (_) => setState(() => _category = t),
-            selectedColor: const Color(0xFF263D4D),
+            selectedColor: const Color(0xFF105555),
+            backgroundColor: const Color(0xFF041622),
+            side: BorderSide(
+              color: _category == t
+                  ? const Color(0xFF64F2DF)
+                  : const Color(0xFFCFAB64),
+              width: 1.4,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
             labelStyle: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -811,12 +883,16 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     final bool canRestoreDefault = _canRestoreDefault(item);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0A2033),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF10344A), Color(0xFF031725), Color(0xFF123C43)],
+        ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: item.equipped
               ? const Color(0xFF5DE9D3)
-              : const Color(0xFF244056),
+              : const Color(0xFFD1AD62),
           width: item.equipped ? 2 : 1,
         ),
         boxShadow: const [
@@ -832,7 +908,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         children: [
           if (item.category == 'FRAME')
             SizedBox(
-              height: 220,
+              height: 164,
               width: double.infinity,
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -1160,6 +1236,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       ),
                       child: Image.asset(
                         'assets/pieces/staunton_${piece.side}_${piece.name}.png',
+                        cacheWidth: 160,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
                       ),

@@ -29,15 +29,15 @@ class ChessVerseButton extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 52),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: enabled ? AppColors.primaryGradient : null,
+            gradient: enabled ? AppColors.goldGradient : null,
             color: enabled ? null : AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
             boxShadow: enabled
                 ? const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x552D145F),
-                      blurRadius: 18,
-                      offset: Offset(0, 8),
+                      color: Color(0x20EABF61),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
                     ),
                   ]
                 : null,
@@ -46,6 +46,7 @@ class ChessVerseButton extends StatelessWidget {
             onPressed: enabled ? onPressed : null,
             style: FilledButton.styleFrom(
               backgroundColor: Colors.transparent,
+              foregroundColor: AppColors.backgroundDeep,
               disabledBackgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
@@ -73,8 +74,8 @@ class ChessVerseButton extends StatelessWidget {
                         Flexible(
                           child: UiActionText(
                             label,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: enabled ? AppColors.backgroundDeep : AppColors.textMuted,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                             ),

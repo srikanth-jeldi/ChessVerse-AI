@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Centralized sound effects for ChessVerse.
 ///
@@ -177,6 +179,20 @@ class ChessSoundService {
       return;
     }
     try {
+      // Android's file-path MediaPlayer source can synchronously enter a
+      // ContentProvider Binder call (seen in Play vitals UrlSource ANRs).
+      // Bundled effects are small: use MediaDataSource bytes instead, as the
+      // cloud narration player already does, without a temporary file URI.
+      final Source source;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final data = await rootBundle.load('assets/$assetPath');
+        source = BytesSource(
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        );
+      } else {
+        source = AssetSource(assetPath);
+      }
+      if (!enabled) return;
       await player.stop();
       // Brief board effects must not steal focus and pause the voice coach.
       await player.setAudioContext(
@@ -189,7 +205,8 @@ class ChessSoundService {
         ),
       );
       await player.setVolume(volume);
-      await player.play(AssetSource(assetPath));
+      if (!enabled) return;
+      await player.play(source);
     } catch (_) {
       // Audio assets may be added after the service is wired. Missing or
       // unsupported audio files should never block gameplay/testing.

@@ -71,6 +71,7 @@ void main() {
   ]) {
     testWidgets('completed board/actions fit $scenario', (tester) async {
       FlutterSecureStorage.setMockInitialValues({
+        'settings.sound': 'false',
         'settings.coachLanguage': scenario.$2,
         'settings.language': scenario.$2,
       });

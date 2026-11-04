@@ -1125,311 +1125,296 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
             colors: <Color>[Color(0xFF0B3151), Color(0xFF04111E)],
           ),
         ),
-        child: Column(
-          children: [
-            FutureBuilder<List<ComputerGameDraft>>(
-              future: _drafts,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return ListTile(
-                    title: const UiText('Saved game could not sync'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: _refresh,
-                    ),
-                  );
-                }
-                if (!snapshot.hasData) return const LinearProgressIndicator();
-                if (snapshot.data!.isEmpty) {
-                  return ListTile(
-                    title: const UiText('No paused computer game'),
-                    trailing: SizedBox(
-                      width: 96,
-                      child: TextButton(
-                        onPressed: widget.onPlayAgain == null
-                            ? null
-                            : _startNewGame,
-                        child: const UiActionText(
-                          'New Game',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                final draft = snapshot.data!.first;
-                return ListTile(
-                  title: const UiText('Continue computer game'),
-                  subtitle: UiText(
-                    '{0} vs {1} · {2} half-moves · Level {3}',
-                    values: [
-                      draft.whiteName,
-                      draft.blackName,
-                      draft.plyCount,
-                      draft.level.toInt(),
-                    ],
-                  ),
-                  trailing: SizedBox(
-                    width: 96,
-                    child: FilledButton(
-                      onPressed: widget.onResume == null
-                          ? null
-                          : () async {
-                              await widget.onResume!(draft);
-                              if (mounted) await _refresh();
-                            },
-                      child: const UiActionText(
-                        'Continue',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            _PgnCoachBanner(
-              onImport: _chooseImportFormat,
-              onExport: _chooseExportFormat,
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: FutureBuilder<List<OnlineMatchDto>>(
-                  future: _online,
-                  builder:
-                      (
-                        BuildContext context,
-                        AsyncSnapshot<List<OnlineMatchDto>> snapshot,
-                      ) {
-                        final List<OnlineMatchDto> online =
-                            snapshot.data ?? const <OnlineMatchDto>[];
-                        final Map<String, SavedGameRecord> uniqueLocal =
-                            <String, SavedGameRecord>{};
-                        for (final SavedGameRecord game in <SavedGameRecord>[
-                          ...LocalGameArchive.games,
-                          ..._cloudGames,
-                        ]) {
-                          uniqueLocal.putIfAbsent(
-                            _gameFingerprint(game),
-                            () => game,
-                          );
-                        }
-                        final List<SavedGameRecord> local =
-                            uniqueLocal.values.toList()..sort(
-                              (a, b) => b.playedAt.compareTo(a.playedAt),
-                            );
-                        final List<SavedGameRecord> exportableGames =
-                            <SavedGameRecord>[
-                              ...local,
-                              ...online.map(_onlineAsSavedGame),
-                            ];
-                        if (snapshot.connectionState ==
-                                ConnectionState.waiting &&
-                            online.isEmpty &&
-                            local.isEmpty) {
-                          return const SkeletonPage(rows: 5);
-                        }
-                        if (snapshot.hasError &&
-                            online.isEmpty &&
-                            local.isEmpty) {
-                          return _HistoryMessage(
-                            icon: Icons.cloud_off_rounded,
-                            message: uiText(
-                              context,
-                              'Match history could not be loaded. Pull to retry.',
-                            ),
-                            detail: '${snapshot.error}',
-                          );
-                        }
-                        if (online.isEmpty && local.isEmpty) {
-                          return _HistoryMessage(
-                            icon: Icons.history_rounded,
-                            message: uiText(
-                              context,
-                              'Your completed matches will appear here.',
-                            ),
-                          );
-                        }
-                        return ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                          children: <Widget>[
-                            if (_historySyncFailed || snapshot.hasError)
-                              const UiText(
-                                'Some account history could not sync. Pull to retry.',
-                              ),
-                            Builder(
-                              builder: (_) {
-                                final outcomes = [
-                                  ...local
-                                      .where(
-                                        (g) =>
-                                            g.mode == 'Play vs AI' ||
-                                            g.mode == '2 Players',
-                                      )
-                                      .map((g) => g.playerOutcome),
-                                  ...online
-                                      .where(
-                                        (g) => [
-                                          '1-0',
-                                          '0-1',
-                                          '1/2-1/2',
-                                        ].contains(g.result),
-                                      )
-                                      .map(
-                                        (g) => _MatchPresentation(g).draw
-                                            ? 'draw'
-                                            : _MatchPresentation(g).won
-                                            ? 'win'
-                                            : 'loss',
-                                      ),
-                                ];
-                                final wins = outcomes
-                                    .where((o) => o == 'win')
-                                    .length;
-                                final losses = outcomes
-                                    .where((o) => o == 'loss')
-                                    .length;
-                                final draws = outcomes
-                                    .where((o) => o == 'draw')
-                                    .length;
-                                final total = wins + losses + draws;
-                                final gamesPlayed = outcomes.length;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: UiText(
-                                    'Recorded matches: {0} games · {1} wins · {2} losses · {3} draws · {4}% wins',
-                                    values: [
-                                      gamesPlayed,
-                                      wins,
-                                      losses,
-                                      draws,
-                                      total == 0
-                                          ? 0
-                                          : (wins * 100 / total).round(),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                            Wrap(
-                              spacing: 6,
-                              children:
-                                  [
-                                        'All',
-                                        'Computer',
-                                        'Local',
-                                        'Imported',
-                                        'Online',
-                                      ]
-                                      .map(
-                                        (f) => ChoiceChip(
-                                          label: Text(f),
-                                          selected: _filter == f,
-                                          onSelected: (_) =>
-                                              setState(() => _filter = f),
-                                        ),
-                                      )
-                                      .toList(),
-                            ),
-                            if (_selectionMode) ...<Widget>[
-                              const SizedBox(height: 12),
-                              _MultiSelectToolbar(
-                                count: _selectedGameIds.length,
-                                onCancel: () => setState(() {
-                                  _selectedGameIds.clear();
-                                  _selectionMode = false;
-                                }),
-                                onExportPgn: () => _exportSelectedGames(
-                                  exportableGames,
-                                  'pgn',
-                                ),
-                                onExportFen: () => _exportSelectedGames(
-                                  exportableGames,
-                                  'fen',
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            if (online.isNotEmpty &&
-                                (_filter == 'All' ||
-                                    _filter == 'Online')) ...<Widget>[
-                              const _Heading('ONLINE ARENA'),
-                              const SizedBox(height: 4),
-                              const UiText(
-                                'Tap a completed game for full AI analysis. Use the replay button to watch every move.',
-                                style: TextStyle(
-                                  color: Color(0xFF8FA5B1),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              ...online.map((OnlineMatchDto match) {
-                                final SavedGameRecord game = _onlineAsSavedGame(
-                                  match,
-                                );
-                                return _OnlineHistoryCard(
-                                  match,
-                                  selected: _selectedGameIds.contains(
-                                    _gameFingerprint(game),
-                                  ),
-                                  selectionMode: _selectionMode,
-                                  onTap: () => _selectionMode
-                                      ? _toggleGameSelection(game)
-                                      : _openCompleted(game),
-                                  onReplay: () => Navigator.of(context)
-                                      .push<void>(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) =>
-                                              OnlineMatchReplayScreen(
-                                                match: match,
-                                              ),
-                                        ),
-                                      ),
-                                  onExport: () => _showGameActions(
-                                    game,
-                                    allowDelete: false,
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: 20),
-                            ],
-                            if (local.isNotEmpty &&
-                                _filter != 'Online') ...<Widget>[
-                              const _Heading('SAVED GAMES'),
-                              const SizedBox(height: 10),
-                              ...local
-                                  .where(
-                                    (g) =>
-                                        _filter == 'All' ||
-                                        (_filter == 'Computer'
-                                            ? g.mode == 'Play vs AI'
-                                            : _filter == 'Imported'
-                                            ? g.mode.startsWith('Imported ')
-                                            : g.mode == '2 Players'),
-                                  )
-                                  .map(
-                                    (g) => _LocalHistoryCard(
-                                      g,
-                                      selected: _selectedGameIds.contains(
-                                        _gameFingerprint(g),
-                                      ),
-                                      selectionMode: _selectionMode,
-                                      onTap: () => _selectionMode
-                                          ? _toggleGameSelection(g)
-                                          : _openCompleted(g),
-                                      onLongPress: () => _showGameActions(g),
-                                      onActions: () => _showGameActions(g),
-                                    ),
-                                  ),
-                            ],
-                          ],
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  FutureBuilder<List<ComputerGameDraft>>(
+                    future: _drafts,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return ListTile(
+                          title: const UiText('Saved game could not sync'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.refresh),
+                            onPressed: _refresh,
+                          ),
                         );
-                      },
-                ),
+                      }
+                      if (!snapshot.hasData) {
+                        return const LinearProgressIndicator();
+                      }
+                      if (snapshot.data!.isEmpty) {
+                        return ListTile(
+                          title: const UiText('No paused computer game'),
+                          trailing: SizedBox(
+                            width: 96,
+                            child: TextButton(
+                              onPressed: widget.onPlayAgain == null
+                                  ? null
+                                  : _startNewGame,
+                              child: const UiActionText(
+                                'New Game',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      final draft = snapshot.data!.first;
+                      return ListTile(
+                        title: const UiText('Continue computer game'),
+                        subtitle: UiText(
+                          '{0} vs {1} · {2} half-moves · Level {3}',
+                          values: [
+                            draft.whiteName,
+                            draft.blackName,
+                            draft.plyCount,
+                            draft.level.toInt(),
+                          ],
+                        ),
+                        trailing: SizedBox(
+                          width: 96,
+                          child: FilledButton(
+                            onPressed: widget.onResume == null
+                                ? null
+                                : () async {
+                                    await widget.onResume!(draft);
+                                    if (mounted) await _refresh();
+                                  },
+                            child: const UiActionText(
+                              'Continue',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _PgnCoachBanner(
+                    onImport: _chooseImportFormat,
+                    onExport: _chooseExportFormat,
+                  ),
+                ],
               ),
             ),
           ],
+          body: RefreshIndicator(
+            onRefresh: _refresh,
+            child: FutureBuilder<List<OnlineMatchDto>>(
+              future: _online,
+              builder:
+                  (
+                    BuildContext context,
+                    AsyncSnapshot<List<OnlineMatchDto>> snapshot,
+                  ) {
+                    final List<OnlineMatchDto> online =
+                        snapshot.data ?? const <OnlineMatchDto>[];
+                    final Map<String, SavedGameRecord> uniqueLocal =
+                        <String, SavedGameRecord>{};
+                    for (final SavedGameRecord game in <SavedGameRecord>[
+                      ...LocalGameArchive.games,
+                      ..._cloudGames,
+                    ]) {
+                      uniqueLocal.putIfAbsent(
+                        _gameFingerprint(game),
+                        () => game,
+                      );
+                    }
+                    final List<SavedGameRecord> local =
+                        uniqueLocal.values.toList()
+                          ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
+                    final List<SavedGameRecord> exportableGames =
+                        <SavedGameRecord>[
+                          ...local,
+                          ...online.map(_onlineAsSavedGame),
+                        ];
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        online.isEmpty &&
+                        local.isEmpty) {
+                      return const SkeletonPage(rows: 5);
+                    }
+                    if (snapshot.hasError && online.isEmpty && local.isEmpty) {
+                      return _HistoryMessage(
+                        icon: Icons.cloud_off_rounded,
+                        message: uiText(
+                          context,
+                          'Match history could not be loaded. Pull to retry.',
+                        ),
+                        detail: '${snapshot.error}',
+                      );
+                    }
+                    if (online.isEmpty && local.isEmpty) {
+                      return _HistoryMessage(
+                        icon: Icons.history_rounded,
+                        message: uiText(
+                          context,
+                          'Your completed matches will appear here.',
+                        ),
+                      );
+                    }
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                      children: <Widget>[
+                        if (_historySyncFailed || snapshot.hasError)
+                          const UiText(
+                            'Some account history could not sync. Pull to retry.',
+                          ),
+                        Builder(
+                          builder: (_) {
+                            final outcomes = [
+                              ...local
+                                  .where(
+                                    (g) =>
+                                        g.mode == 'Play vs AI' ||
+                                        g.mode == '2 Players',
+                                  )
+                                  .map((g) => g.playerOutcome),
+                              ...online
+                                  .where(
+                                    (g) => [
+                                      '1-0',
+                                      '0-1',
+                                      '1/2-1/2',
+                                    ].contains(g.result),
+                                  )
+                                  .map(
+                                    (g) => _MatchPresentation(g).draw
+                                        ? 'draw'
+                                        : _MatchPresentation(g).won
+                                        ? 'win'
+                                        : 'loss',
+                                  ),
+                            ];
+                            final wins = outcomes
+                                .where((o) => o == 'win')
+                                .length;
+                            final losses = outcomes
+                                .where((o) => o == 'loss')
+                                .length;
+                            final draws = outcomes
+                                .where((o) => o == 'draw')
+                                .length;
+                            final total = wins + losses + draws;
+                            final gamesPlayed = outcomes.length;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: UiText(
+                                'Recorded matches: {0} games · {1} wins · {2} losses · {3} draws · {4}% wins',
+                                values: [
+                                  gamesPlayed,
+                                  wins,
+                                  losses,
+                                  draws,
+                                  total == 0 ? 0 : (wins * 100 / total).round(),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        Wrap(
+                          spacing: 6,
+                          children:
+                              ['All', 'Computer', 'Local', 'Imported', 'Online']
+                                  .map(
+                                    (f) => ChoiceChip(
+                                      label: Text(f),
+                                      selected: _filter == f,
+                                      onSelected: (_) =>
+                                          setState(() => _filter = f),
+                                    ),
+                                  )
+                                  .toList(),
+                        ),
+                        if (_selectionMode) ...<Widget>[
+                          const SizedBox(height: 12),
+                          _MultiSelectToolbar(
+                            count: _selectedGameIds.length,
+                            onCancel: () => setState(() {
+                              _selectedGameIds.clear();
+                              _selectionMode = false;
+                            }),
+                            onExportPgn: () =>
+                                _exportSelectedGames(exportableGames, 'pgn'),
+                            onExportFen: () =>
+                                _exportSelectedGames(exportableGames, 'fen'),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        if (online.isNotEmpty &&
+                            (_filter == 'All' ||
+                                _filter == 'Online')) ...<Widget>[
+                          const _Heading('ONLINE ARENA'),
+                          const SizedBox(height: 4),
+                          const UiText(
+                            'Tap a completed game for full AI analysis. Use the replay button to watch every move.',
+                            style: TextStyle(
+                              color: Color(0xFF8FA5B1),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...online.map((OnlineMatchDto match) {
+                            final SavedGameRecord game = _onlineAsSavedGame(
+                              match,
+                            );
+                            return _OnlineHistoryCard(
+                              match,
+                              selected: _selectedGameIds.contains(
+                                _gameFingerprint(game),
+                              ),
+                              selectionMode: _selectionMode,
+                              onTap: () => _selectionMode
+                                  ? _toggleGameSelection(game)
+                                  : _openCompleted(game),
+                              onReplay: () => Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      OnlineMatchReplayScreen(match: match),
+                                ),
+                              ),
+                              onExport: () =>
+                                  _showGameActions(game, allowDelete: false),
+                            );
+                          }),
+                          const SizedBox(height: 20),
+                        ],
+                        if (local.isNotEmpty &&
+                            _filter != 'Online') ...<Widget>[
+                          const _Heading('SAVED GAMES'),
+                          const SizedBox(height: 10),
+                          ...local
+                              .where(
+                                (g) =>
+                                    _filter == 'All' ||
+                                    (_filter == 'Computer'
+                                        ? g.mode == 'Play vs AI'
+                                        : _filter == 'Imported'
+                                        ? g.mode.startsWith('Imported ')
+                                        : g.mode == '2 Players'),
+                              )
+                              .map(
+                                (g) => _LocalHistoryCard(
+                                  g,
+                                  selected: _selectedGameIds.contains(
+                                    _gameFingerprint(g),
+                                  ),
+                                  selectionMode: _selectionMode,
+                                  onTap: () => _selectionMode
+                                      ? _toggleGameSelection(g)
+                                      : _openCompleted(g),
+                                  onLongPress: () => _showGameActions(g),
+                                  onActions: () => _showGameActions(g),
+                                ),
+                              ),
+                        ],
+                      ],
+                    );
+                  },
+            ),
+          ),
         ),
       ),
     );

@@ -674,13 +674,12 @@ class ChessVerseTheme {
     const brass = Color(0xFFD6A84F);
     const mint = Color(0xFF63D2B8);
 
-    return ThemeData(
-      useMaterial3: true,
+    return AppTheme.darkTheme.copyWith(
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
         primary: brass,
         secondary: mint,
-        surface: Color(0xFF1A1B20),
+        surface: Color(0xFF0C2435),
         onSurface: Color(0xFFF6F1E8),
       ),
       scaffoldBackgroundColor: Colors.transparent,
@@ -697,37 +696,38 @@ class ChessVerseTheme {
           letterSpacing: .8,
         ),
       ),
-      fontFamily: 'Roboto',
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          color: Color(0xFFF6F1E8),
-          fontSize: 30,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-        titleLarge: TextStyle(
-          color: Color(0xFFF6F1E8),
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        titleMedium: TextStyle(
-          color: Color(0xFFE6D8BC),
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        bodyMedium: TextStyle(
-          color: Color(0xFFC8C1B6),
-          height: 1.35,
-          letterSpacing: 0,
+      textTheme: AppTheme.darkTheme.textTheme.merge(
+        const TextTheme(
+          headlineMedium: TextStyle(
+            color: Color(0xFFF6F1E8),
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
+          titleLarge: TextStyle(
+            color: Color(0xFFF6F1E8),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+          titleMedium: TextStyle(
+            color: Color(0xFFE6D8BC),
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+          bodyMedium: TextStyle(
+            color: Color(0xFFB1C4D0),
+            height: 1.35,
+            letterSpacing: 0,
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: brass,
           foregroundColor: ink,
-          minimumSize: const Size(48, 46),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -736,8 +736,8 @@ class ChessVerseTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFF6F1E8),
-          side: const BorderSide(color: Color(0xFF61553F)),
-          minimumSize: const Size(48, 46),
+          side: const BorderSide(color: Color(0xFF315366)),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

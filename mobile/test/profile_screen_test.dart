@@ -93,6 +93,18 @@ void main() {
       'Sri King',
     );
     await tester.tap(find.byKey(const ValueKey<String>('profile-avatar-2')));
+    // Saving must remain reachable on a phone while the keyboard is open.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('save-player-profile')),
+      180,
+      scrollable: find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
     await tester.tap(find.byKey(const ValueKey<String>('save-player-profile')));
     await tester.pumpAndSettle();
 

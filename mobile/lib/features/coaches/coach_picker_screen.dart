@@ -124,7 +124,7 @@ class _CoachPickerScreenState extends State<CoachPickerScreen>
               key: ValueKey('coach-${coach.name}'),
               clipBehavior: Clip.antiAlias,
               color: const Color(0xFF10283A),
-              margin: const EdgeInsets.only(bottom: 20),
+              margin: const EdgeInsets.only(bottom: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
@@ -137,10 +137,10 @@ class _CoachPickerScreenState extends State<CoachPickerScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   AspectRatio(
-                    aspectRatio: 1,
+                    aspectRatio: 1.6,
                     child: Image.asset(
                       coach.image,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       semanticLabel: coach.name,
                       cacheWidth: 512,
                     ),
@@ -153,7 +153,7 @@ class _CoachPickerScreenState extends State<CoachPickerScreen>
                         Text(
                           coach.name,
                           style: const TextStyle(
-                            fontSize: 26,
+                            fontSize: 22,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -162,13 +162,13 @@ class _CoachPickerScreenState extends State<CoachPickerScreen>
                           coach.title,
                           style: const TextStyle(
                             color: Color(0xFF59D9C3),
-                            fontSize: 18,
+                            fontSize: 16,
                           ),
                         ),
                         const SizedBox(height: 10),
                         UiText(
                           coach.description,
-                          style: const TextStyle(fontSize: 16, height: 1.4),
+                          style: const TextStyle(fontSize: 14, height: 1.4),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton(

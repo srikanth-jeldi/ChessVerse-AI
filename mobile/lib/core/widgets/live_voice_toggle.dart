@@ -7,12 +7,8 @@ class LiveVoiceToggle extends StatelessWidget {
     super.key,
     required this.enabled,
     required this.onChanged,
-    this.onExpand,
-    this.expanded = false,
   });
   final bool enabled;
-  final VoidCallback? onExpand;
-  final bool expanded;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -22,12 +18,6 @@ class LiveVoiceToggle extends StatelessWidget {
     child: SwitchListTile.adaptive(
       title: Text(uiText(context, 'Automatic voice coach')),
       dense: !enabled,
-      secondary: !enabled && onExpand != null ? IconButton(
-        key: const ValueKey('toggle-text-coach'),
-        tooltip: uiText(context, 'AI Coach'),
-        onPressed: onExpand,
-        icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
-      ) : null,
       subtitle: !enabled ? null : Text(
         uiText(
           context,

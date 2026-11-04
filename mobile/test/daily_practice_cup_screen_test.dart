@@ -301,11 +301,7 @@ void main() {
     await tester.tap(pairing);
     await tester.pumpAndSettle();
     expect(find.text('Automatic voice coach'), findsOneWidget);
-    expect(find.byKey(const ValueKey('live-coach-language')), findsNothing);
-    final expand = find.byKey(const ValueKey('toggle-text-coach'));
-    await tester.ensureVisible(expand);
-    await tester.tap(expand);
-    await tester.pump();
+    // Muting audio must not hide written coaching or its language selector.
     expect(find.byKey(const ValueKey('live-coach-language')), findsOneWidget);
     expect(find.textContaining('· AI'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('square-e2')));

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:chessverse_ai/core/audio/chess_sound_service.dart';
 
@@ -14,15 +15,29 @@ void main() {
       const player = MethodChannel('xyz.luan/audioplayers');
       const global = MethodChannel('xyz.luan/audioplayers.global');
       const events = MethodChannel('xyz.luan/audioplayers.global/events');
+      const moveEvents = MethodChannel(
+        'xyz.luan/audioplayers/events/chessverse-move',
+      );
       Map<dynamic, dynamic>? context;
+      String? sourceMethod;
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
       messenger.setMockMethodCallHandler(global, (_) async => null);
       messenger.setMockMethodCallHandler(events, (_) async => null);
+      messenger.setMockMethodCallHandler(moveEvents, (_) async => null);
       messenger.setMockMethodCallHandler(player, (call) async {
         if (call.method == 'setAudioContext') {
           context = call.arguments as Map;
         }
         if (call.method.startsWith('setSource')) {
-          throw PlatformException(code: 'test-no-playback');
+          sourceMethod = call.method;
+          messenger.handlePlatformMessage(
+            moveEvents.name,
+            const StandardMethodCodec().encodeSuccessEnvelope({
+              'event': 'audio.onPrepared',
+              'value': true,
+            }),
+            (_) {},
+          );
         }
         return null;
       });
@@ -31,11 +46,14 @@ void main() {
         await ChessSoundService.instance.move();
         expect(context, isNotNull);
         expect(context!['audioFocus'], 0);
+        expect(sourceMethod, 'setSourceBytes');
       } finally {
+        debugDefaultTargetPlatformOverride = null;
         await ChessSoundService.instance.dispose();
         messenger.setMockMethodCallHandler(player, null);
         messenger.setMockMethodCallHandler(global, null);
         messenger.setMockMethodCallHandler(events, null);
+        messenger.setMockMethodCallHandler(moveEvents, null);
       }
     },
   );

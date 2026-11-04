@@ -39,6 +39,7 @@ void main() {
     for (final entry in {
       'Roboto': 'Nirmala.ttc',
       'ArabicPreview': 'segoeui.ttf',
+      'Georgia': 'georgia.ttf',
     }.entries) {
       await (FontLoader(entry.key)..addFont(
             Future.value(
@@ -116,6 +117,11 @@ void main() {
         if (config.$2 == 1 &&
             Platform.environment['SHOP_VISUAL_FONTS'] == '1' &&
             ['en', 'te', 'ar'].contains(code)) {
+          await tester.runAsync(() => precacheImage(
+            const AssetImage('assets/pieces/premium_individual/inferno-gold/black/king.webp'),
+            tester.element(find.byType(CosmeticShopScreen)),
+          ));
+          await tester.pump();
           await expectLater(
             find.byType(Scaffold).first,
             matchesGoldenFile('goldens/shop_$code.png'),
@@ -123,9 +129,16 @@ void main() {
         }
         for (final key in ['pieces', 'badges', 'boards']) {
           final tab = find.widgetWithText(ChoiceChip, shopText(key, code));
-          await tester.ensureVisible(tab);
+          // Larger text puts the tabs below the initial sliver cache.
+          if (tab.evaluate().isEmpty) {
+            await tester.scrollUntilVisible(tab, 200,
+                scrollable: find.byType(Scrollable).first);
+          }
+          await Scrollable.ensureVisible(tester.element(tab), alignment: 0.5);
+          await tester.pump();
           await tester.tap(tab);
           await tester.pump(const Duration(milliseconds: 350));
+          expect(tester.widget<ChoiceChip>(tab).selected, isTrue);
           expect(tester.takeException(), isNull, reason: '$code $key');
         }
         await tester.pumpWidget(const SizedBox());

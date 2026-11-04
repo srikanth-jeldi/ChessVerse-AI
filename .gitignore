@@ -66,6 +66,8 @@ artifacts/
 .tmp-video-review/
 mobile/.build-tmp/
 releases/
+release-output/
+__pycache__/
 
 # Mobile signing material must never be committed.
 mobile/android/key.properties

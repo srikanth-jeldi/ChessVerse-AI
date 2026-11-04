@@ -1,4 +1,3 @@
-
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -10,6 +9,7 @@ import 'dart:ui' as ui;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -53,6 +53,7 @@ import 'core/notifications/firebase_push_service.dart';
 import 'core/store_review_service.dart';
 import 'core/startup_system_ui.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
+import 'core/widgets/chessverse_glow_frame.dart';
 import 'core/widgets/ai_language_picker.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'core/widgets/network_status_layer.dart';
@@ -235,18 +236,24 @@ class ChessVerseApp extends StatelessWidget {
   }
 }
 
-const List<NavigationDestination>
-_primaryNavigationDestinations = <NavigationDestination>[
-  NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
-  NavigationDestination(
-    icon: Icon(Icons.sports_esports_rounded),
-    label: 'Play',
-  ),
-  NavigationDestination(icon: Icon(Icons.extension_rounded), label: 'Puzzles'),
-  NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
-  NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
-  NavigationDestination(icon: Icon(Icons.emoji_events_rounded), label: 'Tournaments'),
-];
+const List<NavigationDestination> _primaryNavigationDestinations =
+    <NavigationDestination>[
+      NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
+      NavigationDestination(
+        icon: Icon(Icons.sports_esports_rounded),
+        label: 'Play',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.extension_rounded),
+        label: 'Puzzles',
+      ),
+      NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
+      NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
+      NavigationDestination(
+        icon: Icon(Icons.emoji_events_rounded),
+        label: 'Tournaments',
+      ),
+    ];
 
 class _GlassBottomNavigation extends StatelessWidget {
   const _GlassBottomNavigation({
@@ -414,7 +421,7 @@ class _SplashGateState extends State<SplashGate> {
   int? _onlinePlayerCount;
   int? _coinBalance;
   TournamentDto? _nextTournament;
-  List<Map<String,dynamic>> _practiceWinners = const [];
+  List<Map<String, dynamic>> _practiceWinners = const [];
   int _primaryDestination = 0;
   int _communitySection = 0;
   int _tournamentMenuVisit = 0;
@@ -723,15 +730,12 @@ class _SplashGateState extends State<SplashGate> {
     unawaited(_refreshOnlinePresence(token));
     unawaited(_refreshNextTournament(token));
     unawaited(_refreshPracticeWinners(token));
-    _presenceTimer = Timer.periodic(
-      const Duration(seconds: 20),
-      (timer) {
-        unawaited(_refreshOnlinePresence(token));
-        if (timer.tick % 3 == 0 && _primaryDestination == 0) {
-          unawaited(_refreshPracticeWinners(token));
-        }
-      },
-    );
+    _presenceTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      unawaited(_refreshOnlinePresence(token));
+      if (timer.tick % 3 == 0 && _primaryDestination == 0) {
+        unawaited(_refreshPracticeWinners(token));
+      }
+    });
   }
 
   Future<void> _refreshPracticeWinners(String token) async {
@@ -1410,7 +1414,7 @@ class _SplashGateState extends State<SplashGate> {
         ),
         showPrimaryNavigation: false,
       ),
-      _PlayDestination(
+      PlayDestinationScreen(
         onComputer: () => _chooseSideAndOpen(context, GameMode.computer),
         onPositionCreator: () => _openPositionCreator(context),
         onSpectate: () => _openSpectator(context),

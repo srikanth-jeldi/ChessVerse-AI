@@ -1,7 +1,8 @@
 part of '../main.dart';
 
-class _PlayDestination extends StatelessWidget {
-  const _PlayDestination({
+class PlayDestinationScreen extends StatelessWidget {
+  const PlayDestinationScreen({
+    super.key,
     required this.onComputer,
     required this.onMyGames,
     required this.onPositionCreator,
@@ -61,101 +62,96 @@ class _PlayDestination extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: wide ? 1320 : 1100),
             child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints size) =>
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: wide ? 4 : 1,
-                    mainAxisSpacing: wide ? 18 : 14,
-                    crossAxisSpacing: wide ? 16 : 14,
-                    childAspectRatio: wide ? .56 : 2.25,
-                    children: <Widget>[
-                      _PlayModeCard(
-                        icon: Icons.public_rounded,
-                        title: uiText(context, 'Play Online'),
-                        subtitle: uiText(
-                          context,
-                          'Find a live rival worldwide',
-                        ),
-                        color: const Color(0xFF0F6B61),
-                        asset: 'assets/backgrounds/home-online-hero-v1.webp',
-                        onTap: onOnline,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.computer_rounded,
-                        title: uiText(context, 'Play Computer'),
-                        subtitle: uiText(context, 'Challenge ChessVerseAI'),
-                        color: const Color(0xFF174A69),
-                        asset: 'assets/backgrounds/play-computer-card-v2.webp',
-                        onTap: onComputer,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.history_rounded,
-                        title: uiText(context, 'My Games'),
-                        subtitle: uiText(
-                          context,
-                          'Continue or replay your saved games',
-                        ),
-                        color: const Color(0xFF5A3F78),
-                        asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
-                        onTap: onMyGames,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.dashboard_customize_rounded,
-                        title: uiText(context, 'Position Creator'),
-                        subtitle: uiText(
-                          context,
-                          'Build any legal setup and challenge the AI',
-                        ),
-                        color: const Color(0xFF7B5DA8),
-                        asset:
-                            'assets/backgrounds/position-creator-card-v1.webp',
-                        onTap: onPositionCreator,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.visibility_rounded,
-                        title: uiText(context, 'Watch & Learn'),
-                        subtitle: uiText(
-                          context,
-                          'Spectate live games with AI insights',
-                        ),
-                        color: const Color(0xFF2B8C83),
-                        asset: 'assets/backgrounds/home-online-hero-v1.webp',
-                        onTap: onSpectate,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.groups_rounded,
-                        title: uiText(context, 'Local Match'),
-                        subtitle: uiText(context, 'Two players on one board'),
-                        color: const Color(0xFF25664F),
-                        asset: 'assets/backgrounds/local-match-card-v2.webp',
-                        onTap: onLocal,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.emoji_events_rounded,
-                        title: uiText(context, 'Tournaments'),
-                        subtitle: uiText(
-                          context,
-                          'Enter the World Chess Circuit',
-                        ),
-                        color: const Color(0xFFD5A63B),
-                        asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
-                        onTap: onTournaments,
-                      ),
-                      _PlayModeCard(
-                        icon: Icons.calendar_month_rounded,
-                        title: uiText(context, 'Daily Challenge'),
-                        subtitle: uiText(
-                          context,
-                          'Solve today’s featured position',
-                        ),
-                        color: const Color(0xFF8A5A21),
-                        asset:
-                            'assets/backgrounds/daily-challenge-card-v2.webp',
-                        onTap: onDaily,
-                      ),
-                    ],
+              builder: (BuildContext context, BoxConstraints size) {
+                final cards = <Widget>[
+                  _PlayModeCard(
+                    icon: Icons.public_rounded,
+                    title: uiText(context, 'Play Online'),
+                    subtitle: uiText(context, 'Find a live rival worldwide'),
+                    color: const Color(0xFF0F6B61),
+                    asset: 'assets/backgrounds/home-online-hero-v1.webp',
+                    onTap: onOnline,
                   ),
+                  _PlayModeCard(
+                    icon: Icons.computer_rounded,
+                    title: uiText(context, 'Play Computer'),
+                    subtitle: uiText(context, 'Challenge ChessVerseAI'),
+                    color: const Color(0xFF174A69),
+                    asset: 'assets/backgrounds/play-computer-card-v2.webp',
+                    onTap: onComputer,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.history_rounded,
+                    title: uiText(context, 'My Games'),
+                    subtitle: uiText(
+                      context,
+                      'Continue or replay your saved games',
+                    ),
+                    color: const Color(0xFF5A3F78),
+                    asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                    onTap: onMyGames,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.dashboard_customize_rounded,
+                    title: uiText(context, 'Position Creator'),
+                    subtitle: uiText(
+                      context,
+                      'Build any legal setup and challenge the AI',
+                    ),
+                    color: const Color(0xFF7B5DA8),
+                    asset: 'assets/backgrounds/position-creator-card-v1.webp',
+                    onTap: onPositionCreator,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.visibility_rounded,
+                    title: uiText(context, 'Watch & Learn'),
+                    subtitle: uiText(
+                      context,
+                      'Spectate live games with AI insights',
+                    ),
+                    color: const Color(0xFF2B8C83),
+                    asset: 'assets/backgrounds/home-online-hero-v1.webp',
+                    onTap: onSpectate,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.groups_rounded,
+                    title: uiText(context, 'Local Match'),
+                    subtitle: uiText(context, 'Two players on one board'),
+                    color: const Color(0xFF25664F),
+                    asset: 'assets/backgrounds/local-match-card-v2.webp',
+                    onTap: onLocal,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.emoji_events_rounded,
+                    title: uiText(context, 'Tournaments'),
+                    subtitle: uiText(context, 'Enter the World Chess Circuit'),
+                    color: const Color(0xFFD5A63B),
+                    asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
+                    onTap: onTournaments,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.calendar_month_rounded,
+                    title: uiText(context, 'Daily Challenge'),
+                    subtitle: uiText(
+                      context,
+                      'Solve today’s featured position',
+                    ),
+                    color: const Color(0xFF8A5A21),
+                    asset: 'assets/backgrounds/daily-challenge-card-v2.webp',
+                    onTap: onDaily,
+                  ),
+                ];
+                final cardWidth = wide
+                    ? (size.maxWidth - 48) / 4
+                    : size.maxWidth;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 14,
+                  children: cards
+                      .map((card) => SizedBox(width: cardWidth, child: card))
+                      .toList(),
+                );
+              },
             ),
           ),
         ),
@@ -188,179 +184,197 @@ class _PlayModeCard extends StatelessWidget {
         : title == 'Tournaments'
         ? const Alignment(0.72, 0)
         : Alignment.center;
-    return Card(
-      color: const Color(0xFF071827),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: color.withValues(alpha: .8)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            image: asset == null
-                ? null
-                : DecorationImage(
-                    image: AssetImage(asset!),
-                    fit: BoxFit.cover,
-                    alignment: imageAlignment,
-                    opacity: desktopCard ? .82 : .28,
-                  ),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                color.withValues(alpha: .36),
-                const Color(0xEE071827),
-              ],
-            ),
-          ),
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool compact = constraints.maxWidth < 430;
-              final bool tall = constraints.maxHeight > constraints.maxWidth;
-              if (tall) {
-                return DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        Color(0x08000000),
-                        Color(0x18000000),
-                        Color(0xF2071727),
-                      ],
-                      stops: <double>[0, .46, .72],
+    return ChessVerseGlowFrame(
+      radius: 22,
+      color: desktopCard ? color : const Color(0xFFE8BC58),
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: const Color(0xFF071827),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: color.withValues(alpha: .8)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              image: asset == null
+                  ? null
+                  : DecorationImage(
+                      image: AssetImage(asset!),
+                      fit: BoxFit.cover,
+                      alignment: imageAlignment,
+                      opacity: desktopCard ? .82 : .46,
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Spacer(),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            CircleAvatar(
-                              radius: 27,
-                              backgroundColor: const Color(0xD3071A2A),
-                              child: Icon(icon, color: color, size: 28),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                title.toUpperCase(),
-                                maxLines: 2,
-                                style: const TextStyle(
-                                  color: Color(0xFFFFF8ED),
-                                  fontSize: 22,
-                                  height: 1.05,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          subtitle,
-                          maxLines: 3,
-                          style: const TextStyle(
-                            color: Color(0xFFC5D5E0),
-                            fontSize: 16,
-                            height: 1.35,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: .34),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: color),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  color.withValues(alpha: .36),
+                  const Color(0xEE071827),
+                ],
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool compact = constraints.maxWidth < 430;
+                final bool tall = desktopCard;
+                if (tall) {
+                  return DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[
+                          Color(0x08000000),
+                          Color(0x18000000),
+                          Color(0xF2071727),
+                        ],
+                        stops: <double>[0, .46, .72],
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const SizedBox(height: 96),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: <Widget>[
-                              UiText(
-                                title == 'Daily Challenge'
-                                    ? 'Solve Now'
-                                    : title == 'Tournaments'
-                                    ? 'View Tournaments'
-                                    : title == 'Local Match'
-                                    ? 'Start Match'
-                                    : title == 'Play Computer'
-                                    ? 'Start Game'
-                                    : 'Play Now',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              CircleAvatar(
+                                radius: 27,
+                                backgroundColor: const Color(0xD3071A2A),
+                                child: Icon(icon, color: color, size: 28),
                               ),
-                              const SizedBox(width: 16),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.white,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  title.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFF8ED),
+                                    fontSize: 22,
+                                    height: 1.05,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 16 : 24,
-                  vertical: compact ? 12 : 18,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    CircleAvatar(
-                      radius: compact ? 29 : 34,
-                      backgroundColor: const Color(0xB3071A2A),
-                      child: Icon(icon, color: color, size: compact ? 29 : 34),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Color(0xFFFFF8ED),
-                              fontSize: compact ? 22 : 26,
-                              height: 1.05,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 10),
                           Text(
                             subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Color(0xFFC5D5E0),
-                              fontSize: compact ? 13 : 14,
-                              height: 1.2,
+                              fontSize: 16,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            constraints: const BoxConstraints(minHeight: 52),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: .34),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: color),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Flexible(
+                                  child: UiText(
+                                    title == 'Daily Challenge'
+                                        ? 'Solve Now'
+                                        : title == 'Tournaments'
+                                        ? 'View Tournaments'
+                                        : title == 'Local Match'
+                                        ? 'Start Match'
+                                        : title == 'Play Computer'
+                                        ? 'Start Game'
+                                        : 'Play Now',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: color, size: 34),
-                  ],
-                ),
-              );
-            },
+                  );
+                }
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 124),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 16 : 24,
+                      vertical: compact ? 12 : 18,
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        CircleAvatar(
+                          radius: compact ? 22 : 34,
+                          backgroundColor: const Color(0xB3071A2A),
+                          child: Icon(
+                            icon,
+                            color: const Color(0xFF53D8D1),
+                            size: compact ? 24 : 34,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  color: Color(0xFFFFF8ED),
+                                  fontSize: compact ? 20 : 26,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                subtitle,
+                                style: TextStyle(
+                                  color: Color(0xFFC5D5E0),
+                                  fontSize: compact ? 13 : 14,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: color,
+                          size: 34,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -772,7 +786,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _coachNote = 'Select a coin to see legal moves.';
   String _coachLanguageCode = AppLanguageController.systemCode;
   bool _coachLanguageLoaded = false;
-  bool _silentCoachExpanded = false;
   final LiveMoveVoice _liveVoice = LiveMoveVoice();
   CloudNarrationService? _liveNarrator;
   CoachPersona _voiceCoach = CoachPersona.mira;
@@ -800,7 +813,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _toggleLiveVoice(bool enabled) async {
-    setState(() { _liveVoice.enabled = enabled; _silentCoachExpanded = false; });
+    setState(() {
+      _liveVoice.enabled = enabled;
+    });
     if (!enabled) _stopLiveVoice();
     try {
       await const AppPreferences().writeBool('liveMoveVoice', enabled);
@@ -889,8 +904,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _speakMoveReview(
     String classification,
     int ply,
-    int epoch, {String? advice, bool Function()? voiceWindow}
-  ) async {
+    int epoch, {
+    String? advice,
+    bool Function()? voiceWindow,
+  }) async {
     final language = AppLanguageController.resolveCode(_coachLanguageCode);
     await _liveVoice.review(
       ply: ply,
@@ -1093,8 +1110,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
-        _coachNote =
-            UiCopy.format('Find the forcing line. Checkmate in {0} moves.', [_dailyChallenge.playerMoveGoal]);
+        _coachNote = UiCopy.format(
+          'Find the forcing line. Checkmate in {0} moves.',
+          [_dailyChallenge.playerMoveGoal],
+        );
       }
     }
     if (_gameMode == GameMode.puzzle) {
@@ -1540,12 +1559,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   ? constraints.maxWidth *
                         (_landscapeCoachCollapsed ? 0.94 : 0.68)
                   : constraints.maxWidth - pagePadding.horizontal;
-              final turnHeight = _signedIn && _gameResultTitle == null ? MediaQuery.textScalerOf(context).scale(22) * 1.4 : 0.0;
+              final turnHeight = _signedIn && _gameResultTitle == null
+                  ? MediaQuery.textScalerOf(context).scale(22) * 1.4
+                  : 0.0;
               final double boardHeight = wide
                   ? availableHeight -
                         wideHeaderHeight -
                         wideDockHeight -
-                        arenaRailsHeight - turnHeight -
+                        arenaRailsHeight -
+                        turnHeight -
                         18
                   : compactLandscape
                   ? availableHeight - mobileHeaderHeight - turnHeight - 4
@@ -1693,22 +1715,34 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     );
               if (_gameMode == GameMode.computer) {
                 studioCoach = Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if ((_liveVoice.enabled || _silentCoachExpanded) && _coachEnabled && _lastPlayerMove != null && _lastPlayerCoachNote != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                          child: Align(alignment: AlignmentDirectional.centerStart,
-                            child: Text(_localizedLiveCoachText(_lastPlayerCoachNote!, _coachLanguageCode),
-                              key: const ValueKey('live-player-move-explanation'),
-                              style: const TextStyle(color: Color(0xfff2ede4), fontSize: 16, height: 1.35)))),
-                      LiveVoiceToggle(
-                        enabled: _liveVoice.enabled,
-                        onChanged: _toggleLiveVoice,
-                        expanded: _silentCoachExpanded,
-                        onExpand: () => setState(() => _silentCoachExpanded = !_silentCoachExpanded),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_coachEnabled &&
+                        _lastPlayerMove != null &&
+                        _lastPlayerCoachNote != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            _localizedLiveCoachText(
+                              _lastPlayerCoachNote!,
+                              _coachLanguageCode,
+                            ),
+                            key: const ValueKey('live-player-move-explanation'),
+                            style: const TextStyle(
+                              color: Color(0xfff2ede4),
+                              fontSize: 16,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
                       ),
-                      if (_liveVoice.enabled) TextButton.icon(
+                    LiveVoiceToggle(
+                      enabled: _liveVoice.enabled,
+                      onChanged: _toggleLiveVoice,
+                    ),
+                    TextButton.icon(
                         onPressed: _changeVoiceCoach,
                         icon: const Icon(Icons.record_voice_over),
                         label: UiText(
@@ -1716,8 +1750,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           values: [_voiceCoach.name],
                         ),
                       ),
-                      if (_liveVoice.enabled || _silentCoachExpanded) studioCoach,
-                    ],
+                    studioCoach,
+                  ],
                 );
               }
               final bool yourTurn = switch (_gameMode) {
@@ -1729,21 +1763,47 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           _onlineMatch!.yourColor.toLowerCase(),
                 _ => true,
               };
-              final playArea = Column(children: [
-                SizedBox(key:const ValueKey('board-top-turn-slot'), height: turnHeight, child: ClipRect(child:
-                  _signedIn && _gameResultTitle == null && yourTurn && _turnBannerVisible
-                    ? _TurnBanner(label: _localizedLiveCoachText(_gameMode == GameMode.local
-                      ? (_localWhiteToMove ? 'PLAYER 1 • WHITE' : 'PLAYER 2 • BLACK') : 'YOUR TURN', _coachLanguageCode))
-                    : null)),
-                Expanded(child:arenaBoard),
-              ]);
+              final playArea = Column(
+                children: [
+                  SizedBox(
+                    key: const ValueKey('board-top-turn-slot'),
+                    height: turnHeight,
+                    child: ClipRect(
+                      child:
+                          _signedIn &&
+                              _gameResultTitle == null &&
+                              yourTurn &&
+                              _turnBannerVisible
+                          ? _TurnBanner(
+                              label: _localizedLiveCoachText(
+                                _gameMode == GameMode.local
+                                    ? (_localWhiteToMove
+                                          ? 'PLAYER 1 • WHITE'
+                                          : 'PLAYER 2 • BLACK')
+                                    : 'YOUR TURN',
+                                _coachLanguageCode,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  Expanded(child: arenaBoard),
+                ],
+              );
               final content = studioCoach;
-              final boundedCoach = _gameMode == GameMode.local || _gameMode == GameMode.online;
-              final detail = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                if (boundedCoach) Expanded(child:content) else content,
-              ]);
-              studioCoach = LayoutBuilder(builder: (_, limits) =>
-                limits.hasBoundedHeight && !boundedCoach ? SingleChildScrollView(child: detail) : detail);
+              final boundedCoach =
+                  _gameMode == GameMode.local || _gameMode == GameMode.online;
+              final detail = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (boundedCoach) Expanded(child: content) else content,
+                ],
+              );
+              studioCoach = LayoutBuilder(
+                builder: (_, limits) => limits.hasBoundedHeight && !boundedCoach
+                    ? SingleChildScrollView(child: detail)
+                    : detail,
+              );
 
               return Padding(
                 padding: pagePadding,
@@ -1797,7 +1857,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                             width: boardDimension,
                                             height:
                                                 boardDimension +
-                                                arenaRailsHeight + turnHeight,
+                                                arenaRailsHeight +
+                                                turnHeight,
                                             child: playArea,
                                           ),
                                         ),
@@ -1863,7 +1924,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         child: SizedBox(
                                           width: boardDimension,
                                           height:
-                                              boardDimension + arenaRailsHeight + turnHeight,
+                                              boardDimension +
+                                              arenaRailsHeight +
+                                              turnHeight,
                                           child: playArea,
                                         ),
                                       ),
@@ -1943,15 +2006,35 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               Center(
                                 child: SizedBox(
                                   width: boardDimension,
-                                  height: boardDimension + arenaRailsHeight + turnHeight,
+                                  height:
+                                      boardDimension +
+                                      arenaRailsHeight +
+                                      turnHeight,
                                   child: playArea,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              SizedBox(key: const ValueKey<String>('mobile-ai-coach'),
-                                height: boundedCoach ? (constraints.maxHeight * .46).clamp(360.0, 440.0) *
-                                  math.max(1.0, MediaQuery.textScalerOf(context).scale(16) / 16) : null,
-                                child: Padding(padding:const EdgeInsets.symmetric(horizontal:6),child:studioCoach)),
+                              SizedBox(
+                                key: const ValueKey<String>('mobile-ai-coach'),
+                                height: boundedCoach
+                                    ? (constraints.maxHeight * .46).clamp(
+                                            360.0,
+                                            440.0,
+                                          ) *
+                                          math.max(
+                                            1.0,
+                                            MediaQuery.textScalerOf(context)
+                                                    .scale(16) /
+                                                16,
+                                          )
+                                    : null,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: studioCoach,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -2099,7 +2182,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   }
                                 : null,
                             onDismiss: () async {
-                              if (_gameMode == GameMode.daily && _dailyCompletedToday) {
+                              if (_gameMode == GameMode.daily &&
+                                  _dailyCompletedToday) {
                                 DesktopNavigationBridge.open(context, 0);
                                 return;
                               }
@@ -2986,14 +3070,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
     final today = DateTime.now().toUtc();
-    final puzzle = dailyPuzzleForDate(today, hard: difficulty == DailyChallengeDifficulty.hard);
+    final puzzle = dailyPuzzleForDate(
+      today,
+      hard: difficulty == DailyChallengeDifficulty.hard,
+    );
     return DailyChallenge(
       id: '${dailyChallengeDateKey(today)}-v8-${puzzle.id}',
       title: puzzle.title,
-      difficulty: difficulty == DailyChallengeDifficulty.hard ? difficulty : DailyChallengeDifficulty.medium,
+      difficulty: difficulty == DailyChallengeDifficulty.hard
+          ? difficulty
+          : DailyChallengeDifficulty.medium,
       pattern: puzzle.number - 1,
-      setupMoves: const [], solution: puzzle.solution,
-      initialFen: puzzle.fen, forcedPlayerMoves: puzzle.playerMoveGoal,
+      setupMoves: const [],
+      solution: puzzle.solution,
+      initialFen: puzzle.fen,
+      forcedPlayerMoves: puzzle.playerMoveGoal,
     );
   }
 
@@ -3089,14 +3180,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final bool firstCompletion = !_dailyCompletedToday;
     if (firstCompletion) {
       _dailyCompletedToday = true;
-      LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id, moves: _moves.reversed.toList());
+      LocalGameArchive.markDailyChallengeComplete(
+        _dailyChallenge.id,
+        moves: _moves.reversed.toList(),
+      );
     }
     _gameResultTitle = 'Challenge complete';
     final int streak = LocalGameArchive.stats().dailyStreak;
     final reward = dailyPuzzleRewardCoins(streak);
-    _gameResultDetail = '$streak ${streak == 1 ? 'day' : 'days'} streak. ${_dailyUnlockMessage()}';
+    _gameResultDetail =
+        '$streak ${streak == 1 ? 'day' : 'days'} streak. ${_dailyUnlockMessage()}';
     _resultVisible = true;
-    _coachNote = '${UiCopy.text('Challenge complete')} · $streak · $reward ${UiCopy.text('Coins')}';
+    _coachNote =
+        '${UiCopy.text('Challenge complete')} · $streak · $reward ${UiCopy.text('Coins')}';
     if (firstCompletion) {
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
@@ -3434,22 +3530,36 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       });
     } else if (moveCommitted) {
       _scheduleComputerDraftSave();
-      final waitForCoach = _gameMode == GameMode.computer && _liveVoice.enabled &&
-          engineReviewFen != null && engineReviewMove != null && _gameResultTitle == null;
+      final waitForCoach =
+          _gameMode == GameMode.computer &&
+          _liveVoice.enabled &&
+          engineReviewFen != null &&
+          engineReviewMove != null &&
+          _gameResultTitle == null;
       if (engineReviewFen != null && engineReviewMove != null) {
         final epoch = _moveReviewEpoch;
         final ply = engineReviewPly!;
-        Future<void> review([bool Function()? window]) => _reviewPlayerMoveWithEngine(
-            engineReviewFen!,
-            engineReviewMove!,
-            ply,
-            voiceWindow: window,
-            clockSecondsBefore: engineReviewClockSeconds,
-          );
+        Future<void> review([bool Function()? window]) =>
+            _reviewPlayerMoveWithEngine(
+              engineReviewFen!,
+              engineReviewMove!,
+              ply,
+              voiceWindow: window,
+              clockSecondsBefore: engineReviewClockSeconds,
+            );
         if (waitForCoach) {
-          unawaited(LiveMoveVoice.beforeOpponentReply(review: review, reply: () {
-            if (mounted && epoch == _moveReviewEpoch && _moves.length == ply) _scheduleAiMove();
-          }));
+          unawaited(
+            LiveMoveVoice.beforeOpponentReply(
+              review: review,
+              reply: () {
+                if (mounted &&
+                    epoch == _moveReviewEpoch &&
+                    _moves.length == ply) {
+                  _scheduleAiMove();
+                }
+              },
+            ),
+          );
         } else {
           unawaited(review());
         }
@@ -3540,12 +3650,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
       final String opponentThreat = engine['opponentThreat'] as String? ?? '';
       final evidence = engine['replyEvidence'];
-      final advice = isWeak && evidence is Map && evidence['attacker'] is String &&
+      final advice =
+          isWeak &&
+              evidence is Map &&
+              evidence['attacker'] is String &&
               opponentThreat.length >= 4
-          ? liveReplyAdvice(_coachLanguageCode, opponentThreat, bestMove, evidence)
+          ? liveReplyAdvice(
+              _coachLanguageCode,
+              opponentThreat,
+              bestMove,
+              evidence,
+            )
           : null;
-      final String reviewText = advice == null ? '$classification • $explanation' :
-          '${CoachLocalizations(_coachLanguageCode).source(classification)} • $advice';
+      final String reviewText = advice == null
+          ? '$classification • $explanation'
+          : '${CoachLocalizations(_coachLanguageCode).source(classification)} • $advice';
       final List<String> principalVariation =
           (engine['principalVariation'] as List<dynamic>? ?? <dynamic>[])
               .whereType<String>()
@@ -3555,11 +3674,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         // Post-move review is textual. Board arrows are reserved for an
         // explicit Hint/Analyze request so a completed move never leaves two
         // competing motion trails on the board.
-        final scoreIndex = _playerMoveScores.length - 1 -
+        final scoreIndex =
+            _playerMoveScores.length -
+            1 -
             ((_moves.length - reviewedBoardPly) ~/ 2);
         if (scoreIndex >= 0 && scoreIndex < _playerMoveScores.length) {
-          _playerMoveScores[scoreIndex] =
-              (100 - (centipawnLoss / 3).round()).clamp(0, 100);
+          _playerMoveScores[scoreIndex] = (100 - (centipawnLoss / 3).round())
+              .clamp(0, 100);
         }
         // The coach card and the compact review label must have one verdict.
         // Previously the immediate heuristic could remain "Superb" while the
@@ -3607,8 +3728,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         LocalGameArchive.updateLatestGameReviews(_moveReviews);
         _notifyAnalysisReadyIfComplete();
       }
-      await _speakMoveReview(classification, ply, reviewEpoch, voiceWindow: voiceWindow,
-          advice: advice == null ? null : reviewText);
+      await _speakMoveReview(
+        classification,
+        ply,
+        reviewEpoch,
+        voiceWindow: voiceWindow,
+        advice: advice == null ? null : reviewText,
+      );
       if (!mounted || reviewEpoch != _moveReviewEpoch) return;
       if (_moves.length <= reviewedBoardPly + 1) _scheduleMoveQualityDismiss();
     } on EngineApiException {
@@ -4471,7 +4597,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
                 ? _dailyUnlockMessage()
-                : UiCopy.format('Find the forcing line. Checkmate in {0} moves.', [challenge.playerMoveGoal])
+                : UiCopy.format(
+                    'Find the forcing line. Checkmate in {0} moves.',
+                    [challenge.playerMoveGoal],
+                  )
           : _gameMode == GameMode.puzzle
           ? '${_activePuzzle.title}: checkmate in ${challenge.playerMoveGoal} moves.'
           : 'Select a coin to see legal moves.';

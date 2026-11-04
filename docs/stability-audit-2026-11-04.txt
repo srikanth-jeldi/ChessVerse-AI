@@ -1,0 +1,34 @@
+Play Console investigation - 4 November 2026
+
+Live overview, 28 days (7 October - 4 November):
+User-perceived crash rate: 0.13%.
+User-perceived ANR rate: 0.45% (+0.03 percentage points vs previous period).
+Slow cold starts: 18.58%. Slow warm starts: 26.01%.
+These are aggregate metrics, not proof of a regression in the latest release.
+
+Live user-perceived ANR list, last 7 days, updated today 13:30:
+One listed cluster: xyz.luan.audioplayers.source.UrlSource.setForMediaPlayer.
+Build 311 (1.3.44), 2 events, 1 user, last occurred 2 days ago.
+Issue ID: c1796e9ff06ba1d1f808d8f0aa579680.
+28-day view: 3 events, 2 users, sampled versions 311 and 249.
+Sample devices: Redmi 14C / Android 15 and Infinix HOT 50i / Android 14.
+Main-thread stack enters ContentResolver/MediaStore/FileUtils from
+MediaPlayer.setDataSource, then waits in a synchronous Binder transaction.
+
+Code mitigation:
+ChessSoundService now loads bundled sound bytes on Android and uses
+BytesSource (MediaDataSource), avoiding the UrlSource file-provider path.
+Other platforms retain AssetSource. Audio focus remains none so board sounds
+do not interrupt voice narration. Mute is rechecked after asynchronous work.
+Cloud narration already used BytesSource.
+
+Validation:
+test/core/audio/chess_sound_service_test.dart: 4 tests passed.
+Regression asserts Android setSourceBytes and no narration audio-focus steal;
+asset bundle and distinct piece sound checks also pass.
+Mocked platform playback only: physical Android audio test and release rollout
+verification remain outstanding. No claim that every ANR is fixed.
+No Play Console issues were archived or marked resolved.
+
+Still pending: startup performance investigation, remaining historical native
+ANR clusters, and standard/premium piece artwork replacement and visual QA.

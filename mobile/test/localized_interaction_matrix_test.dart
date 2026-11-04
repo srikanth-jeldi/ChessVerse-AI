@@ -793,16 +793,39 @@ void main() {
             );
         }
         // Walk the full primary scroll region so lazy content also gets laid out.
-        final scroll = find.byType(Scrollable);
+        final verticalScroll = find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
+        );
+        // A modal leaves the underlying page mounted, but its barrier blocks
+        // gestures. Audit the visible dialog rather than that background page.
+        final dialog = find.byType(Dialog);
+        final scroll = dialog.evaluate().isNotEmpty
+            ? find.descendant(of: dialog.last, matching: verticalScroll)
+            : verticalScroll;
         if (scroll.evaluate().isNotEmpty && !state.endsWith('keyboard')) {
-          for (var i = 0; i < 5; i++) {
-            final bounds = tester
-                .getRect(scroll.first)
-                .intersect(const Rect.fromLTWH(0, 80, 320, 600));
-            if (!bounds.isEmpty) {
-              await tester.dragFrom(bounds.center, const Offset(0, -450));
+          final targets =
+              find.byType(NestedScrollView).evaluate().isNotEmpty &&
+                  dialog.evaluate().isEmpty
+              ? scroll.evaluate().map((e) => find.byWidget(e.widget)).toList()
+              : [scroll.first];
+          for (final target in targets) {
+            final position = tester.state<ScrollableState>(target).position;
+            for (var i = 0; i < 80 && position.extentAfter > 1; i++) {
+              final bounds = tester
+                  .getRect(target)
+                  .intersect(const Rect.fromLTWH(0, 80, 320, 600));
+              if (!bounds.isEmpty) {
+                await tester.dragFrom(bounds.center, const Offset(0, -450));
+              }
+              await tester.pump(const Duration(milliseconds: 100));
             }
-            await tester.pump(const Duration(milliseconds: 100));
+            expect(
+              position.extentAfter,
+              lessThanOrEqualTo(1),
+              reason: '$state/${locale.code}: bottom content cannot be reached',
+            );
           }
         }
         expect(tester.takeException(), isNull, reason: '$state/${locale.code}');

@@ -849,11 +849,6 @@ void main() {
     final Size boardSize = tester.getSize(find.byType(ChessBoard));
     expect(boardSize.width, greaterThan(405));
     expect(boardSize.height, closeTo(boardSize.width, 2));
-    expect(find.text('AI TRAINING • 3-LEVEL HINTS • GAME REVIEW'), findsNothing);
-    final expand = find.byKey(const ValueKey('toggle-text-coach'));
-    await tester.ensureVisible(expand);
-    await tester.tap(expand);
-    await tester.pump();
     expect(
       find.text('AI TRAINING • 3-LEVEL HINTS • GAME REVIEW'),
       findsOneWidget,
@@ -895,10 +890,6 @@ void main() {
       find.byKey(const ValueKey<String>('idle-hint-target')),
       findsOneWidget,
     );
-    final expand = find.byKey(const ValueKey('toggle-text-coach'));
-    await tester.ensureVisible(expand);
-    await tester.tap(expand);
-    await tester.pump();
     expect(find.textContaining('Blue lights suggest'), findsWidgets);
   });
 
@@ -1444,10 +1435,6 @@ void main() {
 
     await tester.pump();
     await tester.pumpAndSettle();
-    final expand = find.byKey(const ValueKey('toggle-text-coach'));
-    await tester.ensureVisible(expand);
-    await tester.tap(expand);
-    await tester.pump();
     await tester.ensureVisible(find.text('Analyze'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Analyze'));

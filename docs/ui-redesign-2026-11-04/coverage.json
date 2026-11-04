@@ -1,0 +1,303 @@
+{
+  "date": "2026-11-04",
+  "conversation": "https://chatgpt.com/c/6aea2bde-9934-83ee-9b73-05d5a8648fd1",
+  "originalLogo": "mobile/assets/branding/app_icon.png",
+  "logoModified": false,
+  "actualDeviceScreensSubmitted": 12,
+  "sourcePreviewStatesSubmitted": 50,
+  "latestModalBatch": "Four additional mockups received and saved as references/interaction-1.png through interaction-4.png",
+  "implemented": [
+    "Compact original-logo Home header and hero",
+    "Shared navy gradient cards with static teal/gold shine",
+    "Content-sized Play cards with readable translated labels",
+    "Profile editor navy/gold styling, keyboard-aware height and wrapped helper text",
+    "Daily routine navy card with task progress and compact gold actions",
+    "Production and shared themes unified for cards, buttons, dialogs, sheets and inputs",
+    "Compact coach portraits and badge previews",
+    "Daily Cup standings and game cards use shared navy styling",
+    "XP and streak separated with a flame indicator",
+    "My Games header scrolls with the page so long translations do not squeeze the saved-game list"
+  ],
+  "validation": {
+    "currentRealDevice": "Samsung F41 connected. Home, Play, daily plan and Profile visually reviewed. Profile Save action reached with the keyboard open without modifying profile data. Not every screen/language verified on device.",
+    "combinedLayoutTests": 1251,
+    "combinedLayoutTestsResult": "Passed, including multilingual, modal, accessibility and loading golden checks",
+    "analyzer": "Focused scroll-fix analysis: no errors or warnings; one existing curly-braces style info in match_history_screen.dart",
+    "expandedLanguageAudit": {
+      "languages": 34,
+      "passedChecks": 2074,
+      "screenCasesPerLanguage": 23,
+      "interactionStatesPerLanguage": 38,
+      "viewport": "320 x 740, text scale 1.3",
+      "coverage": "Loaded fixtures, errors, dialogs, keyboard states, RTL and reachable scroll ends",
+      "fixedFinding": "Malayalam enlarged-text My Games header left only a tiny list viewport; NestedScrollView now allows the header to scroll away",
+      "additionalFlowSuitePassed": 250,
+      "historyReplayRegressionPassed": 1,
+      "limitations": "Widget fixture tests do not prove every live-data journey or every language font on physical devices. Suite counts overlap earlier runs and must not be summed as unique coverage."
+    },
+    "capturedStates": 51,
+    "captureResult": "All 51 capture tests passed; fixtures include empty/loading/error states rather than all live production data",
+    "loadingGoldenUpdate": "Reviewed and updated obsolete CHESSVERSE AI wordmark to ChessVerseAI"
+  },
+  "remaining": [
+    "Full production-data journey verification across every screen and all 34 languages on device",
+    "Release AAB not generated for this UI revision"
+  ],
+  "screens": [
+    {
+      "name": "academy_boss",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\academy_boss.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "academy_lesson",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\academy_lesson.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "analysis",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\analysis.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "auth",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\auth.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "blindfold",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\blindfold.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "club",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\club.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "coaches",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\coaches.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "coin_rankings",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\coin_rankings.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "daily_challenge",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\daily_challenge.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "daily_cup_board",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\daily_cup_board.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "daily_cup",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\daily_cup.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "daily_streak",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\daily_streak.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "device_sessions",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\device_sessions.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "game_ai",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\game_ai.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "help",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\help.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "home",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\home.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "leaderboard",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\leaderboard.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "learn",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\learn.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "linked_accounts",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\linked_accounts.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "master_games",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\master_games.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "match_history",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\match_history.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "missions",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\missions.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "mistake_bank",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\mistake_bank.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "moves",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\moves.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "my_academy",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\my_academy.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "notifications",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\notifications.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "onboarding",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\onboarding.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "opening_trainer",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\opening_trainer.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "options",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\options.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "play",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\play.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "position_creator",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\position_creator.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "premium_splash",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\premium_splash.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "privacy",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\privacy.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "profile_edit_sheet",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\profile_edit_sheet.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "profile",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\profile.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "puzzle_academy",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\puzzle_academy.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "puzzle_rankings",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\puzzle_rankings.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "puzzles",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\puzzles.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "reference_splash",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\reference_splash.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "result",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\result.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "saved-games",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\saved-games.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "settings_language_sheet",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\settings_language_sheet.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "settings",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\settings.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "setup_analysis_error",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\setup_analysis_error.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "setup_analysis",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\setup_analysis.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "social",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\social.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "spectator",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\spectator.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "terms",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\terms.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "tournament_detail",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\tournament_detail.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "url_import_keyboard",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\url_import_keyboard.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    },
+    {
+      "name": "url_import",
+      "sourcePreview": "E:\\ChessVerse-AI\\.build-tmp\\ui-design-inventory\\url_import.png",
+      "status": "Recaptured with shared UI theme; individual live-data device verification not complete"
+    }
+  ]
+}

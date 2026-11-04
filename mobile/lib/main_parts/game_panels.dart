@@ -1268,7 +1268,7 @@ class PracticeMatchStudio extends StatefulWidget {
 
 class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   bool voice = false;
-  bool silentCoachExpanded = false;
+
   bool showTurn = true;
   Timer? turnTimer;
   DateTime? lastAudioError;
@@ -1401,7 +1401,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
   }
 
   Future<void> _toggle(bool value) async {
-    setState(() { voice = value; silentCoachExpanded = false; });
+    setState(() => voice = value);
     epoch++;
     if (value) {
       unawaited(_speak());
@@ -1451,14 +1451,13 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
     final panel = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LiveVoiceToggle(enabled: voice, onChanged: _toggle, expanded:silentCoachExpanded,
-          onExpand:() => setState(() => silentCoachExpanded = !silentCoachExpanded)),
-        if (voice) TextButton.icon(
+        LiveVoiceToggle(enabled: voice, onChanged: _toggle),
+        TextButton.icon(
           onPressed: _changeCoach,
           icon: const Icon(Icons.record_voice_over),
           label: UiText('Change coach: {0}', values: [coach.name]),
         ),
-        if (voice || silentCoachExpanded) _StudioCoachPanel(
+        _StudioCoachPanel(
           cup: true,
           gameMode: GameMode.online,
           activeColor: status,
@@ -1484,7 +1483,7 @@ class _PracticeMatchStudioState extends State<PracticeMatchStudio> {
           onNextPuzzle: () {},
           onBackToAcademy: () {},
         ),
-        if (!voice && !silentCoachExpanded) TextButton.icon(onPressed:_history, icon:const Icon(Icons.history), label:const UiText('Move History')),
+
         TextButton.icon(
           onPressed: widget.onStandings,
           icon: const Icon(Icons.emoji_events_outlined),

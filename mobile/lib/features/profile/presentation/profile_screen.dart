@@ -211,13 +211,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: ListView(
-        // The root navigation floats over this page. Keep enough scrollable
-        // space below the account action so it can always clear the glass bar.
+        // The root Scaffold reserves the navigation bar's height already.
+        // Only retain a small end gutter, plus the standalone system inset.
         padding: EdgeInsets.fromLTRB(
           16,
           8,
           16,
-          124 + MediaQuery.paddingOf(context).bottom,
+          16 + MediaQuery.paddingOf(context).bottom,
         ),
         children: <Widget>[
           _ProfileHero(
@@ -1183,12 +1183,22 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+          maxHeight:
+              (MediaQuery.sizeOf(context).height -
+                  MediaQuery.viewInsetsOf(context).bottom) *
+              0.92,
         ),
         decoration: const BoxDecoration(
-          color: Color(0xFF0A1B29),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF103143), Color(0xFF091C2D)],
+          ),
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          border: Border(top: BorderSide(color: Color(0xFF9A7133))),
+          border: Border(top: BorderSide(color: Color(0xFFE2BD65), width: 1.5)),
+          boxShadow: [
+            BoxShadow(color: Color(0x26E2BD65), blurRadius: 16),
+          ],
         ),
         child: SafeArea(
           top: false,
@@ -1294,6 +1304,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                     context,
                     'This is the name other players will see.',
                   ),
+                  helperMaxLines: 3,
                   prefixIcon: Icon(Icons.badge_rounded),
                 ),
               ),
@@ -1306,6 +1317,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                       context,
                       'Your unique sign-in and friend-search handle.',
                     ),
+                    helperMaxLines: 3,
                     prefixIcon: Icon(Icons.alternate_email_rounded),
                   ),
                   child: Text('@${widget.username}'),

@@ -14,6 +14,7 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/chessverse_glow_frame.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
 import '../../analysis/domain/player_learning_profile.dart';
@@ -258,8 +259,10 @@ class _MobileHomeState extends State<_MobileHome> {
                     const SizedBox(height: 10),
                     ValueListenableBuilder<int>(
                       valueListenable: LocalGameArchive.activityRevision,
-                      builder: (_, _, _) =>
-                          _ProgressPulse(games: widget.activityGames, onPractice:widget.onDailyChallenge),
+                      builder: (_, _, _) => _ProgressPulse(
+                        games: widget.activityGames,
+                        onPractice: widget.onDailyChallenge,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     if (widget.practiceWinners.isNotEmpty)
@@ -370,9 +373,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onSettings,
                         ),
                       ],
-                      height: 340,
+                      height: 260,
                     ),
-                    const SizedBox(height: 12),
                     const SizedBox(height: 12),
                     _AiPersonaStrip(
                       onChallenge: widget.onAiPersonaSelected ?? (_) {},
@@ -415,10 +417,12 @@ class _MobileHomeState extends State<_MobileHome> {
                     ),
                     const SizedBox(height: 12),
                     GridView.count(
+                      key: const ValueKey('home-shortcuts-grid'),
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 4,
+                      crossAxisCount: 3,
                       crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
                       mainAxisExtent:
                           60 + MediaQuery.textScalerOf(context).scale(40),
                       children: <Widget>[
@@ -619,7 +623,7 @@ class _WideHomeState extends State<_WideHome> {
                           valueListenable: LocalGameArchive.activityRevision,
                           builder: (_, _, _) => _ProgressPulse(
                             wide: true,
-                            onPractice:widget.onDailyChallenge,
+                            onPractice: widget.onDailyChallenge,
                             games: widget.activityGames,
                           ),
                         ),
@@ -898,7 +902,11 @@ class _WideHomeState extends State<_WideHome> {
 }
 
 class _ProgressPulse extends StatelessWidget {
-  const _ProgressPulse({this.wide = false, this.games, required this.onPractice});
+  const _ProgressPulse({
+    this.wide = false,
+    this.games,
+    required this.onPractice,
+  });
   final VoidCallback onPractice;
   final bool wide;
   final List<SavedGameRecord>? games;
@@ -915,10 +923,12 @@ class _ProgressPulse extends StatelessWidget {
         key: const ValueKey('home-open-daily-streak'),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (streakContext) => DailyStreakScreen(onPractice: () {
-              Navigator.of(streakContext).pop();
-              onPractice();
-            }),
+            builder: (streakContext) => DailyStreakScreen(
+              onPractice: () {
+                Navigator.of(streakContext).pop();
+                onPractice();
+              },
+            ),
           ),
         ),
         child: Container(
@@ -966,7 +976,16 @@ class _ProgressPulse extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              if (rewards.streak > 0) Text('${rewards.streak}'),
+              if (rewards.streak > 0) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 16,
+                  color: Color(0xFFE7B54D),
+                ),
+                const SizedBox(width: 3),
+                Text('${rewards.streak}'),
+              ],
             ],
           ),
         ),
@@ -1860,25 +1879,42 @@ class _BrandHero extends StatelessWidget {
   final bool compact;
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final mark = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Image.asset(
-          'assets/branding/app_icon.png',
-          width: compact ? 76 : 72,
-          height: compact ? 76 : 72,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: _BrandWordmark(fontSize: compact ? 28 : 29),
         ),
-        const SizedBox(height: 4),
-        _BrandWordmark(fontSize: compact ? 28 : 29),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         const UiText(
           'CHOOSE YOUR NEXT MOVE',
           style: TextStyle(
             color: Color(0xFFA9C1D2),
             fontSize: 10,
-            letterSpacing: 2.2,
+            letterSpacing: 1.2,
             fontWeight: FontWeight.w700,
           ),
         ),
+      ],
+    );
+    return Row(
+      children: <Widget>[
+        ChessVerseGlowFrame(
+          radius: 14,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/branding/app_icon.png',
+              width: 60,
+              height: 60,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: mark),
       ],
     );
   }
@@ -2158,152 +2194,140 @@ class _CarouselHero extends StatelessWidget {
   final bool wide;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    borderRadius: BorderRadius.circular(24),
-    clipBehavior: Clip.antiAlias,
-    child: Ink(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
-        gradient: LinearGradient(
-          colors: <Color>[
-            const Color(0xFF0B3159),
-            data.icon == Icons.groups_rounded
-                ? const Color(0xFF104C40)
-                : const Color(0xFF071727),
-          ],
+  Widget build(BuildContext context) => ChessVerseGlowFrame(
+    radius: 24,
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
+          gradient: LinearGradient(
+            colors: <Color>[
+              const Color(0xFF0B3159),
+              data.icon == Icons.groups_rounded
+                  ? const Color(0xFF104C40)
+                  : const Color(0xFF071727),
+            ],
+          ),
         ),
-      ),
-      child: Stack(
-        children: <Widget>[
-          if (data.asset != null)
+        child: Stack(
+          children: <Widget>[
+            if (data.asset != null)
+              Positioned.fill(
+                left: wide ? 390 : 92,
+                child: Image.asset(
+                  data.asset!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  opacity: const AlwaysStoppedAnimation<double>(.78),
+                ),
+              ),
             Positioned.fill(
-              left: wide ? 390 : 92,
-              child: Image.asset(
-                data.asset!,
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                opacity: const AlwaysStoppedAnimation<double>(.78),
-              ),
-            ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: <Color>[
-                    Color(0xFF081F37),
-                    Color(0xE608213C),
-                    Color(0x30081727),
-                  ],
-                  stops: <double>[0, .48, 1],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(wide ? 30 : 22),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: wide ? 430 : 205,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        Icon(
-                          data.icon,
-                          color: const Color(0xFF48E3CB),
-                          size: wide ? 35 : 30,
-                        ),
-                        SizedBox(width: wide ? 12 : 9),
-                        Expanded(
-                          child: Text(
-                            data.title,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: wide ? 40 : 22,
-                              height: 1,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      data.subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFFC5D5E0),
-                        fontSize: 13,
-                      ),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      key: data.title == 'Play Online'
-                          ? const ValueKey<String>('play-online')
-                          : data.title == 'Play vs AI'
-                          ? const ValueKey<String>('play-vs-ai')
-                          : null,
-                      onPressed: data.onTap,
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                      label: UiActionText(data.buttonLabel),
-                    ),
-                    if (data.statusLabel != null ||
-                        data.countdownTarget != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5),
-                        child: data.countdownTarget == null
-                            ? Text(
-                                '●  ${data.statusLabel}',
-                                style: const TextStyle(
-                                  color: Color(0xFF65D8C2),
-                                  fontSize: 10,
-                                ),
-                              )
-                            : _LiveTournamentCountdown(
-                                startsAt: data.countdownTarget!,
-                              ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: wide ? 22 : 14,
-            top: wide ? 22 : 14,
-            child: IconButton.filledTonal(
-              key: const ValueKey<String>('home-hero-next'),
-              tooltip: uiText(context, 'Next feature'),
-              onPressed: onNext,
-              style: IconButton.styleFrom(
-                backgroundColor: const Color(0xB20A2842),
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.chevron_right_rounded),
-            ),
-          ),
-          // Paint the frame last. Background artwork previously covered the
-          // right and bottom edges on some carousel slides.
-          Positioned.fill(
-            child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF2A91F2),
-                    width: 1.6,
+                  gradient: const LinearGradient(
+                    colors: <Color>[
+                      Color(0xFF081F37),
+                      Color(0xE608213C),
+                      Color(0x30081727),
+                    ],
+                    stops: <double>[0, .48, 1],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: EdgeInsets.all(wide ? 30 : 22),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: wide ? 430 : 205,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            data.icon,
+                            color: const Color(0xFF48E3CB),
+                            size: wide ? 35 : 30,
+                          ),
+                          SizedBox(width: wide ? 12 : 9),
+                          Expanded(
+                            child: Text(
+                              data.title,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: wide ? 40 : 22,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        data.subtitle,
+                        style: const TextStyle(
+                          color: Color(0xFFC5D5E0),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        key: data.title == 'Play Online'
+                            ? const ValueKey<String>('play-online')
+                            : data.title == 'Play vs AI'
+                            ? const ValueKey<String>('play-vs-ai')
+                            : null,
+                        onPressed: data.onTap,
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+                        label: UiActionText(data.buttonLabel),
+                      ),
+                      if (data.statusLabel != null ||
+                          data.countdownTarget != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: data.countdownTarget == null
+                              ? Text(
+                                  '●  ${data.statusLabel}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF65D8C2),
+                                    fontSize: 10,
+                                  ),
+                                )
+                              : _LiveTournamentCountdown(
+                                  startsAt: data.countdownTarget!,
+                                ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: wide ? 22 : 14,
+              top: wide ? 22 : 14,
+              child: IconButton.filledTonal(
+                key: const ValueKey<String>('home-hero-next'),
+                tooltip: uiText(context, 'Next feature'),
+                onPressed: onNext,
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xB20A2842),
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

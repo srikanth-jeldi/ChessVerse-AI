@@ -1,0 +1,7 @@
+<en-GB>
+Refreshed gold-and-navy screens, a premium Collection wallet and clearer daily practice cards.
+Home shortcuts now use a balanced 3-by-2 layout.
+Turning coach audio off keeps written coaching visible.
+Improved spacing, scrolling and layouts across supported languages.
+Updated Android board-sound playback to address a reported freeze path, and reduced Collection image decoding memory.
+</en-GB>

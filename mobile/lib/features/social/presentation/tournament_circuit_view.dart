@@ -104,10 +104,12 @@ class TournamentCircuitView extends StatelessWidget {
       child: CustomScrollView(
         slivers: <Widget>[
           if (onDailyPractice != null)
-            SliverToBoxAdapter(child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: TournamentFormatCards(onPractice:onDailyPractice!),
-            )),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: TournamentFormatCards(onPractice: onDailyPractice!),
+              ),
+            ),
           SliverToBoxAdapter(
             child: _CircuitHero(
               score: fairPlayScore,
@@ -185,7 +187,7 @@ class TournamentCircuitView extends StatelessWidget {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 148),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.crossAxisExtent;
@@ -194,22 +196,34 @@ class TournamentCircuitView extends StatelessWidget {
                       : width >= 650
                       ? 2
                       : 1;
-                  return SliverGrid(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final event = events[index];
-                      return _CircuitCard(
-                        event: event,
-                        theme: CircuitTheme.forTournament(event, index),
-                        featured: index == 0,
-                        onTap: () => onOpen(event),
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate((context, row) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var col = 0; col < columns; col++) ...[
+                              if (col > 0) const SizedBox(width: 16),
+                              Expanded(
+                                child: row * columns + col < events.length
+                                    ? _CircuitCard(
+                                        event: events[row * columns + col],
+                                        theme: CircuitTheme.forTournament(
+                                          events[row * columns + col],
+                                          row * columns + col,
+                                        ),
+                                        featured: row * columns + col == 0,
+                                        onTap: () =>
+                                            onOpen(events[row * columns + col]),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ],
+                        ),
                       );
-                    }, childCount: events.length),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: columns == 1 ? .94 : .82,
-                    ),
+                    }, childCount: (events.length / columns).ceil()),
                   );
                 },
               ),
@@ -336,7 +350,8 @@ class _CircuitHero extends StatelessWidget {
         ),
       ],
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
           width: 70,
@@ -354,32 +369,31 @@ class _CircuitHero extends StatelessWidget {
             size: 38,
           ),
         ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              UiText(
-                'SEASON 01',
-                style: TextStyle(
-                  color: Color(0xFF77B8FF),
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                ),
+        const SizedBox(height: 14),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            UiText(
+              'SEASON 01',
+              style: TextStyle(
+                color: Color(0xFF77B8FF),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
               ),
-              SizedBox(height: 5),
-              UiText(
-                'Your road to the crown',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-              ),
-              SizedBox(height: 5),
-              UiText(
-                'City cups · Knockout brackets · Cosmetic rewards',
-                style: TextStyle(color: Color(0xFFB5C1CE), height: 1.25),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(height: 5),
+            UiText(
+              'Your road to the crown',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+            ),
+            SizedBox(height: 5),
+            UiText(
+              'City cups · Knockout brackets · Cosmetic rewards',
+              style: TextStyle(color: Color(0xFFB5C1CE), height: 1.25),
+            ),
+          ],
         ),
+        const SizedBox(height: 12),
         Column(
           children: <Widget>[
             UiText(
@@ -462,12 +476,14 @@ class _CircuitProgress extends StatelessWidget {
                   ),
                 ),
               ),
-              UiText(
-                '{0} / {1} CP',
-                values: [points, maximum],
-                style: const TextStyle(
-                  color: Color(0xFFFFD66F),
-                  fontWeight: FontWeight.w900,
+              Flexible(
+                child: UiText(
+                  '{0} / {1} CP',
+                  values: [points, maximum],
+                  style: const TextStyle(
+                    color: Color(0xFFFFD66F),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -633,19 +649,22 @@ class _CircuitCardState extends State<_CircuitCard> {
           ],
         ),
         child: Stack(
-          fit: StackFit.expand,
           children: <Widget>[
-            Image.asset(theme.artwork, fit: BoxFit.cover),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    theme.colors.first.withValues(alpha: .42),
-                    theme.colors[1].withValues(alpha: .76),
-                    const Color(0xFF050B14),
-                  ],
+            Positioned.fill(
+              child: Image.asset(theme.artwork, fit: BoxFit.cover),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      theme.colors.first.withValues(alpha: .42),
+                      theme.colors[1].withValues(alpha: .76),
+                      const Color(0xFF050B14),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -671,7 +690,7 @@ class _CircuitCardState extends State<_CircuitCard> {
                       ),
                     ],
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 24),
                   Container(
                     width: 72,
                     height: 72,
