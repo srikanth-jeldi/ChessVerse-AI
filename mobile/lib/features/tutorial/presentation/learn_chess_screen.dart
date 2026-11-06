@@ -281,11 +281,14 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _AcademyProgressStrip(
-              placement: _placement,
-              stars: _mastery.values.fold<int>(0, (int a, int b) => a + b),
-              completed: _completed.length,
-              copy: _copy,
+            SizedBox(
+              width: double.infinity,
+              child: _AcademyProgressStrip(
+                placement: _placement,
+                stars: _mastery.values.fold<int>(0, (int a, int b) => a + b),
+                completed: _completed.length,
+                copy: _copy,
+              ),
             ),
             const SizedBox(height: 14),
             _PersonalizedPathCard(

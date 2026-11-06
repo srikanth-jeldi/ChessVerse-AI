@@ -280,17 +280,18 @@ class TournamentDetailContent extends StatelessWidget {
                         ],
                       ),
                     ),
-                  for (final pairing
-                      in detail.rounds
-                          .expand((r) => r.pairings)
-                          .where((p) => p.mine && p.status == 'ACTIVE'))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _PairingCard(
-                        pairing: pairing,
-                        onOpenMatch: onOpenMatch,
+                  for (final round in detail.rounds)
+                    for (final pairing in round.pairings.where(
+                      (p) => p.mine && p.status == 'ACTIVE',
+                    ))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _PairingCard(
+                          roundNumber: round.number,
+                          pairing: pairing,
+                          onOpenMatch: onOpenMatch,
+                        ),
                       ),
-                    ),
                   const UiText(
                     'Enter your board within 5 minutes of pairing. Clocks start when both players arrive. During play, reconnect within 2 minutes; your clock keeps running.',
                   ),
@@ -1458,7 +1459,11 @@ class _RoundColumn extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         for (final pairing in round.pairings) ...<Widget>[
-          _PairingCard(pairing: pairing, onOpenMatch: onOpenMatch),
+          _PairingCard(
+            roundNumber: round.number,
+            pairing: pairing,
+            onOpenMatch: onOpenMatch,
+          ),
           const SizedBox(height: 9),
         ],
       ],
@@ -1474,7 +1479,12 @@ class _RoundColumn extends StatelessWidget {
 }
 
 class _PairingCard extends StatelessWidget {
-  const _PairingCard({required this.pairing, required this.onOpenMatch});
+  const _PairingCard({
+    required this.roundNumber,
+    required this.pairing,
+    required this.onOpenMatch,
+  });
+  final int roundNumber;
   final TournamentPairingDto pairing;
   final Future<void> Function(String matchId)? onOpenMatch;
   @override
@@ -1501,9 +1511,9 @@ class _PairingCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 4,
             children: <Widget>[
-              UiText(
-                'BOARD {0}',
-                values: [pairing.board],
+              Text(
+                '${uiText(context, 'ROUND')} $roundNumber · '
+                '${UiCopy.format('BOARD {0}', [pairing.board])}',
                 style: const TextStyle(
                   color: Color(0xFF77B9EE),
                   fontSize: 10,

@@ -5,6 +5,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
 import 'full_screen_ad_gate.dart';
+import 'web_coin_video_stub.dart'
+    if (dart.library.js_interop) 'web_coin_video.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../diagnostics/app_diagnostics.dart';
@@ -42,12 +44,16 @@ class RewardedCoinService {
             ? AppConfig.admobIosRewardedId
             : _iosTest);
 
-  bool get supported =>
-      AdSdkInitializer.supported &&
-      (!kReleaseMode ||
-          (defaultTargetPlatform == TargetPlatform.android
-              ? _androidId.isNotEmpty
-              : !_hintReward && AppConfig.admobIosRewardedId.isNotEmpty));
+  static const _webPlacement = int.fromEnvironment('AYET_WEB_PLACEMENT_ID');
+  static const _webSlot = String.fromEnvironment('AYET_WEB_REWARDED_SLOT_NAME');
+
+  bool get supported => kIsWeb
+      ? !_hintReward && _webPlacement > 0 && _webSlot.isNotEmpty
+      : AdSdkInitializer.supported &&
+            (!kReleaseMode ||
+                (defaultTargetPlatform == TargetPlatform.android
+                    ? _androidId.isNotEmpty
+                    : !_hintReward && AppConfig.admobIosRewardedId.isNotEmpty));
 
   bool get isReady =>
       _ad != null &&
@@ -56,6 +62,7 @@ class RewardedCoinService {
   bool get isLoading => _loading;
 
   Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
+    if (kIsWeb) return false; // Browser requests begin on the player's tap.
     if (!supported || _showing) return false;
     if (isReady) return true;
     if (_loading) {
@@ -140,6 +147,31 @@ class RewardedCoinService {
     required String token,
   }) async {
     if (!supported || _showing) return RewardedCoinOutcome.unavailable;
+    if (kIsWeb) {
+      final lease = FullScreenAdGate.acquire();
+      if (lease == null || playerId.isEmpty) {
+        if (lease != null) FullScreenAdGate.release(lease);
+        return RewardedCoinOutcome.unavailable;
+      }
+      _showing = true;
+      try {
+        final result = await showWebCoinVideo(
+          _webPlacement,
+          _webSlot,
+          playerId,
+        );
+        return switch (result) {
+          'earned' => RewardedCoinOutcome.earned,
+          'dismissed' => RewardedCoinOutcome.dismissed,
+          _ => RewardedCoinOutcome.unavailable,
+        };
+      } catch (_) {
+        return RewardedCoinOutcome.unavailable;
+      } finally {
+        _showing = false;
+        FullScreenAdGate.release(lease);
+      }
+    }
     if (!isReady) {
       final bool loaded = await load();
       if (!loaded || _ad == null) return RewardedCoinOutcome.unavailable;

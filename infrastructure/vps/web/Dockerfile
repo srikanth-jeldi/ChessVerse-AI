@@ -15,6 +15,8 @@ RUN flutter pub get
 
 COPY mobile/ ./
 ARG API_BASE_URL
+ARG AYET_WEB_PLACEMENT_ID=0
+ARG AYET_WEB_REWARDED_SLOT_NAME
 ARG FACEBOOK_APP_ID
 ARG FACEBOOK_CLIENT_TOKEN
 RUN test -n "${API_BASE_URL}" \
@@ -22,6 +24,8 @@ RUN test -n "${API_BASE_URL}" \
     && test -n "${FACEBOOK_CLIENT_TOKEN}" \
     && flutter build web --release --base-href /play/ \
       --dart-define=API_BASE_URL="${API_BASE_URL}" \
+      --dart-define=AYET_WEB_PLACEMENT_ID="${AYET_WEB_PLACEMENT_ID}" \
+      --dart-define=AYET_WEB_REWARDED_SLOT_NAME="${AYET_WEB_REWARDED_SLOT_NAME}" \
       --dart-define=FACEBOOK_APP_ID="${FACEBOOK_APP_ID}" \
       --dart-define=FACEBOOK_CLIENT_TOKEN="${FACEBOOK_CLIENT_TOKEN}"
 
@@ -36,6 +40,6 @@ COPY infrastructure/vps/web/landing/index.html /srv/index.html
 COPY infrastructure/vps/web/landing/flutter_service_worker.js /srv/flutter_service_worker.js
 COPY infrastructure/vps/web/landing/robots.txt /srv/robots.txt
 COPY infrastructure/vps/web/landing/sitemap.xml /srv/sitemap.xml
-COPY infrastructure/vps/web/landing/app-ads.txt /srv/app-ads.txt
+COPY infrastructure/vps/web/landing/*ads.txt /srv/
 COPY infrastructure/vps/web/landing/landing-assets/ /srv/landing-assets/
 COPY infrastructure/vps/web/legal/ /srv/

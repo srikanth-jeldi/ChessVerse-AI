@@ -157,6 +157,11 @@ public class EconomyService {
 
     @Transactional
     public boolean grantRewardedAd(UUID playerId, String transactionId) {
+        return grantVerifiedVideo(playerId, "admob:" + transactionId);
+    }
+
+    @Transactional
+    public boolean grantVerifiedVideo(UUID playerId, String referenceKey) {
         ensureWallet(playerId);
         // Serialize rewards for one player so concurrent SSV callbacks cannot
         // grant more than the configured allowance.
@@ -174,7 +179,7 @@ public class EconomyService {
         if (!rewarded.isEmpty()
                 && rewarded.getFirst().plus(REWARDED_AD_COOLDOWN_SECONDS, ChronoUnit.SECONDS)
                 .isAfter(now)) return false;
-        return grantCoins(playerId, REWARDED_AD_COINS, "REWARDED_AD", "admob:" + transactionId,
+        return grantCoins(playerId, REWARDED_AD_COINS, "REWARDED_AD", referenceKey,
                 "Rewarded video");
     }
 
