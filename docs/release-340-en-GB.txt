@@ -1,0 +1,6 @@
+<en-GB>
+Refreshed chess pieces with clearer, recognisable shapes.
+Updated all six premium piece sets with distinct colour finishes.
+Improved piece edges and consistent white and black king proportions.
+Keeps existing move animations and recent sound playback improvements.
+</en-GB>
