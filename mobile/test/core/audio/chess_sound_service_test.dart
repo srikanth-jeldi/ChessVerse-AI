@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,7 +9,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'board sound explicitly avoids stealing narration audio focus',
+    'board effects reuse native source, coalesce requests and survive disposal',
     () async {
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -20,16 +21,22 @@ void main() {
       );
       Map<dynamic, dynamic>? context;
       String? sourceMethod;
+      final calls = <String>[];
+      bool failSource = false;
+      final previousTimeout = AudioPlayer.preparationTimeout;
+      AudioPlayer.preparationTimeout = const Duration(milliseconds: 500);
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       messenger.setMockMethodCallHandler(global, (_) async => null);
       messenger.setMockMethodCallHandler(events, (_) async => null);
       messenger.setMockMethodCallHandler(moveEvents, (_) async => null);
       messenger.setMockMethodCallHandler(player, (call) async {
+        calls.add(call.method);
         if (call.method == 'setAudioContext') {
           context = call.arguments as Map;
         }
         if (call.method.startsWith('setSource')) {
           sourceMethod = call.method;
+          if (failSource) throw PlatformException(code: 'source-unavailable');
           messenger.handlePlatformMessage(
             moveEvents.name,
             const StandardMethodCodec().encodeSuccessEnvelope({
@@ -47,7 +54,28 @@ void main() {
         expect(context, isNotNull);
         expect(context!['audioFocus'], 0);
         expect(sourceMethod, 'setSourceBytes');
+        await ChessSoundService.instance.move();
+        expect(calls.where((c) => c == 'setSourceBytes'), hasLength(1));
+        expect(calls.where((c) => c == 'setAudioContext'), hasLength(1));
+        expect(calls.where((c) => c == 'resume'), hasLength(2));
+        await Future.wait(
+          List.generate(12, (_) => ChessSoundService.instance.move()),
+        );
+        expect(calls.where((c) => c == 'resume'), hasLength(3));
+        ChessSoundService.instance.enabled = false;
+        await ChessSoundService.instance.move();
+        expect(calls.where((c) => c == 'resume'), hasLength(3));
+        ChessSoundService.instance.enabled = true;
+        await ChessSoundService.instance.dispose();
+        failSource = true;
+        await ChessSoundService.instance.move();
+        expect(calls.where((c) => c == 'resume'), hasLength(3));
+        failSource = false;
+        await ChessSoundService.instance.move();
+        expect(calls.where((c) => c == 'resume'), hasLength(4));
+        expect(calls.where((c) => c == 'setSourceBytes'), hasLength(3));
       } finally {
+        AudioPlayer.preparationTimeout = previousTimeout;
         debugDefaultTargetPlatformOverride = null;
         await ChessSoundService.instance.dispose();
         messenger.setMockMethodCallHandler(player, null);

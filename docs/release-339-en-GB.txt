@@ -1,0 +1,6 @@
+<en-GB>
+Improved chess sound playback with less repeated audio setup.
+Clearer tournament round and board labels.
+Improved Learn screen progress layout.
+Includes recent interface and stability improvements.
+</en-GB>

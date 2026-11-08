@@ -1,0 +1,63 @@
+Build 339 / 1.3.72 - investigation and verification, 2026-11-08
+
+Observed Play Console evidence
+- User screenshot: 28-day user-perceived ANR 0.47%, crash 0.11%.
+- Live 28-day ANR list (11 October-8 November): 15 clusters. Visible versions
+  include 224, 249, 278, 290, 300, 306, 311 and 324; none listed 338.
+- Explicit live filter: version 338 (1.3.71), user-perceived ANRs, last 7 days
+  (1-8 November), data updated today 13:30: No results.
+- This is not proof of zero ANRs: recent release, low adoption and reporting
+  delay limit conclusions. Rolling 28-day averages include old installations.
+- Slow starts also need follow-up: cold 18.14%, warm 25.52% in live overview.
+
+Important clusters
+- UrlSource / audio Binder: 3 events, 2 users, builds 311 and 249.
+  Build 338 already replaced Android bundled file sources with byte sources.
+- Obfuscated ve.d.a: 3 events, 1 user, build 311, Infinix SMART Android 11.
+  Main thread trace enters MediaPlayer.setDataSourceFD / Binder. The trace
+  contains merged/obfuscated frames, so exact original caller is unconfirmed
+  without matching R8 mapping. Do not attribute solely to advertising SDK.
+- Other clusters include Flutter/Dart native stacks, notification/FCM Binder,
+  InstallReferrer Binder and no-focused-window/nativePollOnce reports.
+  These have different causes. No unsupported blanket 'all ANRs fixed' claim.
+- No Play/Firebase issue was hidden, archived or marked resolved.
+
+339 change
+- Reuse prepared bundled chess sound sources with ReleaseMode.stop rather than
+  destroying and recreating MediaPlayer sources after every effect.
+- Set board audio context/volume once per prepared effect, coalesce concurrent
+  requests for the same effect. Keep audio focus disabled for coach compatibility.
+- Failed preparation can retry. Disposal clears references so sounds can restart.
+- Keeps 338 byte-source mitigation, all architectures, assets and ad formats.
+- Retains at most the fixed collection of lazily-used sound players; does not
+  preload all audio or change SDK dependencies. Production memory/performance
+  improvement needs device/field validation; this is a mitigation, not proof.
+
+Included previously committed updates
+- Tournament round and board labels; Learn progress panel full width.
+- Web reward provider integration remains disabled without approved placement.
+  No live web-video revenue or ad availability is claimed.
+
+Verification
+- 27 targeted Flutter tests passed: sound reuse/coalescing/mute/retry/disposal,
+  startup behavior, ABI completeness, ad initialization, image decode bounds,
+  tournament footer/entry/resume layout including all 34 languages.
+- flutter analyze: no issues found.
+- F41 Android 12 real-device integration: PASS. Six piece sounds x three
+  rounds with 18 interleaved screen taps, mute, disposal and reinitialization.
+  Native prepared-source counts checked; recent log scan found no audio error
+  or app ANR/fatal exception. This small debug smoke test is not a long-session
+  release performance benchmark and cannot rule out other device ANRs.
+- Signed AAB verified: production package com.epitomehub.chessverse,
+  version 1.3.72 (339), production AdMob app ID, not debuggable.
+- Bundle baseline comparison against 338: all 294 protected paths retained,
+  12 native libraries present, all 34 language catalogs unchanged. Native
+  dependencies other than application code match byte-for-byte.
+- Dart debug symbols and Android R8 mapping retained with the release.
+- Compressed download MAX estimates: ARM32 24,807,889 bytes; ARM64 25,029,793;
+  x86_64 25,212,898. Strict 25,000,000-byte goal is NOT met on ARM64/x86_64.
+  Upload AAB size is distinct from device download size.
+- 339 is an internal-testing candidate; not published to Play by this task.
+- All screens x 34 languages manual device audit is NOT completed in this task.
+- Production Google/Facebook sign-in, push and live ads require Play-signed
+  internal testing; separate .uitest app is not evidence for those services.

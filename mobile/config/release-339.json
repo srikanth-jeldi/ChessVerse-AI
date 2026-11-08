@@ -1,0 +1,14 @@
+{
+  "CHESSVERSE_ENV": "production",
+  "API_BASE_URL": "https://api.chessverseai.com",
+  "WEB_BASE_URL": "https://chessverseai.com",
+  "PRIVACY_POLICY_URL": "https://chessverseai.com/privacy",
+  "TERMS_URL": "https://chessverseai.com/terms",
+  "DATA_DELETION_URL": "https://chessverseai.com/data-deletion",
+  "ADMOB_ANDROID_REWARDED_ID": "ca-app-pub-9061518700917881/3857200476",
+  "ADMOB_ANDROID_INTERSTITIAL_ID": "ca-app-pub-9061518700917881/7417916394",
+  "ADMOB_ANDROID_BANNER_ID": "ca-app-pub-9061518700917881/3792983260",
+  "ADMOB_ANDROID_HINT_REWARDED_ID": "ca-app-pub-9061518700917881/6640887311",
+  "ADMOB_ANDROID_REWARDED_INTERSTITIAL_ID": "ca-app-pub-9061518700917881/1649173258",
+  "REWARDED_INTERSTITIAL_TRIAL_ENABLED": true
+}

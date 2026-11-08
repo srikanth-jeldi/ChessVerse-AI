@@ -25,7 +25,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'club_activity_screen_test.dart' show FakeCommunity;
 import 'shop_localizations_test.dart' show Catalog;
-import 'coin_credit_flow_test.dart' as coinFixtures;
+import 'coin_credit_flow_test.dart' as coin_fixtures;
 
 import 'package:chessverse_ai/features/shop/presentation/cosmetic_shop_screen.dart';
 
@@ -115,8 +115,8 @@ void main({bool deviceAudit = false}) {
     'collection': () => CosmeticShopScreen(
       token: 'test',
       shopApi: Catalog(),
-      rewardsApi: coinFixtures.Rewards(),
-      rewardedCoins: coinFixtures.Video(),
+      rewardsApi: coin_fixtures.Rewards(),
+      rewardedCoins: coin_fixtures.Video(),
     ),
     'daily_challenge': () => const DailyChallengeScreen(),
     'learn': () => const LearnChessScreen(),

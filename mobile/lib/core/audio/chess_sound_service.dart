@@ -33,6 +33,13 @@ class ChessSoundService {
   AudioPlayer? _errorPlayer;
 
   bool enabled = true;
+  bool _disposing = false;
+  final Set<AudioPlayer> _prepared = <AudioPlayer>{};
+  final Map<AudioPlayer, Future<void>> _inFlight =
+      <AudioPlayer, Future<void>>{};
+
+  @visibleForTesting
+  int get preparedEffectCount => _prepared.length;
 
   static const Map<String, String> pieceAssetPaths = <String, String>{
     'P': 'audio/piece_pawn.wav',
@@ -47,7 +54,7 @@ class ChessSoundService {
       pieceAssetPaths[pieceCode.toUpperCase()] ?? 'audio/chess_move.wav';
 
   Future<void> move() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _movePlayer ??= AudioPlayer(playerId: 'chessverse-move'),
       'audio/chess_move.wav',
@@ -56,7 +63,7 @@ class ChessSoundService {
   }
 
   Future<void> pieceMove(String pieceCode, {bool capture = false}) async {
-    if (!enabled) return;
+    if (!enabled || _disposing) return;
     final String normalized = pieceCode.toUpperCase();
     final String name = switch (normalized) {
       'P' => 'pawn',
@@ -84,7 +91,7 @@ class ChessSoundService {
   }
 
   Future<void> capture() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _capturePlayer ??= AudioPlayer(playerId: 'chessverse-capture'),
       'audio/chess_capture.wav',
@@ -93,7 +100,7 @@ class ChessSoundService {
   }
 
   Future<void> check() async {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     // A move/capture cue may have just started. A short gap keeps the check
     // alert crisp instead of masking the selected piece sound.
     await Future<void>.delayed(const Duration(milliseconds: 280));
@@ -105,7 +112,7 @@ class ChessSoundService {
   }
 
   Future<void> checkmate() async {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await _play(
       _checkmatePlayer ??= AudioPlayer(playerId: 'chessverse-checkmate'),
@@ -121,7 +128,7 @@ class ChessSoundService {
   }
 
   Future<void> victory() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _victoryPlayer ??= AudioPlayer(playerId: 'chessverse-victory'),
       'audio/chess_victory.wav',
@@ -130,7 +137,7 @@ class ChessSoundService {
   }
 
   Future<void> draw() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _drawPlayer ??= AudioPlayer(playerId: 'chessverse-draw'),
       'audio/chess_draw.wav',
@@ -139,7 +146,7 @@ class ChessSoundService {
   }
 
   Future<void> tap() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _uiPlayer ??= AudioPlayer(playerId: 'chessverse-ui'),
       'audio/chess_tap.wav',
@@ -148,7 +155,7 @@ class ChessSoundService {
   }
 
   Future<void> error() {
-    if (!enabled) return Future<void>.value();
+    if (!enabled || _disposing) return Future<void>.value();
     return _play(
       _errorPlayer ??= AudioPlayer(playerId: 'chessverse-error'),
       'audio/chess_error.wav',
@@ -157,25 +164,52 @@ class ChessSoundService {
   }
 
   Future<void> dispose() async {
-    await Future.wait(<Future<void>>[
-      if (_movePlayer != null) _movePlayer!.dispose(),
-      ..._piecePlayers.values.map((AudioPlayer player) => player.dispose()),
-      if (_capturePlayer != null) _capturePlayer!.dispose(),
-      if (_checkPlayer != null) _checkPlayer!.dispose(),
-      if (_checkmatePlayer != null) _checkmatePlayer!.dispose(),
-      if (_victoryPlayer != null) _victoryPlayer!.dispose(),
-      if (_drawPlayer != null) _drawPlayer!.dispose(),
-      if (_uiPlayer != null) _uiPlayer!.dispose(),
-      if (_errorPlayer != null) _errorPlayer!.dispose(),
-    ]);
+    if (_disposing) return;
+    _disposing = true;
+    try {
+      await Future.wait(_inFlight.values.toList());
+      final players = <AudioPlayer>{
+        ?_movePlayer,
+        ..._piecePlayers.values,
+        ?_capturePlayer,
+        ?_checkPlayer,
+        ?_checkmatePlayer,
+        ?_victoryPlayer,
+        ?_drawPlayer,
+        ?_uiPlayer,
+        ?_errorPlayer,
+      };
+      await Future.wait(players.map((player) => player.dispose()));
+    } finally {
+      _movePlayer = _capturePlayer = _checkPlayer = _checkmatePlayer = null;
+      _victoryPlayer = _drawPlayer = _uiPlayer = _errorPlayer = null;
+      _piecePlayers.clear();
+      _prepared.clear();
+      _inFlight.clear();
+      _disposing = false;
+    }
   }
 
   Future<void> _play(
     AudioPlayer player,
     String assetPath, {
     required double volume,
+  }) {
+    if (!enabled || _disposing) return Future<void>.value();
+    // Coalesce rapid duplicate requests instead of racing native preparations.
+    return _inFlight.putIfAbsent(player, () {
+      return _playEffect(player, assetPath, volume: volume).whenComplete(() {
+        _inFlight.remove(player);
+      });
+    });
+  }
+
+  Future<void> _playEffect(
+    AudioPlayer player,
+    String assetPath, {
+    required double volume,
   }) async {
-    if (!enabled) {
+    if (!enabled || _disposing) {
       return;
     }
     try {
@@ -183,31 +217,41 @@ class ChessSoundService {
       // ContentProvider Binder call (seen in Play vitals UrlSource ANRs).
       // Bundled effects are small: use MediaDataSource bytes instead, as the
       // cloud narration player already does, without a temporary file URI.
-      final Source source;
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        final data = await rootBundle.load('assets/$assetPath');
-        source = BytesSource(
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-        );
-      } else {
-        source = AssetSource(assetPath);
-      }
-      if (!enabled) return;
-      await player.stop();
-      // Brief board effects must not steal focus and pause the voice coach.
-      await player.setAudioContext(
-        AudioContext(
-          android: const AudioContextAndroid(
-            audioFocus: AndroidAudioFocus.none,
-            usageType: AndroidUsageType.game,
-            contentType: AndroidContentType.sonification,
+      if (!_prepared.contains(player)) {
+        final Source source;
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          final data = await rootBundle.load('assets/$assetPath');
+          source = BytesSource(
+            data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+          );
+        } else {
+          source = AssetSource(assetPath);
+        }
+        if (!enabled || _disposing) return;
+        // Retain the bundled effect instead of repeatedly preparing a native
+        // MediaPlayer source after every move (the default release mode).
+        await player.setReleaseMode(ReleaseMode.stop);
+        // Brief board effects must not steal focus and pause the voice coach.
+        await player.setAudioContext(
+          AudioContext(
+            android: const AudioContextAndroid(
+              audioFocus: AndroidAudioFocus.none,
+              usageType: AndroidUsageType.game,
+              contentType: AndroidContentType.sonification,
+            ),
           ),
-        ),
-      );
-      await player.setVolume(volume);
-      if (!enabled) return;
-      await player.play(source);
+        );
+        await player.setVolume(volume);
+        if (!enabled || _disposing) return;
+        await player.setSource(source);
+        _prepared.add(player);
+      }
+      if (!enabled || _disposing) return;
+      await player.stop();
+      if (!enabled || _disposing) return;
+      await player.resume();
     } catch (_) {
+      _prepared.remove(player);
       // Audio assets may be added after the service is wired. Missing or
       // unsupported audio files should never block gameplay/testing.
     }
