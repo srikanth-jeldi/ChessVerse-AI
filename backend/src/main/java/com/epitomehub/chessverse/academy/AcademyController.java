@@ -1,6 +1,11 @@
 package com.epitomehub.chessverse.academy;
 
 import com.epitomehub.chessverse.auth.PlayerAuthenticationService;
+import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Piece;
+import com.github.bhlangonijr.chesslib.Side;
+import com.github.bhlangonijr.chesslib.Square;
+import com.github.bhlangonijr.chesslib.move.Move;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
@@ -345,18 +350,40 @@ public class AcademyController {
         if(i.puzzleId!=null) require(i.kind.equals("PUZZLES") && Integer.parseInt(i.puzzleId.substring(i.puzzleId.indexOf('-')+1))>=1 && Integer.parseInt(i.puzzleId.substring(i.puzzleId.indexOf('-')+1))<=200,HttpStatus.BAD_REQUEST,"Choose a puzzle from 1 to 200");
         if(i.positionFen!=null || i.bestMove!=null) {
             require(i.kind.equals("POSITIONS") && i.positionFen!=null && i.bestMove!=null,HttpStatus.BAD_REQUEST,"Position practice needs FEN and best move");
-            require(validTrainingFen(i.positionFen),HttpStatus.BAD_REQUEST,"Use a valid FEN with both kings");
+            require(validTrainingPosition(i.positionFen,i.bestMove),HttpStatus.BAD_REQUEST,"Use a valid board and a legal best move for the selected side");
         }
         for(UUID id:new HashSet<>(i.studentIds)) {
             require(Boolean.TRUE.equals(student(org,id,a).get("active")),HttpStatus.CONFLICT,"Student is inactive");
             db.update("INSERT INTO academy_assignment(id,organization_id,student_id,created_by,title,kind,instructions,due_date,puzzle_id,position_fen,best_move) VALUES(?,?,?,?,?,?,?,?,?,?,?)",UUID.randomUUID(),org,id,a.member,i.title,i.kind,i.instructions,i.dueDate,i.puzzleId,i.positionFen,i.bestMove);
         }
     }
-    private boolean validTrainingFen(String fen) {
-        String[] fields=fen.trim().split("\\s+"); if(fields.length!=6 || !fields[1].matches("[wb]")) return false;
-        String[] ranks=fields[0].split("/");if(ranks.length!=8)return false;
-        for(String rank:ranks){int squares=0;for(char c:rank.toCharArray()){if(c>='1'&&c<='8')squares+=c-'0';else if("prnbqkPRNBQK".indexOf(c)>=0)squares++;else return false;}if(squares!=8)return false;}
-        return fields[0].chars().filter(c->c=='K').count()==1 && fields[0].chars().filter(c->c=='k').count()==1 && fields[2].matches("-|[KQkq]+") && fields[3].matches("-|[a-h][36]") && fields[4].matches("[0-9]{1,5}") && fields[5].matches("[1-9][0-9]{0,4}");
+    private boolean validTrainingPosition(String fen,String uci) {
+        try {
+            String[] fields=fen.trim().split("\\s+");
+            if(fields.length!=6 || !fields[1].matches("[wb]")) return false;
+            Board board=new Board();
+            board.loadFromFen(String.join(" ",fields));
+            if(board.getPieceLocation(Piece.WHITE_KING).isEmpty() || board.getPieceLocation(Piece.BLACK_KING).isEmpty()) return false;
+            Square from=Square.valueOf(uci.substring(0,2).toUpperCase(Locale.ROOT));
+            Square to=Square.valueOf(uci.substring(2,4).toUpperCase(Locale.ROOT));
+            Move move;
+            if(uci.length()==5) {
+                Piece promotion=switch(uci.charAt(4)) {
+                    case 'q' -> board.getSideToMove()==Side.WHITE ? Piece.WHITE_QUEEN : Piece.BLACK_QUEEN;
+                    case 'r' -> board.getSideToMove()==Side.WHITE ? Piece.WHITE_ROOK : Piece.BLACK_ROOK;
+                    case 'b' -> board.getSideToMove()==Side.WHITE ? Piece.WHITE_BISHOP : Piece.BLACK_BISHOP;
+                    case 'n' -> board.getSideToMove()==Side.WHITE ? Piece.WHITE_KNIGHT : Piece.BLACK_KNIGHT;
+                    default -> null;
+                };
+                if(promotion==null) return false;
+                move=new Move(from,to,promotion);
+            } else {
+                move=new Move(from,to);
+            }
+            return board.legalMoves().contains(move);
+        } catch(RuntimeException invalid) {
+            return false;
+        }
     }
     @PostMapping("/{org}/assignments/{id}/results")
     public void assignmentResult(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id,@Valid @RequestBody AssignmentResultInput i) {

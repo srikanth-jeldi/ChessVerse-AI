@@ -87,6 +87,17 @@ test('Training filters select completed and overdue assignments without changing
   assert.equal(run('state.data.assignments.length'),24);
 });
 
+test('Homework board creates a correctly oriented FEN and progress suggestions are reviewable drafts',()=>{
+  const run=harness();
+  const fen=run(`(()=>{const b=Array(64).fill('');b[4]='wK';b[60]='bK';b[12]='wP';return homeworkFen(b,'w')})()`);
+  assert.equal(fen,'4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+  run("state.demoRole='COACH';demoScope();state.page='assignments';");
+  assert.match(run('assignmentsPage()'),/Homework/);
+  assert.match(run("homeworkFocus(['s0']).reason"),/coach-recorded/);
+  assert.match(run("homeworkPositionPreview('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1')"),/Assigned chess position/);
+  assert.equal(run("homeworkPositionPreview('invalid')"),'');
+});
+
 test('Student profile actions retain the selected student and parent is read only',()=>{
   const run=harness();
   run("state.student='s3'; state.page='profile'");

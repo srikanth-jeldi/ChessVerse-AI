@@ -99,6 +99,17 @@ class AcademyControllerTest {
         assertTrue(summary.contains("Found it"));assertTrue(summary.contains("assignmentResults"));
         assertTrue(list(controller.appActivity("student",orgA),"events").isEmpty()); // assignments do not require personal sharing
     }
+    @Test void manualPositionHomeworkRequiresAValidBoardAndLegalSolutionMove() {
+        String fen="4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        controller.assign("coach",orgA,new AcademyController.AssignmentInput(
+                List.of(studentA),"Pawn advance","POSITIONS","Play the best move.",LocalDate.now(),null,fen,"e2e4"));
+        assertEquals(fen,db.queryForObject("SELECT position_fen FROM academy_assignment WHERE student_id=?",String.class,studentA));
+        denied(HttpStatus.BAD_REQUEST,()->controller.assign("coach",orgA,new AcademyController.AssignmentInput(
+                List.of(studentA),"Illegal move","POSITIONS","Do not accept an impossible answer.",LocalDate.now(),null,fen,"e2e5")));
+        String missingKing="8/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        denied(HttpStatus.BAD_REQUEST,()->controller.assign("coach",orgA,new AcademyController.AssignmentInput(
+                List.of(studentA),"Invalid board","POSITIONS","Needs both kings.",LocalDate.now(),null,missingKing,"e2e4")));
+    }
     @Test void dailyMetricsAndReportSnapshotAreNotLimitedToFeedPage() {
         controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
         db.update("UPDATE academy_activity_sharing SET enabled_at=?",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(60)));

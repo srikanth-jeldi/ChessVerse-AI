@@ -58,6 +58,22 @@ dialog.form-drawer { inset:0 0 0 auto; margin:0; height:100dvh; max-height:100dv
 @media(max-width:700px) { .topbar .org-select { margin-left:0; width:auto; min-width:0; max-width:240px; flex:1 1 auto; font-size:13px; padding-left:12px; }.topbar .user { min-width:0; flex:0 0 auto; }.topbar .user > div:not(.avatar) { display:none; } }
 /* Assignment inputs follow the selected recipient and practice type. */
 #assignment-form [hidden] { display:none !important; }
+#assignment-form .homework-auto { margin:12px 0 18px; padding:14px; border:1px solid #cfe0f4; border-radius:12px; background:#f4f8ff; }
+#assignment-form .homework-auto strong { color:#20385c; font-size:13px; }
+#assignment-form .homework-auto p,.homework-suggestion { display:block; color:#64748b; font-size:12px; line-height:1.6; margin:6px 0 10px; }
+#assignment-form .homework-editor { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin-top:14px; }
+#assignment-form .position-palette { display:flex; flex-wrap:wrap; gap:6px; }
+#assignment-form .position-piece { min-width:39px; height:40px; border:1px solid #c7d4e5; border-radius:8px; background:#fff; color:#1c293b; font-size:26px; line-height:1; }
+#assignment-form .position-piece.selected { outline:2px solid #29aa9c; background:#e7faf6; }
+#assignment-form .position-piece.erase { font-size:20px; }
+.homework-board,.homework-preview { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); aspect-ratio:1; width:min(100%,390px); overflow:hidden; border:3px solid #b9934d; border-radius:9px; }
+.homework-board .position-square,.homework-preview .position-square { display:grid; place-items:center; min-width:0; aspect-ratio:1; padding:0; border:0; font-size:clamp(20px,5vw,34px); line-height:1; }
+.position-square.light { background:#ead9b6; color:#fffdf7; text-shadow:0 1px 2px #344154; }
+.position-square.dark { background:#78563c; color:#151c28; text-shadow:0 1px 2px #eee; }
+.position-square.occupied { cursor:pointer; }
+.homework-preview { width:140px; margin-top:10px; }
+.homework-preview .position-square { font-size:18px; }
+@media(max-width:600px) { dialog.form-drawer { inset:0; width:100%; max-width:none; border-radius:0; padding:24px 17px; }.homework-auto .button { width:100%; justify-content:center; } }
 #assignment-form details { margin:18px 0; padding:14px; background:#eef4ff; border:1px solid #d5e2fa; border-radius:12px; }
 #assignment-form summary { cursor:pointer; color:#2856a4; font-weight:600; }
 #assignment-form details[open] summary { margin-bottom:16px; }

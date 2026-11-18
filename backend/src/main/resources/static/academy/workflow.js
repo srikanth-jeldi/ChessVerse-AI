@@ -93,10 +93,41 @@ assignmentsPage = function approvedTrainingPlans() {
   const all = state.data.assignments, status = state.assignmentStatus || 'all';
   const groups = {all, pending: all.filter(a => !a.completed_at), overdue: all.filter(a => !a.completed_at && a.due_date < today()), completed: all.filter(a => a.completed_at)};
   const list = (groups[status] || all).filter(a => (a.title + ' ' + studentName(a.student_id)).toLowerCase().includes(state.search.toLowerCase()));
-  return workspaceStamp() + heading('Assignments & Training Plans', 'Purposeful practice. Clear goals. Measurable progress.', trainer() ? btn('Assign training', 'assignment-form', 'plus') : '') +
+  return workspaceStamp() + heading('Homework', 'Assign chess practice, track each student, and review completions.', trainer() ? btn('Assign homework', 'assignment-form', 'plus') : '') +
     `<div class="training-filters" role="group" aria-label="Assignment status">${[['all','All training'],['pending','In progress'],['overdue','Overdue'],['completed','Completed']].map(([key, label]) => `<button type="button" data-workflow="filter" data-status="${key}" aria-pressed="${status === key}">${label}<span>${groups[key].length}</span></button>`).join('')}</div>` + assignmentList(list) +
     (state.data.role === 'STUDENT' ? btn('Share saved game', 'share-game-form', 'game', 'secondary') : '');
 };
+
+const homeworkPieces = { wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟' };
+function homeworkFen(board, turn='w') {
+  const ranks=[];
+  for(let rank=7;rank>=0;rank--){let row='',empty=0;for(let file=0;file<8;file++){const token=board[rank*8+file],p=token?token[1][token[0]==='w'?'toUpperCase':'toLowerCase']():'';if(p){if(empty){row+=empty;empty=0;}row+=p;}else empty++;}if(empty)row+=empty;ranks.push(row);}
+  return `${ranks.join('/')} ${turn} - - 0 1`;
+}
+function homeworkPositionPreview(fen) {
+  if(!fen)return '';
+  const symbols={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'};
+  const ranks=String(fen).split(/\s+/)[0].split('/');if(ranks.length!==8)return '';
+  const cells=ranks.flatMap(rank=>{const row=[];for(const char of rank){if(/[1-8]/.test(char))for(let i=0;i<Number(char);i++)row.push('');else row.push(symbols[char]||'');}return row;});
+  if(cells.length!==64)return '';
+  return `<div class="homework-preview" role="img" aria-label="Assigned chess position">${cells.map((piece,index)=>`<span class="position-square ${(index%8+Math.floor(index/8))%2?'dark':'light'}">${piece}</span>`).join('')}</div><p class="small muted">${String(fen).split(/\s+/)[1]==='b'?'Black':'White'} to move</p>`;
+}
+assignmentList = function homeworkAssignmentList(list) {
+  return list.length ? list.map(a => `<section class="card assignment"><div class="details">${badge(a.kind.replaceAll('_',' '))}<h3>${esc(a.title)}</h3><span class="small muted">${esc(studentName(a.student_id))} · Due ${date(a.due_date)}</span><p>${esc(a.instructions)}</p>${a.position_fen?homeworkPositionPreview(a.position_fen):''}</div>${a.completed_at?badge('Completed','green'):a.due_date<today()?badge('Overdue','red'):badge('In progress','orange')}${!a.completed_at&&(trainer()||state.data.role==='STUDENT')?btn('Mark complete','complete','check','soft',a.id):''}</section>`).join('') : empty('No homework yet. Your coach will add it here.');
+};
+function homeworkFocus(studentIds) {
+  const obs=observations().filter(o=>studentIds.includes(o.student_id));
+  if(!obs.length)return {kind:'PUZZLES',title:'Tactical foundations',instructions:'Complete a short set of tactics. For every missed puzzle, identify the opponent threat and retry the position before moving on.',reason:'No recent coach-recorded focus data; this is a general practice suggestion.'};
+  const focus=[...weakFields].sort((a,b)=>sum(obs,b[0])-sum(obs,a[0]))[0];
+  const prompts={blunders:['Tactical awareness','Solve 5 tactical puzzles. Before each move, check every opponent check, capture and threat. Retry each missed position.'],opening_errors:['Opening principles','Review your first 10 moves in a recent game. Practise developing pieces, contesting the centre and castling safely.'],middle_errors:['Middlegame planning','Practise 5 middlegame positions. Name the opponent’s threat, choose a plan, then compare candidate moves.'],endgame_errors:['Endgame technique','Practise 5 basic endgames. Focus on king activity, passed pawns and converting an advantage safely.']};
+  return {kind:'PUZZLES',title:prompts[focus[0]][0],instructions:prompts[focus[0]][1],reason:`Based on ${sum(obs,focus[0])} coach-recorded ${focus[1].toLowerCase()} observations. Please review before assigning.`};
+}
+function positionEditorMarkup(){
+  const palette=Object.entries(homeworkPieces).map(([code,symbol])=>`<button type="button" class="position-piece" data-piece="${code}" aria-label="Place ${code[0]==='w'?'white':'black'} ${code[1]}">${symbol}</button>`).join('');
+  const squares=Array.from({length:64},(_,i)=>`<button type="button" class="position-square ${(i%8+Math.floor(i/8))%2?'dark':'light'}" data-square="${'abcdefgh'[i%8]}${8-Math.floor(i/8)}" aria-label="${'abcdefgh'[i%8]}${8-Math.floor(i/8)}"></button>`).join('');
+  const squareOptions=['<option value="">Select square</option>',...Array.from({length:64},(_,i)=>`<option value="${'abcdefgh'[i%8]}${1+Math.floor(i/8)}">${'abcdefgh'[i%8]}${1+Math.floor(i/8)}</option>`)].join('');
+  return `<div class="homework-editor"><div class="position-palette" role="group" aria-label="Choose a chess piece">${palette}<button type="button" class="position-piece erase" data-piece="erase" aria-label="Erase square">⌫</button></div><div class="homework-board" role="group" aria-label="Homework chessboard">${squares}</div><div class="form-grid"><label>Side to move<select name="boardTurn"><option value="w">White to move</option><option value="b">Black to move</option></select></label><label>Best move · from<select name="moveFrom">${squareOptions}</select></label><label>Best move · to<select name="moveTo">${squareOptions}</select></label><label>Promotion<select name="movePromotion"><option value="">None</option><option value="q">Queen</option><option value="r">Rook</option><option value="b">Bishop</option><option value="n">Knight</option></select></label></div><p class="small muted position-help" aria-live="polite">Choose a piece, then a square. Set the correct side to move and solution move.</p></div>`;
+}
 
 openForm = async function approvedForm(action, id) {
   await approvedOpenForm(action, id);
@@ -105,6 +136,32 @@ openForm = async function approvedForm(action, id) {
   if (action === 'assignment-form') {
     const form = dialog.querySelector('form');
     const controls = form.elements;
+    const template = form.querySelector('[name="homeworkTemplate"]');
+    if(template){
+      const option=document.createElement('option');option.value='';option.textContent='Choose a starting point';option.selected=true;template.prepend(option);
+      const plan=document.createElement('div');plan.className='homework-auto';plan.innerHTML='<strong>Automatic suggestion from recorded progress</strong><p>Choose a student or batch first. The suggestion is a draft for coach review.</p><button type="button" class="button secondary" data-workflow="suggest-homework">Draft homework</button><span class="homework-suggestion" aria-live="polite"></span>';
+      template.closest('label')?.after(plan);
+    }
+    const positionSection=form.querySelector('.assignment-position');
+    if(positionSection){
+      const fields=positionSection.querySelectorAll('input');
+      const fen=fields[0],solution=fields[1];
+      const editor=document.createElement('div');editor.innerHTML=positionEditorMarkup();positionSection.append(editor);
+      fen.readOnly=true;fen.setAttribute('aria-label','Position FEN generated from the chessboard');
+      let board=Array(64).fill(''), selected='wQ';
+      const help=positionSection.querySelector('.position-help');
+      const redraw=()=>{positionSection.querySelectorAll('[data-square]').forEach(square=>{const index=(Number(square.dataset.square[1])-1)*8+'abcdefgh'.indexOf(square.dataset.square[0]);square.textContent=homeworkPieces[board[index]]||'';square.classList.toggle('occupied',!!board[index]);});fen.value=homeworkFen(board,form.elements.boardTurn.value);};
+      positionSection.addEventListener('click',event=>{
+        const piece=event.target.closest('[data-piece]');if(piece){selected=piece.dataset.piece;positionSection.querySelectorAll('[data-piece]').forEach(button=>button.classList.toggle('selected',button===piece));return;}
+        const square=event.target.closest('[data-square]');if(!square)return;
+        const index=(Number(square.dataset.square[1])-1)*8+'abcdefgh'.indexOf(square.dataset.square[0]);board[index]=selected==='erase'?'':selected;redraw();
+      });
+      const syncMove=()=>{solution.value=form.elements.moveFrom.value&&form.elements.moveTo.value?form.elements.moveFrom.value+form.elements.moveTo.value+form.elements.movePromotion.value:'';};
+      ['moveFrom','moveTo','movePromotion'].forEach(name=>form.elements[name].addEventListener('change',syncMove));
+      form.elements.boardTurn.addEventListener('change',redraw);
+      fen.addEventListener('input',()=>{if(fen.value!==homeworkFen(board,form.elements.boardTurn.value))help.textContent='Board editor controls the position; edits to FEN are replaced by the board.';});
+      redraw();
+    }
     const sync = () => {
       for (const [name, active] of [['studentId', controls.targetType.value === 'student'], ['batchId', controls.targetType.value === 'batch']]) {
         controls[name].closest('label').hidden = !active;
@@ -168,6 +225,16 @@ document.addEventListener('click', async event => {
         state.assignmentStatus = target.dataset.status;
         render();
         break;
+      case 'suggest-homework': {
+        const form=target.closest('form');if(!form)break;
+        const ids=form.elements.targetType.value==='student'?[form.elements.studentId.value].filter(Boolean):state.data.students.filter(s=>s.active&&s.batch_id===form.elements.batchId.value).map(s=>s.id);
+        if(!ids.length){toast('Choose a student or a batch with students first.');break;}
+        const draft=homeworkFocus(ids);form.elements.title.value=draft.title;form.elements.kind.value=draft.kind;form.elements.instructions.value=draft.instructions;
+        const due=new Date();due.setDate(due.getDate()+7);form.elements.dueDate.value=due.toISOString().slice(0,10);
+        form.elements.kind.dispatchEvent(new Event('change',{bubbles:true}));
+        form.querySelector('.homework-suggestion').textContent=draft.reason+' Review and edit before assigning.';
+        break;
+      }
     }
   } catch (error) { toast(error.message); }
   finally { target.disabled = false; }
