@@ -1622,6 +1622,16 @@ class ChessCoin extends StatelessWidget {
               constraints.maxWidth,
               constraints.maxHeight,
             );
+            if (useClassicWebBoardPieces) {
+              final double scale = switch (appearance.size) {
+                ChessPieceVisualSize.large => 1.0,
+                ChessPieceVisualSize.extraLarge => 1.08,
+                ChessPieceVisualSize.doubleExtraLarge => 1.16,
+              };
+              return Center(
+                child: _classicPiece(size * scale, addShadow: false),
+              );
+            }
             final bool mobileBoard =
                 MediaQuery.sizeOf(context).shortestSide < 600;
             final bool classic2d =
@@ -1776,54 +1786,7 @@ class ChessCoin extends StatelessWidget {
     final String label =
         '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
-      // Use the real white Unicode set for White. Re-colouring the solid
-      // black glyphs made the classic white pawn retain a black silhouette on
-      // several browser/Android serif fonts.
-      final String solidGlyph = pieceGlyph(piece);
-      final Color fill = piece.white
-          ? const Color(0xFFFFF4D0)
-          : const Color(0xFF10243A);
-      final Color outline = piece.white
-          ? const Color(0xFF9A6A16)
-          : const Color(0xFFE7C67E);
-      return Semantics(
-        label: label,
-        child: Stack(
-          alignment: Alignment.center,
-          children: <Widget>[
-            Text(
-              solidGlyph,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'serif',
-                fontSize: pieceSize * .82,
-                height: 1,
-                foreground: Paint()
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = math.max(1.8, pieceSize * .035)
-                  ..color = outline,
-              ),
-            ),
-            Text(
-              solidGlyph,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'serif',
-                fontSize: pieceSize * .82,
-                height: 1,
-                color: fill,
-                shadows: <Shadow>[
-                  Shadow(
-                    color: Colors.black.withValues(alpha: .42),
-                    blurRadius: pieceSize * .035,
-                    offset: Offset(0, pieceSize * .018),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+      return _classicPiece(pieceSize);
     }
     Widget pieceImage({String? semanticLabel}) => Image.asset(
       pieceAsset(piece),
@@ -1902,6 +1865,55 @@ class ChessCoin extends StatelessWidget {
             ),
           ),
           image,
+        ],
+      ),
+    );
+  }
+
+  Widget _classicPiece(double pieceSize, {bool addShadow = true}) {
+    final String glyph = pieceGlyph(piece);
+    final Color fill = piece.white
+        ? const Color(0xFFFFF4D0)
+        : const Color(0xFF10243A);
+    final Color outline = piece.white
+        ? const Color(0xFF9A6A16)
+        : const Color(0xFFE7C67E);
+    final TextStyle style = TextStyle(
+      fontFamily: 'serif',
+      fontSize: pieceSize * .82,
+      height: 1,
+    );
+    return Semantics(
+      label: '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+      excludeSemantics: true,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Text(
+            glyph,
+            textAlign: TextAlign.center,
+            style: style.copyWith(
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = math.max(1.8, pieceSize * .035)
+                ..color = outline,
+            ),
+          ),
+          Text(
+            glyph,
+            textAlign: TextAlign.center,
+            style: style.copyWith(
+              color: fill,
+              shadows: <Shadow>[
+                if (addShadow)
+                  Shadow(
+                    color: Colors.black.withValues(alpha: .42),
+                    blurRadius: pieceSize * .035,
+                    offset: Offset(0, pieceSize * .018),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
