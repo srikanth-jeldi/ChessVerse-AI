@@ -1875,6 +1875,7 @@ class _SplashGateState extends State<SplashGate> {
     choice = await showModalBottomSheet<_GameLaunchChoice>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
@@ -1900,22 +1901,7 @@ class _SplashGateState extends State<SplashGate> {
                 final bool wide =
                     constraints.maxWidth >= 700 &&
                     MediaQuery.sizeOf(context).shortestSide >= 600;
-                return ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: constraints.maxHeight * 0.94,
-                  ),
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: wide ? 1180 : 720),
-                    margin: EdgeInsets.all(wide ? 28 : 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xF5071626),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: const Color(0xFF334352)),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Colors.black54, blurRadius: 36),
-                      ],
-                    ),
-                    child: SingleChildScrollView(
+                final Widget options = SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(
                         wide ? 48 : 18,
                         shortLandscape ? 14 : 28,
@@ -2281,7 +2267,37 @@ class _SplashGateState extends State<SplashGate> {
                                 style: TextStyle(color: Color(0xFFC7D2DE)),
                               ),
                             ),
-                          SizedBox(
+                        ],
+                      ),
+                );
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: constraints.maxHeight * 0.94,
+                  ),
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: wide ? 1180 : 720),
+                    margin: EdgeInsets.all(wide ? 28 : 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF5071626),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: const Color(0xFF334352)),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(color: Colors.black54, blurRadius: 36),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Flexible(child: options),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            wide ? 48 : 18,
+                            8,
+                            wide ? 48 : 18,
+                            shortLandscape ? 12 : 18,
+                          ),
+                          child: SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: () => Navigator.of(context).pop(
@@ -2300,8 +2316,8 @@ class _SplashGateState extends State<SplashGate> {
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 );

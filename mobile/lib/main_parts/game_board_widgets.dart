@@ -1788,16 +1788,22 @@ class ChessCoin extends StatelessWidget {
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
       return _classicPiece(pieceSize);
     }
-    Widget pieceImage({String? semanticLabel}) => Image.asset(
-      pieceAsset(piece),
+    Widget pieceImage(String asset) => Image.asset(
+      asset,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
-      semanticLabel: semanticLabel,
+      frameBuilder: kIsWeb
+          ? (context, child, frame, synchronouslyLoaded) => frame == null
+                ? _classicPiece(pieceSize, addShadow: false)
+                : child
+          : null,
+      errorBuilder: (context, error, stackTrace) =>
+          _classicPiece(pieceSize, addShadow: false),
     );
     // The outer Semantics owns the accessible name. Keeping the duplicated
     // outline images silent prevents screen readers from announcing one
     // chess piece multiple times.
-    Widget image = pieceImage();
+    Widget image = pieceImage(pieceAsset(piece));
     if (appearance.style == ChessPieceVisualStyle.highContrast) {
       image = ColorFiltered(
         colorFilter: ColorFilter.mode(
@@ -1811,14 +1817,7 @@ class ChessCoin extends StatelessWidget {
           ? mobileReadablePremiumPieceAsset(appearance.finish, piece)
           : premiumPieceAsset(appearance.finish, piece);
       if (premiumAsset != null) {
-        return Semantics(
-          label: label,
-          child: Image.asset(
-            premiumAsset,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
-        );
+        return Semantics(label: label, child: pieceImage(premiumAsset));
       }
       final List<Color>? finishColors = premiumPieceFinishColors(
         appearance.finish,

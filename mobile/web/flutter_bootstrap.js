@@ -1,6 +1,11 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
+// A new URL also bypasses cached entrypoints from before the board fix.
+for (const build of _flutter.buildConfig.builds) {
+  if (build.mainJsPath) build.mainJsPath += '?v=20261120-board2';
+}
+
 // ChessVerseAI is deployed frequently and must always load the tested release
 // from the server. Offline caching is intentionally disabled to prevent an old
 // Flutter bundle from trapping users on a stale splash screen.
