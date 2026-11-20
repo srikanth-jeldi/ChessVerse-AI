@@ -2,17 +2,8 @@
 // ignore: deprecated_member_use
 import 'dart:html' as html;
 
-final bool useClassicWebBoardPieces = _usesWebKitForChessPieces() ||
+final bool useClassicWebBoardPieces =
     Uri.base.queryParameters['classicPieces'] == '1';
-
-bool _usesWebKitForChessPieces() {
-  final String agent = html.window.navigator.userAgent;
-  if (!agent.contains('AppleWebKit/')) return false;
-  // All iOS browsers share WebKit. iPadOS may use a desktop Safari user agent.
-  if (RegExp(r'iPhone|iPad|iPod').hasMatch(agent)) return true;
-  return agent.contains('Safari/') &&
-      !RegExp(r'Chrome/|Chromium/|Edg/|OPR/').hasMatch(agent);
-}
 
 bool consumeFreshWebLaunch() {
   final uri = Uri.base;

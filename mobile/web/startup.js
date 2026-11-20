@@ -42,7 +42,7 @@
   }, 30000);
 
   var script = document.createElement('script');
-  script.src = 'flutter_bootstrap.js?v=20261120-board2';
+  script.src = 'flutter_bootstrap.js?v=20261120-images3';
   script.async = true;
   script.onerror = window.chessverseStartupFailed;
   document.head.appendChild(script);
