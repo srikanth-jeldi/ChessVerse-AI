@@ -1150,6 +1150,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       // Computer games are untimed. Retain old clock fields only for draft
       // compatibility; even a legacy zero-clock draft must remain playable.
       if (_gameMode == GameMode.computer) return;
+      if (_gameMode == GameMode.daily && !_isCurrentDailyPuzzle()) {
+        _reset(confirmed: true);
+        return;
+      }
       if (_gameResultTitle != null) {
         if (_gameMode == GameMode.daily &&
             _gameResultTitle!.toLowerCase().contains('challenge complete')) {
@@ -1163,6 +1167,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
         return;
       }
+      // A daily puzzle expires at the shared UTC reset, not on a chess clock.
+      if (_gameMode == GameMode.daily) return;
       setState(() {
         final OnlineMatchDto? online = _onlineMatch;
         if (_gameMode == GameMode.online) {
@@ -3176,7 +3182,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _coachNote = _dailyUnlockMessage();
   }
 
+  bool _isCurrentDailyPuzzle() => _dailyChallenge.id.startsWith(
+    '${dailyChallengeDateKey(dailyPuzzleDay(DateTime.now()))}-',
+  );
+
   void _completeDailyChallenge() {
+    if (!_isCurrentDailyPuzzle()) return;
     final bool firstCompletion = !_dailyCompletedToday;
     if (firstCompletion) {
       _dailyCompletedToday = true;
@@ -3234,6 +3245,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _handleSquareTap(String square) {
+    if (_gameMode == GameMode.daily && !_isCurrentDailyPuzzle()) {
+      _reset(confirmed: true);
+      return;
+    }
     if (_draftConflict || (_computerPaused && _gameMode == GameMode.computer)) {
       return;
     }

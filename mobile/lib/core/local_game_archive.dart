@@ -285,20 +285,65 @@ DateTime dailyPuzzleDay(DateTime time) {
   return DateTime.utc(utc.year, utc.month, utc.day);
 }
 
-int dailyPuzzleRewardCoins(int streak) => streak <= 0 ? 0 : 10 + ((streak - 1) % 7) * 5;
+Duration dailyPuzzleTimeRemaining(DateTime now) =>
+    dailyPuzzleDay(now).add(const Duration(days: 1)).difference(now.toUtc());
+
+int dailyPuzzleRewardCoins(int streak) =>
+    streak <= 0 ? 0 : 10 + ((streak - 1) % 7) * 5;
 
 int dailyPuzzleStreakFromIds(Iterable<String> ids, DateTime now) {
   final today = dailyPuzzleDay(now);
-  final days = ids.map((id) => id.length >= 10 ? DateTime.tryParse(id.substring(0, 10)) : null)
-      .whereType<DateTime>().map((d) => DateTime.utc(d.year, d.month, d.day))
-      .where((d) => !d.isAfter(today)).toSet();
-  var day = days.contains(today) ? today : today.subtract(const Duration(days: 1));
+  final days = ids
+      .map(
+        (id) => id.length >= 10 ? DateTime.tryParse(id.substring(0, 10)) : null,
+      )
+      .whereType<DateTime>()
+      .map((d) => DateTime.utc(d.year, d.month, d.day))
+      .where((d) => !d.isAfter(today))
+      .toSet();
+  var day = days.contains(today)
+      ? today
+      : today.subtract(const Duration(days: 1));
   var streak = 0;
   while (days.contains(day)) {
     streak++;
     day = day.subtract(const Duration(days: 1));
   }
   return streak;
+}
+
+/// Longest consecutive daily-challenge run in the account's synced history.
+/// The completed challenge IDs are already persisted locally and merged with
+/// cloud progress, so this remains consistent across mobile and web devices.
+int dailyPuzzleBestStreakFromIds(Iterable<String> ids, DateTime now) {
+  final DateTime today = dailyPuzzleDay(now);
+  final Set<int> days = ids
+      .map(
+        (String id) =>
+            id.length >= 10 ? DateTime.tryParse(id.substring(0, 10)) : null,
+      )
+      .whereType<DateTime>()
+      .map((DateTime date) => DateTime.utc(date.year, date.month, date.day))
+      .where((DateTime date) => !date.isAfter(today))
+      .map(
+        (DateTime date) =>
+            date.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay,
+      )
+      .toSet();
+  if (days.isEmpty) return 0;
+
+  final List<int> sortedDays = days.toList()..sort();
+  var best = 1;
+  var current = 1;
+  for (var index = 1; index < sortedDays.length; index++) {
+    if (sortedDays[index] == sortedDays[index - 1] + 1) {
+      current++;
+      if (current > best) best = current;
+    } else {
+      current = 1;
+    }
+  }
+  return best;
 }
 
 int dailyStreakBonusCoins(int streak) => (streak.clamp(0, 3650) ~/ 7) * 100;
@@ -432,6 +477,9 @@ class LocalGameArchive {
 
   static Map<String, int> get cloudWeaknessScores =>
       Map<String, int>.unmodifiable(_cloudWeaknessScores);
+
+  static int get bestDailyStreak =>
+      dailyPuzzleBestStreakFromIds(_completedDailyChallengeIds, DateTime.now());
 
   static Future<void> init() async {
     _resetMemory();
@@ -772,20 +820,53 @@ class LocalGameArchive {
     return dailyPuzzleDay(completedAt) == dailyPuzzleDay(now);
   }
 
-  static Duration get dailyChallengeRemaining => dailyChallengeRemainingAt(DateTime.now());
+  static int dailyStreakAt(DateTime now) =>
+      dailyPuzzleStreakFromIds(_completedDailyChallengeIds, now);
+
+  /// UTC calendar days with a completed daily challenge in the current week.
+  static Set<DateTime> completedDailyChallengeDaysThisWeek(DateTime anchor) {
+    final DateTime today = dailyPuzzleDay(anchor);
+    final DateTime monday = today.subtract(Duration(days: today.weekday - 1));
+    return Set<DateTime>.unmodifiable(
+      _completedDailyChallengeIds
+          .map(
+            (String id) => id.length >= 10
+                ? DateTime.tryParse(id.substring(0, 10))
+                : null,
+          )
+          .whereType<DateTime>()
+          // The ID contains a UTC calendar date, with no time or offset.
+          .map((DateTime date) => DateTime.utc(date.year, date.month, date.day))
+          .where(
+            (DateTime day) => !day.isBefore(monday) && !day.isAfter(today),
+          ),
+    );
+  }
+
+  static Duration get dailyChallengeRemaining =>
+      dailyChallengeRemainingAt(DateTime.now());
 
   static Duration dailyChallengeRemainingAt(DateTime now) {
     if (!isDailyChallengeLockedAt(now)) return Duration.zero;
-    return dailyPuzzleDay(now).add(const Duration(days: 1)).difference(now.toUtc());
+    return dailyPuzzleTimeRemaining(now);
   }
 
-  static void markDailyChallengeComplete(String challengeId, {List<String> moves = const []}) {
+  static void markDailyChallengeComplete(
+    String challengeId, {
+    List<String> moves = const [],
+  }) {
     if (isDailyChallengeLocked) return;
     if (moves.isNotEmpty) {
-      _dailyProofs[challengeId] = moves.map((m) => m.replaceAll(' x ', '').trim().toLowerCase()).toList();
+      _dailyProofs[challengeId] = moves
+          .map((m) => m.replaceAll(' x ', '').trim().toLowerCase())
+          .toList();
       final keys = _dailyProofs.keys.toList()..sort();
-      for (final key in keys.take((keys.length - 7).clamp(0, 7))) { _dailyProofs.remove(key); }
-      unawaited(_storage.write(key: _dailyProofKey, value: jsonEncode(_dailyProofs)));
+      for (final key in keys.take((keys.length - 7).clamp(0, 7))) {
+        _dailyProofs.remove(key);
+      }
+      unawaited(
+        _storage.write(key: _dailyProofKey, value: jsonEncode(_dailyProofs)),
+      );
     }
     if (_completedDailyChallengeIds.add(challengeId)) {
       _dailySolved++;
@@ -1114,7 +1195,7 @@ class LocalGameArchive {
       losses: losses,
       dailySolved: _dailySolved,
       puzzlesSolved: _puzzlesSolved,
-      dailyStreak: dailyPuzzleStreakFromIds(_completedDailyChallengeIds, DateTime.now()),
+      dailyStreak: dailyStreakAt(DateTime.now()),
     );
   }
 

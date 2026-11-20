@@ -26,12 +26,16 @@ Future<void> _noPuzzleLaunch(String _) async {}
 class PuzzleAcademyScreen extends StatefulWidget {
   const PuzzleAcademyScreen({
     this.onStartPuzzle = _noPuzzleLaunch,
+    this.onDailyChallenge,
+    this.onDailyStreak,
     this.showPrimaryNavigation = true,
     this.isActive = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
+  final VoidCallback? onDailyChallenge;
+  final VoidCallback? onDailyStreak;
   final bool showPrimaryNavigation;
   final bool isActive;
 
@@ -214,6 +218,30 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
   @override
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
+    final Widget? dailyLinks = widget.onDailyChallenge == null &&
+            widget.onDailyStreak == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: <Widget>[
+                if (widget.onDailyChallenge != null)
+                  FilledButton.icon(
+                    onPressed: widget.onDailyChallenge,
+                    icon: const Icon(Icons.extension_rounded),
+                    label: const UiText('Daily Challenge'),
+                  ),
+                if (widget.onDailyStreak != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onDailyStreak,
+                    icon: const Icon(Icons.local_fire_department_rounded),
+                    label: const UiText('Daily Streak'),
+                  ),
+              ],
+            ),
+          );
     final RewardSnapshot rewards = LocalGameArchive.rewards();
     final PlayerLearningProfile learningProfile =
         PlayerLearningProfile.fromGames(
@@ -256,6 +284,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   ),
                 Expanded(
                   child: _DesktopPuzzleAcademy(
+                    dailyLinks: dailyLinks,
                     stats: stats,
                     rewards: rewards,
                     adaptiveFocus: adaptiveFocus,
@@ -325,6 +354,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
+                            if (dailyLinks != null) dailyLinks,
                             _PuzzleHero(
                               solved: stats.puzzlesSolved,
                               adaptiveFocus: adaptiveFocus,
@@ -423,6 +453,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
 
 class _DesktopPuzzleAcademy extends StatelessWidget {
   const _DesktopPuzzleAcademy({
+    this.dailyLinks,
     required this.stats,
     required this.rewards,
     required this.onStart,
@@ -433,6 +464,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
   });
 
   final LocalGameStats stats;
+  final Widget? dailyLinks;
   final RewardSnapshot rewards;
   final VoidCallback onStart;
   final ValueChanged<PuzzleDifficulty> onDifficulty;
@@ -475,6 +507,8 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
+            if (dailyLinks != null)
+              Align(alignment: AlignmentDirectional.centerStart, child: dailyLinks),
             _PuzzleHero(
               solved: stats.puzzlesSolved,
               adaptiveFocus: adaptiveFocus,

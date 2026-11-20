@@ -70,6 +70,8 @@ import 'features/analysis/data/game_analysis_api.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
+import 'features/daily_challenge/presentation/daily_challenge_screen.dart';
+import 'features/daily_challenge/widgets/daily_puzzle_streak.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
@@ -1303,6 +1305,23 @@ class _SplashGateState extends State<SplashGate> {
     );
   }
 
+  void _showDailyChallenge(BuildContext context) {
+    _push(
+      context,
+      DailyChallengeScreen(
+        onPlay: () => _openGame(context, GameMode.daily),
+        onOpenStreak: () => _showDailyStreak(context),
+      ),
+    );
+  }
+
+  void _showDailyStreak(BuildContext context) {
+    _push(
+      context,
+      DailyStreakScreen(onPractice: () => _openGame(context, GameMode.daily)),
+    );
+  }
+
   Widget _buildPrimaryShell(BuildContext context) {
     final List<Widget> destinations = <Widget>[
       HomeDashboardScreen(
@@ -1322,7 +1341,7 @@ class _SplashGateState extends State<SplashGate> {
         ),
         onRoutinePuzzle: (id) =>
             _openGame(context, GameMode.puzzle, puzzleId: id),
-        onDailyChallenge: () => _openGame(context, GameMode.daily),
+        onDailyChallenge: () => _showDailyChallenge(context),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onImportGame: () => _push(
           context,
@@ -1434,11 +1453,13 @@ class _SplashGateState extends State<SplashGate> {
           _communitySection = 2;
           _primaryDestination = 5;
         }),
-        onDaily: () => _openGame(context, GameMode.daily),
+        onDaily: () => _showDailyChallenge(context),
       ),
       PuzzlesScreen(
         isActive: _primaryDestination == 2,
         showPrimaryNavigation: false,
+        onDailyChallenge: () => _showDailyChallenge(context),
+        onDailyStreak: () => _showDailyStreak(context),
         onStartPuzzle: (String puzzleId) =>
             _openGame(context, GameMode.puzzle, puzzleId: puzzleId),
       ),

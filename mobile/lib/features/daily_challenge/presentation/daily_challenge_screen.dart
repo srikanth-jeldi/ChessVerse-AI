@@ -1,272 +1,218 @@
-import 'package:chessverse_ai/core/app_ui_localizations.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/app_breakpoints.dart';
-import '../../../core/layout/responsive_page.dart';
+import '../../../core/app_ui_localizations.dart';
+import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
-import '../domain/daily_challenge_models.dart';
-import '../widgets/challenge_result_sheet.dart';
-import '../widgets/daily_challenge_card.dart';
-import '../widgets/difficulty_selector.dart';
+import '../widgets/daily_puzzle_countdown.dart';
 
 class DailyChallengeScreen extends StatefulWidget {
-  const DailyChallengeScreen({super.key});
+  const DailyChallengeScreen({
+    required this.onPlay,
+    required this.onOpenStreak,
+    super.key,
+  });
+
+  final VoidCallback onPlay;
+  final VoidCallback onOpenStreak;
 
   @override
   State<DailyChallengeScreen> createState() => _DailyChallengeScreenState();
 }
 
 class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
-  DailyChallengeUiDifficulty _difficulty = DailyChallengeUiDifficulty.medium;
-  bool _showResultPreview = false;
-
-  DailyChallengeUiState get _challenge => DailyChallengeUiState(
-    title: uiText(context, 'Find the forcing line'),
-    difficulty: _difficulty,
-    streakDays: 5,
-    completedToday: _showResultPreview,
-    currentMove: _showResultPreview ? _difficulty.moveGoal : 1,
-    bestTimeLabel: '01:42',
-  );
+  late final Timer _clock;
+  DateTime _day = dailyPuzzleDay(DateTime.now());
 
   @override
-  Widget build(BuildContext context) {
-    final bool wide = AppBreakpoints.isTabletOrLarger(context);
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const UiText('Daily Challenge'),
-        actions: <Widget>[
-          IconButton(
-            onPressed: () =>
-                setState(() => _showResultPreview = !_showResultPreview),
-            icon: Icon(
-              _showResultPreview
-                  ? Icons.visibility_off_rounded
-                  : Icons.visibility_rounded,
-            ),
-            tooltip: uiText(context, 'Toggle result preview'),
-          ),
-        ],
-      ),
-      body: ResponsivePage(
-        child: wide
-            ? _WideLayout(
-                challenge: _challenge,
-                onDifficultyChanged: _changeDifficulty,
-                onResultToggle: _toggleResult,
-              )
-            : _PhoneLayout(
-                challenge: _challenge,
-                onDifficultyChanged: _changeDifficulty,
-                onResultToggle: _toggleResult,
-              ),
-      ),
-    );
-  }
-
-  void _changeDifficulty(DailyChallengeUiDifficulty difficulty) {
-    setState(() {
-      _difficulty = difficulty;
-      _showResultPreview = false;
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      final DateTime day = dailyPuzzleDay(DateTime.now());
+      if (day != _day) setState(() => _day = day);
     });
   }
 
-  void _toggleResult() {
-    setState(() => _showResultPreview = !_showResultPreview);
+  @override
+  void dispose() {
+    _clock.cancel();
+    super.dispose();
   }
-}
-
-class _PhoneLayout extends StatelessWidget {
-  const _PhoneLayout({
-    required this.challenge,
-    required this.onDifficultyChanged,
-    required this.onResultToggle,
-  });
-
-  final DailyChallengeUiState challenge;
-  final ValueChanged<DailyChallengeUiDifficulty> onDifficultyChanged;
-  final VoidCallback onResultToggle;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        DailyChallengeCard(
-          challenge: challenge,
-          onPlay: onResultToggle,
-          onViewDetails: onResultToggle,
-        ),
-        const SizedBox(height: 20),
-        UiText(
-          'Choose difficulty',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        DailyChallengeDifficultySelector(
-          selected: challenge.difficulty,
-          onChanged: onDifficultyChanged,
-        ),
-        const SizedBox(height: 20),
-        _RulesCard(challenge: challenge),
-        if (challenge.completedToday) ...<Widget>[
-          const SizedBox(height: 20),
-          DailyChallengeResultSheet(
-            challenge: challenge,
-            onReview: onResultToggle,
-            onShare: () {},
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _WideLayout extends StatelessWidget {
-  const _WideLayout({
-    required this.challenge,
-    required this.onDifficultyChanged,
-    required this.onResultToggle,
-  });
-
-  final DailyChallengeUiState challenge;
-  final ValueChanged<DailyChallengeUiDifficulty> onDifficultyChanged;
-  final VoidCallback onResultToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Expanded(
-          flex: 6,
-          child: DailyChallengeCard(
-            challenge: challenge,
-            onPlay: onResultToggle,
-            onViewDetails: onResultToggle,
-          ),
-        ),
-        const SizedBox(width: 22),
-        Expanded(
-          flex: 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ChessVerseCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.backgroundDeep,
+    appBar: AppBar(
+      title: const UiText('Daily Challenge'),
+      backgroundColor: AppColors.background,
+    ),
+    body: SafeArea(
+      child: ValueListenableBuilder<int>(
+        valueListenable: LocalGameArchive.activityRevision,
+        builder: (context, _, _) {
+          final DateTime now = DateTime.now();
+          final bool completed = LocalGameArchive.isDailyChallengeLockedAt(now);
+          final int streak = LocalGameArchive.dailyStreakAt(now);
+          final int reward = dailyPuzzleRewardCoins(
+            completed ? streak : streak + 1,
+          );
+          final Widget challenge = _ChallengeHero(
+            completed: completed,
+            reward: reward,
+            onPlay: widget.onPlay,
+          );
+          final Widget progress = ChessVerseCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
                   children: <Widget>[
-                    UiText(
-                      'Choose difficulty',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Image.asset(
+                      'assets/badges/streak-flame-v1.webp',
+                      width: 58,
+                      height: 58,
+                      excludeFromSemantics: true,
                     ),
-                    const SizedBox(height: 12),
-                    DailyChallengeDifficultySelector(
-                      selected: challenge.difficulty,
-                      onChanged: onDifficultyChanged,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: UiText(
+                        '{0} day streak',
+                        values: <Object>[streak],
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 18),
-              _RulesCard(challenge: challenge),
-              if (challenge.completedToday) ...<Widget>[
-                const SizedBox(height: 18),
-                DailyChallengeResultSheet(
-                  challenge: challenge,
-                  onReview: onResultToggle,
-                  onShare: () {},
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: widget.onOpenStreak,
+                  icon: const Icon(Icons.calendar_month_rounded),
+                  label: const UiText('View Daily Streak'),
                 ),
               ],
+            ),
+          );
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1050),
+              child: LayoutBuilder(
+                builder: (context, constraints) => ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: <Widget>[
+                    if (constraints.maxWidth >= 760)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(flex: 2, child: challenge),
+                          const SizedBox(width: 16),
+                          Expanded(child: progress),
+                        ],
+                      )
+                    else ...<Widget>[
+                      challenge,
+                      const SizedBox(height: 14),
+                      progress,
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+class _ChallengeHero extends StatelessWidget {
+  const _ChallengeHero({
+    required this.completed,
+    required this.reward,
+    required this.onPlay,
+  });
+
+  final bool completed;
+  final int reward;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+    padding: EdgeInsets.zero,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: SizedBox(
+            height: 166,
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image.asset(
+                  'assets/backgrounds/daily-challenge-card-v2.webp',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, .36),
+                  excludeFromSemantics: true,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[Colors.transparent, Color(0xED071A2C)],
+                      stops: <double>[.35, 1],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Align(
+                    alignment: AlignmentDirectional.bottomStart,
+                    child: UiText(
+                      completed ? 'Challenge complete' : 'Today’s puzzle',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              DailyPuzzleCountdown(completed: completed),
+              const SizedBox(height: 8),
+              UiText(
+                completed
+                    ? 'You earned {0} coins today.'
+                    : 'Solve today’s puzzle to earn {0} coins.',
+                values: <Object>[reward],
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              ChessVerseButton(
+                label: completed
+                    ? 'View today’s challenge'
+                    : 'Play Daily Challenge',
+                icon: completed
+                    ? Icons.visibility_rounded
+                    : Icons.play_arrow_rounded,
+                onPressed: onPlay,
+              ),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RulesCard extends StatelessWidget {
-  const _RulesCard({required this.challenge});
-
-  final DailyChallengeUiState challenge;
-
-  @override
-  Widget build(BuildContext context) {
-    return ChessVerseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.info.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.lightbulb_rounded,
-                  color: AppColors.info,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: UiText(
-                  'How it works',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _RuleLine(
-            text: uiText(context, 'Solve one tactical puzzle every day.'),
-          ),
-          _RuleLine(
-            text: uiText(
-              context,
-              'Only forcing moves keep the challenge alive.',
-            ),
-          ),
-          _RuleLine(
-            text:
-                'Complete ${challenge.moveGoal} moves to protect your streak.',
-          ),
-          const SizedBox(height: 4),
-        ],
-      ),
-    );
-  }
-}
-
-class _RuleLine extends StatelessWidget {
-  const _RuleLine({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(
-            Icons.check_circle_rounded,
-            size: 18,
-            color: AppColors.success,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 }

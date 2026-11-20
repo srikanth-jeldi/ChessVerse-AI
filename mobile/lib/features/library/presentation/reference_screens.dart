@@ -9,12 +9,16 @@ import '../../puzzles/presentation/puzzle_academy_screen.dart';
 class PuzzlesScreen extends StatelessWidget {
   const PuzzlesScreen({
     this.onStartPuzzle = _ignorePuzzleLaunch,
+    this.onDailyChallenge,
+    this.onDailyStreak,
     this.showPrimaryNavigation = true,
     this.isActive = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
+  final VoidCallback? onDailyChallenge;
+  final VoidCallback? onDailyStreak;
   final bool showPrimaryNavigation;
   final bool isActive;
 
@@ -22,6 +26,8 @@ class PuzzlesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return PuzzleAcademyScreen(
       onStartPuzzle: onStartPuzzle,
+      onDailyChallenge: onDailyChallenge,
+      onDailyStreak: onDailyStreak,
       showPrimaryNavigation: showPrimaryNavigation,
       isActive: isActive,
     );
