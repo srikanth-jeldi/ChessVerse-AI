@@ -751,6 +751,9 @@ class _ChessBoardState extends State<ChessBoard> {
         child: Stack(
           children: <Widget>[
             GridView.builder(
+              // Board coordinates and animation overlays share the same origin.
+              // Do not inherit status/navigation-bar padding from MediaQuery.
+              padding: EdgeInsets.zero,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
@@ -1873,6 +1876,12 @@ class ChessCoin extends StatelessWidget {
     }
     if (appearance.style == ChessPieceVisualStyle.premium3d &&
         appearance.finish == 'classic-staunton') {
+      return Semantics(label: label, child: image);
+    }
+    // Safari/WebKit can composite ImageFiltered incorrectly over transparent
+    // piece PNGs, leaving only a faded ghost layer visible. Render one crisp
+    // image on web; native builds retain the decorative silhouette.
+    if (kIsWeb) {
       return Semantics(label: label, child: image);
     }
     return Semantics(

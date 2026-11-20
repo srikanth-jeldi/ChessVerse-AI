@@ -9,6 +9,35 @@
   background-size: contain;
 }
 
+#splash[hidden], #startup-help[hidden], #startup-retry[hidden] {
+  display: none;
+}
+
+#startup-help, .startup-no-script {
+  position: relative;
+  z-index: 2;
+  max-width: 30rem;
+  margin: 12vh auto 0;
+  padding: 1.5rem;
+  color: #f4f6f8;
+  background: #10283a;
+  border: 1px solid #d4a650;
+  border-radius: 1rem;
+  font: 1rem/1.5 system-ui, sans-serif;
+  text-align: center;
+}
+
+#startup-retry {
+  min-height: 44px;
+  padding: .5rem 1rem;
+  border: 0;
+  border-radius: .5rem;
+  color: #02070d;
+  background: #eabf61;
+  font: inherit;
+  cursor: pointer;
+}
+
 @media (orientation: portrait) {
   #splash {
     background-image: url('assets/assets/branding/splash_screen_mobile_v2.jpg');

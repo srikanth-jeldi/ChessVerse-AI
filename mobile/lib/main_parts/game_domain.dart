@@ -400,9 +400,27 @@ class _SideChoiceArtwork extends StatelessWidget {
                   : 'assets/pieces/staunton_black_pawn.png',
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
+              frameBuilder:
+                  (BuildContext context, Widget child, int? frame, bool sync) =>
+                      frame == null ? _fallbackPiece(glow, size) : child,
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? _) =>
+                      _fallbackPiece(glow, size),
             ),
     );
   }
+
+  Widget _fallbackPiece(Color glow, double size) => Text(
+    pieceGlyph(ChessPiece('P', side == PlayerSideChoice.white)),
+    style: TextStyle(
+      color: side == PlayerSideChoice.white
+          ? const Color(0xFFFFF0CA)
+          : const Color(0xFF182638),
+      fontSize: size * .53,
+      height: 1,
+      shadows: <Shadow>[Shadow(color: glow, blurRadius: size * .11)],
+    ),
+  );
 }
 
 class AiCandidate {
@@ -684,10 +702,10 @@ const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
   ),
   BoardSkin.sapphire: BoardPalette(
     label: 'Sapphire',
-    light: Color(0xFFC6D3D6),
-    dark: Color(0xFF28546A),
-    frame: Color(0xFF142B35),
-    accent: Color(0xFF60D6D0),
+    light: Color(0xFFE8DFC5),
+    dark: Color(0xFF16364C),
+    frame: Color(0xFF081B2D),
+    accent: Color(0xFFE2B458),
   ),
 };
 

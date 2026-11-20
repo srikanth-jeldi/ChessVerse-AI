@@ -97,6 +97,7 @@
     // flutter_facebook_auth can expose FB.login before its asynchronous
     // initialization has completed. Keep one shared readiness promise so the
     // Flutter app never opens the login dialog before FB.init has run.
+    if (typeof window.Promise === 'function') {
     window.__chessverseFacebookReady = new Promise(function (resolve, reject) {
       window.fbAsyncInit = function () {
         try {
@@ -126,6 +127,9 @@
         document.head.appendChild(script);
       }
     });
+    // The sign-in bridge can still observe this rejection later.
+    window.__chessverseFacebookReady.catch(function () {});
+    }
 
     window.chessverseFacebookReady = function () {
       return window.__chessverseFacebookReady;
@@ -193,18 +197,21 @@
       right: 0;
     }
   </style>
-  <script id="splash-screen-script">
-    function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
-    }
-  </script>
 </head>
 <body>
   <link rel="stylesheet" href="loading.css">
   <div id="splash" role="status" aria-label="Opening ChessVerseAI"></div>
-  <script>window.addEventListener('flutter-first-frame', removeSplashFromWeb, {once: true});</script>
+  <section id="startup-help" hidden aria-live="polite">
+    <div>
+      <h1>ChessVerseAI</h1>
+      <p id="startup-message"></p>
+      <button type="button" id="startup-retry">Try again</button>
+    </div>
+  </section>
+  <noscript>
+    <style>#splash { display: none; }</style>
+    <p class="startup-no-script">Enable JavaScript in your browser to play ChessVerseAI.</p>
+  </noscript>
 
   <!--
     You can customize the "flutter_bootstrap.js" script.
@@ -215,7 +222,7 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="coin-video.js" defer></script>
-  <script src="flutter_bootstrap.js" async=""></script>
+  <script src="startup.js"></script>
 
 
 
