@@ -201,7 +201,9 @@ class DailyStreakScreen extends StatefulWidget {
 
 class _DailyStreakScreenState extends State<DailyStreakScreen> {
   Timer? _clock;
-  DateTime _displayDay = dailyPuzzleDay(DateTime.now());
+  DateTime _displayDay = LocalGameArchive.dailyPuzzleDateForAttempt(
+    DateTime.now(),
+  );
 
   @override
   void initState() {
@@ -209,7 +211,7 @@ class _DailyStreakScreenState extends State<DailyStreakScreen> {
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final DateTime now = DateTime.now();
-      final DateTime day = dailyPuzzleDay(now);
+      final DateTime day = LocalGameArchive.dailyPuzzleDateForAttempt(now);
       if (day != _displayDay) {
         setState(() => _displayDay = day);
       }
@@ -572,7 +574,7 @@ class _WeeklyProgress extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const UiText(
-            'Puzzle days reset at 00:00 UTC.',
+            'Calendar days are shown in UTC.',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
           ),
         ],

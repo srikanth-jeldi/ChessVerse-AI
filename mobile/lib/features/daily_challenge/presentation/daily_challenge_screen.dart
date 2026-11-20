@@ -25,13 +25,15 @@ class DailyChallengeScreen extends StatefulWidget {
 
 class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   late final Timer _clock;
-  DateTime _day = dailyPuzzleDay(DateTime.now());
+  DateTime _day = LocalGameArchive.dailyPuzzleDateForAttempt(DateTime.now());
 
   @override
   void initState() {
     super.initState();
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      final DateTime day = dailyPuzzleDay(DateTime.now());
+      final DateTime day = LocalGameArchive.dailyPuzzleDateForAttempt(
+        DateTime.now(),
+      );
       if (day != _day) setState(() => _day = day);
     });
   }
@@ -56,67 +58,19 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
           final DateTime now = DateTime.now();
           final bool completed = LocalGameArchive.isDailyChallengeLockedAt(now);
           final int streak = LocalGameArchive.dailyStreakAt(now);
-          final int reward = dailyPuzzleRewardCoins(
-            completed ? streak : streak + 1,
-          );
-          final Widget challenge = _ChallengeHero(
-            completed: completed,
-            reward: reward,
-            onPlay: widget.onPlay,
-          );
-          final Widget progress = ChessVerseCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Image.asset(
-                      'assets/badges/streak-flame-v1.webp',
-                      width: 58,
-                      height: 58,
-                      excludeFromSemantics: true,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: UiText(
-                        '{0} day streak',
-                        values: <Object>[streak],
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: widget.onOpenStreak,
-                  icon: const Icon(Icons.calendar_month_rounded),
-                  label: const UiText('View Daily Streak'),
-                ),
-              ],
-            ),
-          );
           return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1050),
-              child: LayoutBuilder(
-                builder: (context, constraints) => ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: <Widget>[
-                    if (constraints.maxWidth >= 760)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Expanded(flex: 2, child: challenge),
-                          const SizedBox(width: 16),
-                          Expanded(child: progress),
-                        ],
-                      )
-                    else ...<Widget>[
-                      challenge,
-                      const SizedBox(height: 14),
-                      progress,
-                    ],
-                  ],
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: _ChallengeCard(
+                  completed: completed,
+                  streak: streak,
+                  reward: dailyPuzzleRewardCoins(
+                    completed ? streak : streak + 1,
+                  ),
+                  onPlay: widget.onPlay,
+                  onOpenStreak: widget.onOpenStreak,
                 ),
               ),
             ),
@@ -127,92 +81,118 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   );
 }
 
-class _ChallengeHero extends StatelessWidget {
-  const _ChallengeHero({
+class _ChallengeCard extends StatelessWidget {
+  const _ChallengeCard({
     required this.completed,
+    required this.streak,
     required this.reward,
     required this.onPlay,
+    required this.onOpenStreak,
   });
 
   final bool completed;
+  final int streak;
   final int reward;
   final VoidCallback onPlay;
+  final VoidCallback onOpenStreak;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-    padding: EdgeInsets.zero,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: SizedBox(
-            height: 166,
-            child: Stack(
-              fit: StackFit.expand,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final bool wide = constraints.maxWidth >= 520;
+        final double artWidth = wide ? 156 : 82;
+        final Widget play = ChessVerseButton(
+          label: completed ? 'View today’s challenge' : 'Play Daily Challenge',
+          icon: completed ? Icons.visibility_rounded : Icons.play_arrow_rounded,
+          onPressed: onPlay,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                Image.asset(
-                  'assets/backgrounds/daily-challenge-card-v2.webp',
-                  fit: BoxFit.cover,
-                  alignment: const Alignment(0, .36),
-                  excludeFromSemantics: true,
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[Colors.transparent, Color(0xED071A2C)],
-                      stops: <double>[.35, 1],
+                SizedBox(
+                  key: const ValueKey<String>('daily-challenge-artwork'),
+                  width: artWidth,
+                  height: artWidth * 1.5,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.asset(
+                      'assets/backgrounds/daily-challenge-card-v2.webp',
+                      fit: BoxFit.contain,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.extension_rounded,
+                        color: AppColors.accentGold,
+                        size: 32,
+                      ),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Align(
-                    alignment: AlignmentDirectional.bottomStart,
-                    child: UiText(
-                      completed ? 'Challenge complete' : 'Today’s puzzle',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
+                SizedBox(width: wide ? 24 : 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      UiText(
+                        completed ? 'Challenge complete' : 'Today’s puzzle',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: wide ? 29 : 21,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
+                      const SizedBox(height: 9),
+                      DailyPuzzleCountdown(completed: completed),
+                      const SizedBox(height: 7),
+                      UiText(
+                        completed
+                            ? 'You earned {0} coins today.'
+                            : 'Solve today’s puzzle to earn {0} coins.',
+                        values: <Object>[reward],
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                      if (wide) ...<Widget>[const SizedBox(height: 16), play],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (!wide) ...<Widget>[const SizedBox(height: 14), play],
+            const Divider(height: 26, color: AppColors.border),
+            Row(
+              children: <Widget>[
+                Image.asset(
+                  'assets/badges/streak-flame-v1.webp',
+                  width: 37,
+                  height: 37,
+                  excludeFromSemantics: true,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: UiText(
+                    '{0} day streak',
+                    values: <Object>[streak],
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: TextButton(
+                    onPressed: onOpenStreak,
+                    child: const UiText(
+                      'View Daily Streak',
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              DailyPuzzleCountdown(completed: completed),
-              const SizedBox(height: 8),
-              UiText(
-                completed
-                    ? 'You earned {0} coins today.'
-                    : 'Solve today’s puzzle to earn {0} coins.',
-                values: <Object>[reward],
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 14),
-              ChessVerseButton(
-                label: completed
-                    ? 'View today’s challenge'
-                    : 'Play Daily Challenge',
-                icon: completed
-                    ? Icons.visibility_rounded
-                    : Icons.play_arrow_rounded,
-                onPressed: onPlay,
-              ),
-            ],
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     ),
   );
 }

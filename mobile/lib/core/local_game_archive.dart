@@ -426,6 +426,7 @@ class LocalGameArchive {
       'chessverse_completed_daily_challenges';
   static const String _lastDailyCompletionKey =
       'chessverse_last_daily_completion_utc';
+  static const String _dailyAttemptStartedKey = 'chessverse_daily_attempt_started_utc';
   static const String _dailyProofKey = 'chessverse_daily_proofs_v1';
   static final Map<String, List<String>> _dailyProofs = {};
   static const String _dailyStreakKey = 'chessverse_daily_streak';
@@ -445,6 +446,7 @@ class LocalGameArchive {
   static final Set<String> _completedPuzzleIds = <String>{};
   static final Set<String> _completedAcademyLessonIds = <String>{};
   static DateTime? _lastDailyCompletedAt;
+  static DateTime? _dailyAttemptStartedAt;
   static int _dailySolved = 0;
   static int _puzzlesSolved = 0;
   static int _dailyStreak = 0;
@@ -488,6 +490,7 @@ class LocalGameArchive {
       _savedGamesKey,
       _completedDailyKey,
       _lastDailyCompletionKey,
+      _dailyAttemptStartedKey,
       _dailyStreakKey,
       _dailyProofKey,
       _completedPuzzlesKey,
@@ -537,6 +540,8 @@ class LocalGameArchive {
       _dailySolved = _completedDailyChallengeIds.length;
     }
     final String? completionRaw = values[_lastDailyCompletionKey];
+    _dailyAttemptStartedAt =
+        DateTime.tryParse(values[_dailyAttemptStartedKey] ?? '')?.toUtc();
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
@@ -600,8 +605,9 @@ class LocalGameArchive {
       for (final String key in <String>[
         _completedDailyKey,
         _lastDailyCompletionKey,
+        _dailyAttemptStartedKey,
         _dailyStreakKey,
-      _dailyProofKey,
+        _dailyProofKey,
         _completedPuzzlesKey,
         _profileCountryKey,
         _profileLevelKey,
@@ -625,6 +631,7 @@ class LocalGameArchive {
     _completedPuzzleIds.clear();
     _completedAcademyLessonIds.clear();
     _lastDailyCompletedAt = null;
+    _dailyAttemptStartedAt = null;
     _dailySolved = 0;
     _puzzlesSolved = 0;
     _dailyStreak = 0;
@@ -813,6 +820,12 @@ class LocalGameArchive {
   }
 
   static bool isDailyChallengeLockedAt(DateTime now) {
+    if (_dailyAttemptStartedAt != null) {
+      final String date = dailyPuzzleDateForAttempt(now)
+          .toIso8601String()
+          .substring(0, 10);
+      return _completedDailyChallengeIds.any((id) => id.startsWith('$date-'));
+    }
     final DateTime? completedAt = _lastDailyCompletedAt;
     if (completedAt == null) {
       return false;
@@ -820,8 +833,33 @@ class LocalGameArchive {
     return dailyPuzzleDay(completedAt) == dailyPuzzleDay(now);
   }
 
+  static Duration? dailyAttemptRemainingAt(DateTime now) {
+    final DateTime? start = _dailyAttemptStartedAt;
+    if (start == null || start.isAfter(now)) return null;
+    final Duration remaining =
+        start.add(dailyChallengeLockDuration).difference(now);
+    return remaining > Duration.zero ? remaining : null;
+  }
+
+  static DateTime dailyPuzzleDateForAttempt(DateTime now) => dailyPuzzleDay(
+    dailyAttemptRemainingAt(now) == null ? now : _dailyAttemptStartedAt!,
+  );
+
+  /// Called only when the playable board opens, including an explicit restart.
+  static void beginDailyPuzzleAttempt({DateTime? now}) {
+    final DateTime opened = (now ?? DateTime.now()).toUtc();
+    if (dailyAttemptRemainingAt(opened) != null ||
+        isDailyChallengeLockedAt(opened)) {
+      return;
+    }
+    _dailyAttemptStartedAt = opened;
+    unawaited(
+      _storage.write(key: _dailyAttemptStartedKey, value: opened.toIso8601String()),
+    );
+  }
+
   static int dailyStreakAt(DateTime now) =>
-      dailyPuzzleStreakFromIds(_completedDailyChallengeIds, now);
+      dailyPuzzleStreakFromIds(_completedDailyChallengeIds, dailyPuzzleDateForAttempt(now));
 
   /// UTC calendar days with a completed daily challenge in the current week.
   static Set<DateTime> completedDailyChallengeDaysThisWeek(DateTime anchor) {
@@ -848,7 +886,7 @@ class LocalGameArchive {
 
   static Duration dailyChallengeRemainingAt(DateTime now) {
     if (!isDailyChallengeLockedAt(now)) return Duration.zero;
-    return dailyPuzzleTimeRemaining(now);
+    return dailyAttemptRemainingAt(now) ?? dailyPuzzleTimeRemaining(now);
   }
 
   static void markDailyChallengeComplete(
@@ -924,8 +962,9 @@ class LocalGameArchive {
       for (final String key in <String>[
         _completedDailyKey,
         _lastDailyCompletionKey,
+        _dailyAttemptStartedKey,
         _dailyStreakKey,
-      _dailyProofKey,
+        _dailyProofKey,
         _completedPuzzlesKey,
         _profileCountryKey,
         _profileLevelKey,

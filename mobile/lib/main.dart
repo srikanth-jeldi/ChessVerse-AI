@@ -71,6 +71,7 @@ import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/daily_challenge/presentation/daily_challenge_screen.dart';
+import 'features/daily_challenge/widgets/daily_puzzle_countdown.dart';
 import 'features/daily_challenge/widgets/daily_puzzle_streak.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';

@@ -1058,6 +1058,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         PuzzleDifficulty.hard => DailyChallengeDifficulty.hard,
       };
     }
+    if (widget.initialGameMode == GameMode.daily) {
+      LocalGameArchive.beginDailyPuzzleAttempt();
+    }
     _dailyChallenge = widget.initialGameMode == GameMode.puzzle
         ? _challengeForPuzzle(_activePuzzle)
         : _challengeForToday(_dailyDifficulty);
@@ -1151,7 +1154,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       // compatibility; even a legacy zero-clock draft must remain playable.
       if (_gameMode == GameMode.computer) return;
       if (_gameMode == GameMode.daily && !_isCurrentDailyPuzzle()) {
-        _reset(confirmed: true);
+        if (_gameResultTitle == null) {
+          setState(() {
+            _gameResultTitle = 'Daily Challenge expired';
+            _gameResultDetail = 'Open the next puzzle to start a new 24-hour window.';
+            _coachNote = _gameResultDetail!;
+            _resultVisible = false;
+          });
+        }
         return;
       }
       if (_gameResultTitle != null) {
@@ -1719,6 +1729,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       onNextPuzzle: _startGameAfterResult,
                       onBackToAcademy: () => Navigator.of(context).pop(),
                     );
+              if (_gameMode == GameMode.daily && _gameResultTitle == null) {
+                studioCoach = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: DailyPuzzleCountdown(completed: false),
+                    ),
+                    studioCoach,
+                  ],
+                );
+              }
               if (_gameMode == GameMode.computer) {
                 studioCoach = Column(
                   mainAxisSize: MainAxisSize.min,
@@ -3075,7 +3097,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
-    final today = DateTime.now().toUtc();
+    final today = LocalGameArchive.dailyPuzzleDateForAttempt(DateTime.now());
     final puzzle = dailyPuzzleForDate(
       today,
       hard: difficulty == DailyChallengeDifficulty.hard,
@@ -3183,7 +3205,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool _isCurrentDailyPuzzle() => _dailyChallenge.id.startsWith(
-    '${dailyChallengeDateKey(dailyPuzzleDay(DateTime.now()))}-',
+    '${dailyChallengeDateKey(LocalGameArchive.dailyPuzzleDateForAttempt(DateTime.now()))}-',
   );
 
   void _completeDailyChallenge() {
@@ -3246,7 +3268,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _handleSquareTap(String square) {
     if (_gameMode == GameMode.daily && !_isCurrentDailyPuzzle()) {
-      _reset(confirmed: true);
       return;
     }
     if (_draftConflict || (_computerPaused && _gameMode == GameMode.computer)) {
@@ -4556,6 +4577,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       unawaited(_refreshOnlineMatch(forceBoardReplay: true));
       return;
     }
+    if (_gameMode == GameMode.daily) LocalGameArchive.beginDailyPuzzleAttempt();
     final DailyChallenge challenge = _gameMode == GameMode.puzzle
         ? _challengeForPuzzle(_activePuzzle)
         : _challengeForToday(_dailyDifficulty);

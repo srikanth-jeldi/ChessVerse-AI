@@ -2,19 +2,66 @@ import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/daily_challenge/presentation/daily_challenge_screen.dart';
 import 'package:chessverse_ai/features/daily_challenge/widgets/daily_puzzle_streak.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('daily puzzle has a shared 24-hour UTC window', () {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('24-hour attempt survives midnight and reopening', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    await LocalGameArchive.init();
+    final opened = DateTime.utc(2026, 11, 20, 22, 30);
+    final afterMidnight = DateTime.utc(2026, 11, 21, 2, 30);
+    final expiry = DateTime.utc(2026, 11, 21, 22, 30);
+    expect(LocalGameArchive.dailyAttemptRemainingAt(opened), isNull);
+    LocalGameArchive.beginDailyPuzzleAttempt(now: opened);
     expect(
-      dailyPuzzleTimeRemaining(DateTime.utc(2026, 11, 20)),
+      LocalGameArchive.dailyAttemptRemainingAt(opened),
       const Duration(hours: 24),
     );
+    LocalGameArchive.beginDailyPuzzleAttempt(now: afterMidnight);
+    await LocalGameArchive.init();
     expect(
-      dailyPuzzleTimeRemaining(DateTime.parse('2026-11-21T05:29:59+05:30')),
-      const Duration(seconds: 1),
+      LocalGameArchive.dailyAttemptRemainingAt(afterMidnight),
+      const Duration(hours: 20),
     );
+    expect(
+      LocalGameArchive.dailyPuzzleDateForAttempt(afterMidnight),
+      DateTime.utc(2026, 11, 20),
+    );
+    expect(LocalGameArchive.dailyAttemptRemainingAt(expiry), isNull);
+    expect(
+      LocalGameArchive.dailyPuzzleDateForAttempt(expiry),
+      DateTime.utc(2026, 11, 21),
+    );
+    await LocalGameArchive.clearDeviceUserData();
   });
+
+  test(
+    'completed puzzle does not lock out the next attempt after expiry',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'chessverse_daily_attempt_started_utc': '2026-11-20T22:30:00Z',
+        'chessverse_last_daily_completion_utc': '2026-11-21T02:30:00Z',
+        'chessverse_completed_daily_challenges': '2026-11-20-v8-medium-001',
+      });
+      await LocalGameArchive.init();
+      expect(
+        LocalGameArchive.isDailyChallengeLockedAt(
+          DateTime.utc(2026, 11, 21, 3),
+        ),
+        isTrue,
+      );
+      expect(
+        LocalGameArchive.isDailyChallengeLockedAt(
+          DateTime.utc(2026, 11, 21, 22, 30),
+        ),
+        isFalse,
+      );
+      await LocalGameArchive.clearDeviceUserData();
+    },
+  );
 
   for (final Size viewport in <Size>[
     const Size(360, 640),
@@ -43,7 +90,11 @@ void main() {
             ),
           ),
         );
-        expect(find.text('Time left today'), findsOneWidget);
+        expect(find.text('24 hours from first open'), findsOneWidget);
+        final Finder artwork = find.byKey(
+          const ValueKey<String>('daily-challenge-artwork'),
+        );
+        expect(tester.getSize(artwork).aspectRatio, closeTo(2 / 3, .01));
         final Finder streak = find.text('View Daily Streak');
         await tester.ensureVisible(streak);
         await tester.tap(streak);
