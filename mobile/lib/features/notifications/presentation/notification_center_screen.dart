@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -7,18 +9,23 @@ import '../../auth/data/auth_session_store.dart';
 import '../data/notification_api.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
-  const NotificationCenterScreen({this.onAction, super.key});
+  const NotificationCenterScreen({
+    this.onAction,
+    this.api = const NotificationApi(),
+    super.key,
+  });
   final Future<void> Function(PlayerNotificationDto item)? onAction;
+  final NotificationApi api;
   @override
   State<NotificationCenterScreen> createState() =>
       _NotificationCenterScreenState();
 }
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
-  static const NotificationApi _api = NotificationApi();
   StoredAuthSession? _session;
   NotificationInboxDto? _inbox;
   String? _error;
+  bool _openingNotification = false;
 
   @override
   void initState() {
@@ -32,7 +39,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       if (session == null) {
         throw const NotificationException('Sign in to view notifications.');
       }
-      final NotificationInboxDto value = await _api.load(session.token);
+      final NotificationInboxDto value = await widget.api.load(session.token);
       if (mounted) {
         setState(() {
           _session = session;
@@ -46,20 +53,33 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Future<void> _read(PlayerNotificationDto item) async {
-    if (_session == null) return;
-    if (!item.read) {
-      final value = await _api.read(_session!.token, item.id);
-      if (mounted) setState(() => _inbox = value);
+    final session = _session;
+    if (session == null || _openingNotification) return;
+    final open = widget.onAction;
+    if (open == null) {
+      if (!item.read) await _markRead(session.token, item.id);
+      return;
     }
-    if (widget.onAction != null) {
-      if (mounted) Navigator.of(context).pop();
-      await widget.onAction!(item);
+    _openingNotification = true;
+    if (!item.read) {
+      unawaited(_markRead(session.token, item.id));
+    }
+    Navigator.of(context).pop();
+    await open(item);
+  }
+
+  Future<void> _markRead(String token, String id) async {
+    try {
+      final inbox = await widget.api.read(token, id);
+      if (mounted) setState(() => _inbox = inbox);
+    } on NotificationException {
+      // Opening a destination is independent of marking the message read.
     }
   }
 
   Future<void> _readAll() async {
     if (_session == null) return;
-    final value = await _api.readAll(_session!.token);
+    final value = await widget.api.readAll(_session!.token);
     if (mounted) setState(() => _inbox = value);
   }
 

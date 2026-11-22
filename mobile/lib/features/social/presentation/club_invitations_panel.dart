@@ -10,10 +10,12 @@ class ClubInvitationsPanel extends StatefulWidget {
     required this.token,
     required this.api,
     required this.onChanged,
+    this.initialClubId,
   });
   final String token;
   final CommunityApi api;
   final Future<void> Function() onChanged;
+  final String? initialClubId;
   @override
   State<ClubInvitationsPanel> createState() => _ClubInvitationsPanelState();
 }
@@ -48,7 +50,13 @@ class _ClubInvitationsPanelState extends State<ClubInvitationsPanel> {
     try {
       final invitations = await widget.api.clubInvitations(token);
       if (mounted && token == widget.token) {
-        setState(() => _invitations = invitations);
+        final target = widget.initialClubId;
+        setState(
+          () => _invitations = [
+            ...invitations.where((item) => item.clubId == target),
+            ...invitations.where((item) => item.clubId != target),
+          ],
+        );
       }
     } on SocialException catch (e) {
       if (mounted && token == widget.token) setState(() => _error = e.message);

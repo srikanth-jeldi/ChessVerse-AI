@@ -95,6 +95,7 @@ import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
 import 'features/social/data/community_api.dart';
+import 'features/social/presentation/tournament_detail_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'features/tutorial/data/academy_progress_store.dart';
 
@@ -403,7 +404,6 @@ class _SplashGateState extends State<SplashGate> {
   Timer? _sessionValidationTimer;
   bool _sessionValidationInFlight = false;
   final Set<String> _seenNotificationIds = <String>{};
-  final Set<String> _openedNotificationMatchIds = <String>{};
   bool _openingNotificationMatch = false;
   bool _splashArtworkLoadingStarted = false;
   bool _splashArtworkReady = false;
@@ -624,12 +624,14 @@ class _SplashGateState extends State<SplashGate> {
     _openPlayFromReminder();
     _openTournamentsFromReminder();
     _openWeeklyReportFromReminder();
-    _openNotificationAction();
+    final bool openedNotification = _openNotificationAction();
     // Do not make active-match recovery wait for profile/progress sync. A
     // killed mobile process has a short server grace window and must reopen
     // its authoritative match as soon as the authenticated home route exists.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_restoreActiveOnlineMatch(restoredSession.token));
+      if (!openedNotification) {
+        unawaited(_restoreActiveOnlineMatch(restoredSession.token));
+      }
       unawaited(_claimUnlockedBadgeRewards());
     });
     unawaited(_syncCloudProgress(restoredSession.token));
@@ -1012,19 +1014,21 @@ class _SplashGateState extends State<SplashGate> {
 
   Future<void> _openAcceptedChallenge(String token, String matchId) async {
     if (_openingNotificationMatch ||
-        _openedNotificationMatchIds.contains(matchId) ||
         !mounted ||
         _stage != _RootStage.home) {
       return;
     }
     _openingNotificationMatch = true;
-    _openedNotificationMatchIds.add(matchId);
     try {
       final OnlineMatchDto match = await const OnlineMatchApi().getMatch(
         token,
         matchId,
       );
-      if (!mounted || !match.isActive) return;
+      if (!mounted) return;
+      if (!match.isActive) {
+        _showNotificationMessage('This match is no longer active.');
+        return;
+      }
       await _openGame(
         context,
         GameMode.online,
@@ -1032,7 +1036,7 @@ class _SplashGateState extends State<SplashGate> {
         initialAuthToken: token,
       );
     } on OnlineMatchException {
-      _openedNotificationMatchIds.remove(matchId);
+      _showNotificationMessage('Unable to open your board. Please try again.');
     } finally {
       _openingNotificationMatch = false;
     }
@@ -1043,7 +1047,13 @@ class _SplashGateState extends State<SplashGate> {
       final OnlineMatchDto match = await const OnlineMatchApi().reconnect(
         token,
       );
-      if (!mounted || _stage != _RootStage.home || !match.isActive) return;
+      if (!mounted ||
+          _stage != _RootStage.home ||
+          _openingNotificationMatch ||
+          ModalRoute.of(context)?.isCurrent == false ||
+          !match.isActive) {
+        return;
+      }
       await _openGame(
         context,
         GameMode.online,
@@ -1164,58 +1174,127 @@ class _SplashGateState extends State<SplashGate> {
     );
   }
 
-  void _openNotificationAction() {
-    if (!mounted || _stage != _RootStage.home) return;
+  bool _openNotificationAction() {
+    if (!mounted || _stage != _RootStage.home) return false;
     final NotificationOpenRequest? request = DailyReminderService.instance
         .takePendingActionOpen();
-    if (request == null) return;
-    unawaited(_routeNotificationAction(request));
+    if (request == null) return false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_routeNotificationAction(request));
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+    return true;
   }
 
   Future<void> _routeNotificationAction(NotificationOpenRequest request) async {
     if (!mounted || _stage != _RootStage.home) return;
     final String action = request.actionType.toUpperCase();
+    if (action == 'NOTIFICATIONS') {
+      await _openNotificationCenter(context);
+      return;
+    }
     if (action == 'DAILY_PUZZLE') {
       await _openGame(context, GameMode.daily);
       return;
     }
-    if (action == 'MATCH' && request.actionId != null) {
+    if (action == 'MATCH' || action == 'TOURNAMENT_MATCH_READY' ||
+        action == 'CHALLENGE_ACCEPTED') {
       final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session != null) {
+      if (!mounted) return;
+      if (session != null && request.actionId != null) {
         await _openAcceptedChallenge(session.token, request.actionId!);
+      } else {
+        _showNotificationMessage('Unable to open your board. Please try again.');
       }
       return;
     }
     if (action == 'ANALYSIS' || action == 'REVIEW') {
+      final id = request.actionId;
+      final game = id == null
+          ? null
+          : LocalGameArchive.games.where(
+              (game) => game.onlineMatchId == id ||
+                  game.playedAt.toUtc().toIso8601String() == id,
+            ).firstOrNull;
+      if (game != null) {
+        await showAdaptiveAiReview(
+          context,
+          report: AiReviewReport.fromMoves(
+            game.moves,
+            newestFirst: false,
+            result: game.result,
+            knownReviews: game.moveReviews,
+            knownOpeningName: game.openingName,
+            playerSide: game.playerSide,
+            reviewScope: game.reviewScope,
+            initialFen: game.initialFen,
+          ),
+          openingEco: game.openingEco,
+        );
+        return;
+      }
       await _push(
         context,
         AnalysisScreen(onSetUpBoard: () => _openPositionCreator(context)),
       );
       return;
     }
-    if (action == 'DAILY_GAME_REMINDER' ||
-        action == 'STREAK_MILESTONE' ||
-        action.startsWith('STREAK_REMINDER_DAY_')) {
-      setState(() => _primaryDestination = 1);
+    if (action == 'STREAK_MILESTONE') {
+      _showDailyStreak(context);
       return;
     }
-    final int? communitySection = switch (action) {
-      'CLUB' => 1,
-      'TOURNAMENT' || 'TOURNAMENTS' => 2,
-      'CHAT' => 3,
-      'CHALLENGE' ||
-      'COMMUNITY' ||
-      'FRIEND' ||
-      'FRIEND_REQUEST' ||
-      'FRIEND_ONLINE' => 0,
-      _ => null,
-    };
-    if (communitySection != null) {
-      setState(() {
-        _communitySection = communitySection;
-        _primaryDestination = 5;
-      });
+    if (action == 'DAILY_GAME_REMINDER' ||
+        action == 'STREAK_REMINDER' ||
+        action.startsWith('STREAK_REMINDER_DAY_')) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      _selectPrimaryDestination(1);
+      return;
     }
+    final int? section = request.communitySection;
+    if (section == null) {
+      _showNotificationMessage('This notification has no page to open.');
+      return;
+    }
+    final session = await const AuthSessionStore().read();
+    if (!mounted) return;
+    if (session == null) {
+      _showNotificationMessage('Sign in to view notifications.');
+      return;
+    }
+    final String? targetId = request.actionId;
+    if (section == 2 && targetId != null) {
+      await _push(
+        context,
+        TournamentDetailScreen(
+          id: targetId,
+          token: session.token,
+          api: const CommunityApi(),
+          onOpenMatch: (id) => _openAcceptedChallenge(session.token, id),
+        ),
+      );
+      return;
+    }
+    await _push(
+      context,
+      SocialHubScreen(
+        initialSection: section,
+        initialNotification: request,
+        onNotificationAction: _handleNotificationAction,
+        onOpenMatch: (match) => _openGame(
+          context,
+          GameMode.online,
+          initialOnlineMatch: match,
+          initialAuthToken: session.token,
+        ),
+      ),
+    );
+  }
+
+  void _showNotificationMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: UiText(message)),
+    );
   }
 
   @override
@@ -1233,6 +1312,7 @@ class _SplashGateState extends State<SplashGate> {
             canShow: () =>
                 mounted &&
                 _stage == _RootStage.home &&
+                ModalRoute.of(context)?.isCurrent != false &&
                 _primaryDestination == 0,
           );
         });
@@ -1285,6 +1365,7 @@ class _SplashGateState extends State<SplashGate> {
             _openPlayFromReminder();
             _openTournamentsFromReminder();
             _openWeeklyReportFromReminder();
+            _openNotificationAction();
             unawaited(
               AppAnalytics.logAuthentication(
                 guest: result.isGuest,
@@ -1516,6 +1597,7 @@ class _SplashGateState extends State<SplashGate> {
       SocialHubScreen(
         key: ValueKey(_tournamentMenuVisit),
         initialSection: _communitySection,
+        onNotificationAction: _handleNotificationAction,
         onOpenMatch: (OnlineMatchDto match) async {
           final StoredAuthSession? session = await const AuthSessionStore()
               .read();
@@ -1773,14 +1855,14 @@ class _SplashGateState extends State<SplashGate> {
     );
   }
 
-  Future<void> _handleNotificationAction(PlayerNotificationDto item) async {
-    final StoredAuthSession? session = await const AuthSessionStore().read();
-    if (!mounted || session == null) return;
-    final String action = (item.actionType ?? '').toUpperCase();
-    await _routeNotificationAction(
-      NotificationOpenRequest(actionType: action, actionId: item.actionId),
-    );
-  }
+  Future<void> _handleNotificationAction(PlayerNotificationDto item) =>
+      _routeNotificationAction(
+        NotificationOpenRequest.fromData(
+          actionType: item.actionType,
+          actionId: item.actionId,
+          fallbackType: item.type,
+        ),
+      );
 
   Future<void> _openFriendPlayChooser(BuildContext context) async {
     final _FriendPlayChoice?

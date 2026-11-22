@@ -983,6 +983,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool _analysisReadyNotified = false;
+  String? _analysisNotificationGameId;
   bool _soundEnabled = true;
   bool _showCoordinates = true;
   bool _showMoveHints = true;
@@ -4651,6 +4652,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resultSaved = false;
       _playActivity.reset();
       _analysisReadyNotified = false;
+      _analysisNotificationGameId = null;
       _checkWarningActive = false;
     });
     _restartTurnReminder();
@@ -4999,6 +5001,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
+    _analysisNotificationGameId = added
+        ? archivedAt.toUtc().toIso8601String()
+        : _onlineMatch?.id;
     if (added) unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
     _notifyAnalysisReadyIfComplete();
   }
@@ -5011,7 +5016,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _analysisReadyNotified = true;
-    unawaited(DailyReminderService.instance.showAnalysisReady());
+    unawaited(
+      DailyReminderService.instance.showAnalysisReady(
+        gameId: _analysisNotificationGameId,
+      ),
+    );
   }
 
   Future<void> _maybeRequestStoreReview() {
@@ -5861,6 +5870,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _resultSaved = false;
         _playActivity.reset();
         _analysisReadyNotified = false;
+        _analysisNotificationGameId = null;
         _selectedSquare = null;
         _lastFromSquare = null;
         _lastToSquare = null;
@@ -6185,6 +6195,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resultSaved = false;
       _playActivity.reset();
       _analysisReadyNotified = false;
+      _analysisNotificationGameId = null;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
       _resultCelebrationTimer?.cancel();

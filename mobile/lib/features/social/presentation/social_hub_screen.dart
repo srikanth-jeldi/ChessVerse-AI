@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_language.dart';
 import '../../../core/club_localizations.dart';
 import '../../../core/desktop_navigation_bridge.dart';
+import '../../../core/notifications/daily_reminder_service.dart';
 import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../../core/widgets/skeleton_loader.dart';
@@ -41,11 +42,15 @@ class SocialHubScreen extends StatefulWidget {
     this.onOpenMatch,
     this.previewHub,
     this.initialSection = 0,
+    this.initialNotification,
+    this.onNotificationAction,
     super.key,
   });
   final Future<void> Function(OnlineMatchDto)? onOpenMatch;
   final SocialHubDto? previewHub;
   final int initialSection;
+  final NotificationOpenRequest? initialNotification;
+  final Future<void> Function(PlayerNotificationDto)? onNotificationAction;
   @override
   State<SocialHubScreen> createState() => _SocialHubScreenState();
 }
@@ -60,6 +65,8 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   String? _error;
   bool _busy = true;
   bool _checkingChat = false;
+  bool _openedInitialNotification = false;
+  final GlobalKey _notificationCard = GlobalKey();
 
   @override
   void initState() {
@@ -106,7 +113,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         _checkingChat = false;
       }
     }
-    if (mounted) setState(() => _section = section);
+    if (mounted) {
+      setState(() => _section = section);
+      _scheduleNotificationTarget();
+    }
   }
 
   Future<void> _refresh() async {
@@ -132,6 +142,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
           _community = values[1] as CommunityDto;
           _busy = false;
         });
+        _scheduleNotificationTarget();
       }
     } on SocialException catch (error) {
       if (mounted) {
@@ -141,6 +152,82 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         });
       }
     }
+  }
+
+  void _scheduleNotificationTarget() {
+    final request = widget.initialNotification;
+    if (_openedInitialNotification ||
+        request == null ||
+        request.actionId == null ||
+        _busy ||
+        _section != widget.initialSection) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_openedInitialNotification && !_busy &&
+          _section == widget.initialSection) {
+        _openedInitialNotification = true;
+        unawaited(_openNotificationTarget(request));
+      }
+    });
+  }
+
+  Future<void> _openNotificationTarget(NotificationOpenRequest request) async {
+    final String id = request.actionId!;
+    final session = _session;
+    if (session == null) return;
+    if (_section == 3) {
+      final conversation = _community!.conversations
+          .where((item) => item.playerId == id)
+          .firstOrNull;
+      final player = conversation == null
+          ? _hub!.friends.where((item) => item.playerId == id).firstOrNull
+          : _playerForConversation(conversation);
+      if (player != null) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => _ChatScreen(
+              friend: player,
+              api: _communityApi,
+              token: session.token,
+            ),
+          ),
+        );
+        if (mounted) await _refresh();
+        return;
+      }
+    } else if (_section == 1) {
+      final club = _community!.clubs
+          .where((item) => item.id == id && item.joined)
+          .firstOrNull;
+      if (club != null) {
+        await _openClub(club);
+        return;
+      }
+    }
+    if (_section != 3) {
+      final target = _notificationCard.currentContext;
+      if (target != null) {
+        await Scrollable.ensureVisible(
+          target,
+          alignment: .15,
+          duration: const Duration(milliseconds: 280),
+        );
+        return;
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('This notification is no longer available.')),
+      );
+    }
+  }
+
+  Key? _notificationKey(String id, Set<String> actions) {
+    final request = widget.initialNotification;
+    return request?.actionId == id && actions.contains(request?.actionType)
+        ? _notificationCard
+        : null;
   }
 
   Future<void> _createClubTournament() async {
@@ -582,33 +669,6 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
     }
   }
 
-  Future<void> _notificationAction(PlayerNotificationDto item) async {
-    final String action = (item.actionType ?? '').toUpperCase();
-    if (action == 'MATCH' && item.actionId != null && _session != null) {
-      try {
-        final match = await const OnlineMatchApi().getMatch(
-          _session!.token,
-          item.actionId!,
-        );
-        if (mounted) widget.onOpenMatch?.call(match);
-      } on OnlineMatchException catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(error.message)));
-        }
-      }
-      return;
-    }
-    final int section = switch (action) {
-      'CLUB' => 1,
-      'TOURNAMENT' => 2,
-      'CHAT' => 3,
-      _ => 0,
-    };
-    if (mounted) await _changeSection(section);
-    await _refresh();
-  }
-
   bool _openingClub = false;
   Future<void> _openClub(ClubDto club) async {
     final session = _session;
@@ -683,8 +743,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         NotificationBellButton(
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (_) =>
-                  NotificationCenterScreen(onAction: _notificationAction),
+              builder: (_) => NotificationCenterScreen(
+                onAction: widget.onNotificationAction,
+              ),
             ),
           ),
         ),
@@ -728,6 +789,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                       children: _hub!.incoming
                           .map(
                             (player) => _PlayerCard(
+                              key: _notificationKey(player.connectionId, {
+                                'FRIEND_REQUEST',
+                              }),
                               player: player,
                               primaryLabel: 'Accept',
                               onPrimary: () => _act(
@@ -759,6 +823,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                       children: _hub!.outgoing
                           .map(
                             (player) => _PlayerCard(
+                              key: _notificationKey(player.connectionId, {
+                                'COMMUNITY', 'FRIEND_DECLINED',
+                              }),
                               player: player,
                               primaryLabel: player.relationship == 'DECLINED'
                                   ? 'Rejected'
@@ -778,6 +845,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                         .where((c) => c.status == 'PENDING')
                         .map(
                           (challenge) => _ChallengeCard(
+                            key: _notificationKey(challenge.id, {
+                              'CHALLENGE', 'CHALLENGE_RECEIVED',
+                            }),
                             challenge: challenge,
                             onAccept: challenge.incoming
                                 ? () => _accept(challenge)
@@ -796,6 +866,11 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                     children: _hub!.friends
                         .map(
                           (player) => _PlayerCard(
+                            key: _notificationKey(player.playerId, {
+                              'FRIEND', 'FRIEND_ONLINE',
+                            }) ?? _notificationKey(player.connectionId, {
+                              'COMMUNITY', 'FRIEND_ACCEPTED',
+                            }),
                             player: player,
                             primaryLabel: 'Challenge',
                             onTap: () => _openPlayerProfile(player),
@@ -860,6 +935,13 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
             token: _session!.token,
             onFindFriends: () => setState(() => _section = 0),
             onOpenMatch: widget.onOpenMatch,
+            clubInvitationId: _section == 1
+                ? widget.initialNotification?.actionId
+                : null,
+            clubInvitationsKey: _section == 1 &&
+                    widget.initialNotification?.actionId != null
+                ? _notificationCard
+                : null,
           ),
   );
 }
@@ -953,6 +1035,19 @@ class _CommunityTabs extends StatelessWidget {
   );
 }
 
+SocialPlayerDto _playerForConversation(ConversationDto conversation) =>
+    SocialPlayerDto(
+      connectionId: '',
+      playerId: conversation.playerId,
+      username: '',
+      displayName: conversation.displayName,
+      photoUrl: conversation.photoUrl,
+      country: '',
+      rating: 1200,
+      online: conversation.online,
+      relationship: 'FRIEND',
+    );
+
 class _CommunitySection extends StatelessWidget {
   const _CommunitySection({
     required this.section,
@@ -966,6 +1061,8 @@ class _CommunitySection extends StatelessWidget {
     required this.token,
     required this.onFindFriends,
     required this.onOpenMatch,
+    this.clubInvitationId,
+    this.clubInvitationsKey,
   });
   final int section;
   final CommunityDto community;
@@ -978,6 +1075,8 @@ class _CommunitySection extends StatelessWidget {
   final String token;
   final VoidCallback onFindFriends;
   final Future<void> Function(OnlineMatchDto)? onOpenMatch;
+  final String? clubInvitationId;
+  final Key? clubInvitationsKey;
   @override
   Widget build(BuildContext context) {
     if (section == 2) {
@@ -1011,19 +1110,7 @@ class _CommunitySection extends StatelessWidget {
       );
     }
     final List<SocialPlayerDto> chatPlayers = <SocialPlayerDto>[
-      ...community.conversations.map(
-        (ConversationDto conversation) => SocialPlayerDto(
-          connectionId: '',
-          playerId: conversation.playerId,
-          username: '',
-          displayName: conversation.displayName,
-          photoUrl: conversation.photoUrl,
-          country: '',
-          rating: 1200,
-          online: conversation.online,
-          relationship: 'FRIEND',
-        ),
-      ),
+      ...community.conversations.map(_playerForConversation),
       ...friends.where(
         (SocialPlayerDto friend) => !community.conversations.any(
           (ConversationDto item) => item.playerId == friend.playerId,
@@ -1090,9 +1177,11 @@ class _CommunitySection extends StatelessWidget {
                   const SizedBox(height: 10),
                   if (section == 1) ...<Widget>[
                     ClubInvitationsPanel(
+                      key: clubInvitationsKey,
                       token: token,
                       api: api,
                       onChanged: onRefresh,
+                      initialClubId: clubInvitationId,
                     ),
                     FilledButton.icon(
                       key: const ValueKey('create-own-club'),
@@ -3436,6 +3525,7 @@ class _Section extends StatelessWidget {
 
 class _PlayerCard extends StatelessWidget {
   const _PlayerCard({
+    super.key,
     required this.player,
     required this.primaryLabel,
     required this.onPrimary,
@@ -3802,6 +3892,7 @@ class _SocialMetric extends StatelessWidget {
 
 class _ChallengeCard extends StatelessWidget {
   const _ChallengeCard({
+    super.key,
     required this.challenge,
     this.onAccept,
     this.onDecline,

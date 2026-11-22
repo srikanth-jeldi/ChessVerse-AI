@@ -49,25 +49,29 @@ Future<void> _showPushMessage(RemoteMessage message) async {
   body = localized.$2;
   final String stableId =
       message.data['notificationId'] ?? message.messageId ?? '$title|$body';
+  final request = _pushOpenRequest(message);
   await DailyReminderService.instance.showRealtime(
     stableId.hashCode,
     title,
     body,
-    actionType: message.data['actionType'],
-    actionId: message.data['actionId'],
+    actionType: request.actionType,
+    actionId: request.actionId,
   );
 }
 
 void _openPushMessage(RemoteMessage message) {
-  final String actionType = (message.data['actionType'] ?? '').trim();
-  if (actionType.isEmpty) return;
-  DailyReminderService.instance.openAction(
-    NotificationOpenRequest(
-      actionType: actionType.toUpperCase(),
-      actionId: message.data['actionId'],
-    ),
-  );
+  final request = _pushOpenRequest(message);
+  if (request.actionType.isNotEmpty) {
+    DailyReminderService.instance.openAction(request);
+  }
 }
+
+NotificationOpenRequest _pushOpenRequest(RemoteMessage message) =>
+    NotificationOpenRequest.fromData(
+      actionType: message.data['actionType'],
+      actionId: message.data['actionId'],
+      fallbackType: message.data['type'],
+    );
 
 /// Localizes semantic push categories on-device so foreground, background and
 /// terminated delivery all follow the same selected AI language.

@@ -20,6 +20,32 @@ class NotificationOpenRequest {
   final String actionType;
   final String? actionId;
 
+  factory NotificationOpenRequest.fromData({
+    String? actionType,
+    String? actionId,
+    String? fallbackType,
+  }) {
+    final String action = actionType?.trim() ?? '';
+    final String id = actionId?.trim() ?? '';
+    return NotificationOpenRequest(
+      actionType: (action.isEmpty ? fallbackType?.trim() ?? '' : action)
+          .toUpperCase(),
+      actionId: id.isEmpty ? null : id,
+    );
+  }
+
+  int? get communitySection => switch (actionType) {
+    'CLUB' || 'CLUB_INVITE' || 'CLUB_JOINED' => 1,
+    'TOURNAMENT' || 'TOURNAMENTS' || 'TOURNAMENT_REMINDER' ||
+    'TOURNAMENT_REGISTERED' || 'TOURNAMENT_RESCHEDULED' ||
+    'TOURNAMENT_CANCELLED' || 'CLUB_TOURNAMENT_CREATED' => 2,
+    'CHAT' || 'MESSAGE_RECEIVED' => 3,
+    'CHALLENGE' || 'CHALLENGE_RECEIVED' || 'CHALLENGE_DECLINED' ||
+    'COMMUNITY' || 'FRIEND' || 'FRIEND_REQUEST' || 'FRIEND_ONLINE' ||
+    'FRIEND_ACCEPTED' || 'FRIEND_DECLINED' => 0,
+    _ => null,
+  };
+
   String encode() => jsonEncode(<String, String>{
     'actionType': actionType,
     if (actionId != null && actionId!.isNotEmpty) 'actionId': actionId!,
@@ -30,13 +56,12 @@ class NotificationOpenRequest {
     try {
       final Object? decoded = jsonDecode(payload);
       if (decoded is! Map<String, dynamic>) return null;
-      final String actionType = (decoded['actionType'] as String? ?? '')
-          .trim()
-          .toUpperCase();
-      if (actionType.isEmpty) return null;
-      return NotificationOpenRequest(
-        actionType: actionType,
-        actionId: (decoded['actionId'] as String?)?.trim(),
+      final Object? action = decoded['actionType'];
+      final Object? id = decoded['actionId'];
+      if (action is! String || action.trim().isEmpty) return null;
+      return NotificationOpenRequest.fromData(
+        actionType: action,
+        actionId: id is String ? id : null,
       );
     } on FormatException {
       return null;
@@ -408,7 +433,10 @@ class DailyReminderService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        payload: 'open_tournaments',
+        payload: NotificationOpenRequest(
+          actionType: 'TOURNAMENT',
+          actionId: tournamentId,
+        ).encode(),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
@@ -469,7 +497,7 @@ class DailyReminderService {
     }
   }
 
-  Future<void> showAnalysisReady() async {
+  Future<void> showAnalysisReady({String? gameId}) async {
     if (kIsWeb) return;
     await initialize();
     final String language = await AppLanguageController.effectiveCode();
@@ -489,7 +517,10 @@ class DailyReminderService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        payload: 'open_weekly_report',
+        payload: NotificationOpenRequest(
+          actionType: 'ANALYSIS',
+          actionId: gameId,
+        ).encode(),
       );
     } catch (_) {
       // Analysis completion remains available in-app if an OEM rejects the

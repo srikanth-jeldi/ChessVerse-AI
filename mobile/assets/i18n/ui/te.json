@@ -1168,5 +1168,9 @@
   "View today’s challenge": "ఈరోజు ఛాలెంజ్ చూడండి",
   "Play Daily Challenge": "డైలీ ఛాలెంజ్ ఆడండి",
   "{0} day streak": "{0} రోజుల స్ట్రీక్",
-  "View Daily Streak": "డైలీ స్ట్రీక్ చూడండి"
+  "View Daily Streak": "డైలీ స్ట్రీక్ చూడండి",
+  "This match is no longer active.": "ఈ మ్యాచ్ ముగిసింది.",
+  "This notification has no page to open.": "ఈ నోటిఫికేషన్‌కు తెరవాల్సిన పేజీ లేదు.",
+  "This notification is no longer available.": "ఈ నోటిఫికేషన్‌కు సంబంధించిన అంశం ఇప్పుడు అందుబాటులో లేదు.",
+  "Sign in to view notifications.": "నోటిఫికేషన్లు చూడటానికి సైన్ ఇన్ చేయండి."
 }
