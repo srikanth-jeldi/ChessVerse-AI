@@ -125,7 +125,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
           final DateTime now = DateTime.now();
           final bool completed = LocalGameArchive.isDailyChallengeLockedAt(now);
           final int streak = LocalGameArchive.dailyStreakAt(now);
-          return Center(
+          return Align(
+            alignment: MediaQuery.sizeOf(context).width < 600
+                ? Alignment.topCenter
+                : const Alignment(0, -.36),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: ConstrainedBox(
