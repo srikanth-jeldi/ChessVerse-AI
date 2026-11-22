@@ -7,6 +7,7 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../widgets/daily_navigation_menu.dart';
 import '../widgets/daily_puzzle_countdown.dart';
 
@@ -48,7 +49,12 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: uiText(context, 'Puzzles'),
+    child: _buildPage(),
+  );
+
+  Widget _buildPage() => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
     appBar: AppBar(
       title: const UiText('Daily Challenge'),

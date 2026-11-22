@@ -42,7 +42,7 @@
   }, 30000);
 
   var script = document.createElement('script');
-  script.src = 'flutter_bootstrap.js?v=20261122-notifications';
+  script.src = 'flutter_bootstrap.js?v=20261122-daily-sidebar';
   script.async = true;
   script.onerror = window.chessverseStartupFailed;
   document.head.appendChild(script);

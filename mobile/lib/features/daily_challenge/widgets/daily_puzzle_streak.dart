@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_ui_localizations.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import 'daily_navigation_menu.dart';
 import 'daily_puzzle_countdown.dart';
 
@@ -233,7 +234,12 @@ class _DailyStreakScreenState extends State<DailyStreakScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: uiText(context, 'Puzzles'),
+    child: _buildPage(),
+  );
+
+  Widget _buildPage() => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
     body: DecoratedBox(
       decoration: const BoxDecoration(

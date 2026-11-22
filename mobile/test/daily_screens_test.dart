@@ -1,8 +1,10 @@
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
+import 'package:chessverse_ai/core/widgets/desktop_app_sidebar.dart';
 import 'package:chessverse_ai/features/daily_challenge/presentation/daily_challenge_screen.dart';
 import 'package:chessverse_ai/features/daily_challenge/widgets/daily_puzzle_streak.dart';
 import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -153,6 +155,9 @@ void main() {
             ),
           ),
         );
+        final sidebar = find.byType(DesktopAppSidebar);
+        final showSidebar = kIsWeb && viewport.width >= 700;
+        expect(sidebar, showSidebar ? findsOneWidget : findsNothing);
         expect(find.text('24 hours from first open'), findsOneWidget);
         final Finder artwork = find.byKey(
           const ValueKey<String>('daily-challenge-artwork'),
@@ -176,6 +181,7 @@ void main() {
         await tester.tap(streak);
         await tester.pumpAndSettle();
         expect(find.text('Daily Streak'), findsOneWidget);
+        expect(sidebar, showSidebar ? findsOneWidget : findsNothing);
         await tester.tap(menu);
         await tester.pumpAndSettle();
         expect(find.text('Daily Challenge'), findsOneWidget);
