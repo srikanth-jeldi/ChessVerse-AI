@@ -243,7 +243,15 @@ void main() {
 
   testWidgets('screen gallery - daily challenge', (WidgetTester tester) async {
     await _setPhone(tester);
-    await tester.pumpWidget(_app(const DailyChallengeScreen()));
+    await tester.pumpWidget(
+      _app(
+        DailyChallengeScreen(
+          onPlay: () {},
+          onOpenStreak: () {},
+          onOpenPuzzles: () {},
+        ),
+      ),
+    );
     await _pumpGallery(tester);
     await expectLater(
       find.byType(DailyChallengeScreen),

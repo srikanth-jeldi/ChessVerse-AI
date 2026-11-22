@@ -32,7 +32,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 void main() {
   var trainingTaps = 0;
   final screens = <String, Widget Function()>{
-    'daily_challenge': () => const DailyChallengeScreen(),
+    'daily_challenge': () => DailyChallengeScreen(
+      onPlay: () {},
+      onOpenStreak: () {},
+      onOpenPuzzles: () {},
+    ),
     'learn': () => const LearnChessScreen(),
     'master_games': () => const MasterGamesScreen(),
     'blindfold': () => const BlindfoldTrainingScreen(),

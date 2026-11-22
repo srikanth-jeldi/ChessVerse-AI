@@ -75,11 +75,13 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         var starts = 0;
+        var puzzlesOpened = 0;
         await tester.pumpWidget(
           MaterialApp(
             home: Builder(
               builder: (context) => DailyChallengeScreen(
                 onPlay: () => starts++,
+                onOpenPuzzles: () => puzzlesOpened++,
                 onOpenStreak: () => Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(
                     builder: (_) =>
@@ -95,6 +97,19 @@ void main() {
           const ValueKey<String>('daily-challenge-artwork'),
         );
         expect(tester.getSize(artwork).aspectRatio, closeTo(2 / 3, .01));
+        final Finder menu = find.byTooltip('Daily menu');
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('How Daily Challenge works'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        await tester.tap(find.text('Done'));
+        await tester.pumpAndSettle();
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Puzzle Academy'));
+        await tester.pumpAndSettle();
+        expect(puzzlesOpened, 1);
         final Finder streak = find.text('View Daily Streak');
         await tester.ensureVisible(streak);
         await tester.tap(streak);

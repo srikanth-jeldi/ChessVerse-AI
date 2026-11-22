@@ -1312,6 +1312,7 @@ class _SplashGateState extends State<SplashGate> {
       DailyChallengeScreen(
         onPlay: () => _openGame(context, GameMode.daily),
         onOpenStreak: () => _showDailyStreak(context),
+        onOpenPuzzles: () => _closeSettingsAndSelect(context, 2),
       ),
     );
   }

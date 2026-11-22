@@ -118,7 +118,11 @@ void main({bool deviceAudit = false}) {
       rewardsApi: coin_fixtures.Rewards(),
       rewardedCoins: coin_fixtures.Video(),
     ),
-    'daily_challenge': () => const DailyChallengeScreen(),
+    'daily_challenge': () => DailyChallengeScreen(
+      onPlay: () {},
+      onOpenStreak: () {},
+      onOpenPuzzles: () {},
+    ),
     'learn': () => const LearnChessScreen(),
     'master_games': () => const MasterGamesScreen(),
     'blindfold': () => const BlindfoldTrainingScreen(),

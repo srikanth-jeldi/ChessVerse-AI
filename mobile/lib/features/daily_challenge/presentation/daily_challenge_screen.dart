@@ -13,11 +13,13 @@ class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({
     required this.onPlay,
     required this.onOpenStreak,
+    required this.onOpenPuzzles,
     super.key,
   });
 
   final VoidCallback onPlay;
   final VoidCallback onOpenStreak;
+  final VoidCallback onOpenPuzzles;
 
   @override
   State<DailyChallengeScreen> createState() => _DailyChallengeScreenState();
@@ -44,12 +46,77 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     super.dispose();
   }
 
+  void _showRules() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const UiText('How Daily Challenge works'),
+        content: const UiText(
+          'Your 24 hours begin when you first open the puzzle board. '
+          'Solve the puzzle to earn coins and extend your streak.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const UiText('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
     appBar: AppBar(
       title: const UiText('Daily Challenge'),
       backgroundColor: AppColors.background,
+      actions: <Widget>[
+        PopupMenuButton<_DailyMenu>(
+          tooltip: uiText(context, 'Daily menu'),
+          icon: const Icon(Icons.menu_rounded),
+          onSelected: (option) {
+            switch (option) {
+              case _DailyMenu.streak:
+                widget.onOpenStreak();
+              case _DailyMenu.puzzles:
+                widget.onOpenPuzzles();
+              case _DailyMenu.rules:
+                _showRules();
+            }
+          },
+          itemBuilder: (_) => const <PopupMenuEntry<_DailyMenu>>[
+            PopupMenuItem(
+              value: _DailyMenu.streak,
+              child: ListTile(
+                leading: Icon(Icons.local_fire_department_rounded),
+                title: UiText('Daily Streak'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: _DailyMenu.puzzles,
+              child: ListTile(
+                leading: Icon(Icons.extension_rounded),
+                title: UiText('Puzzle Academy'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: _DailyMenu.rules,
+              child: ListTile(
+                leading: Icon(Icons.info_outline_rounded),
+                title: UiText('How Daily Challenge works'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+      ],
     ),
     body: SafeArea(
       child: ValueListenableBuilder<int>(
@@ -62,7 +129,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
+                constraints: const BoxConstraints(maxWidth: 790),
                 child: _ChallengeCard(
                   completed: completed,
                   streak: streak,
@@ -80,6 +147,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     ),
   );
 }
+
+enum _DailyMenu { streak, puzzles, rules }
 
 class _ChallengeCard extends StatelessWidget {
   const _ChallengeCard({
@@ -101,7 +170,7 @@ class _ChallengeCard extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, constraints) {
         final bool wide = constraints.maxWidth >= 520;
-        final double artWidth = wide ? 156 : 82;
+        final double artWidth = wide ? 204 : 104;
         final Widget play = ChessVerseButton(
           label: completed ? 'View today’s challenge' : 'Play Daily Challenge',
           icon: completed ? Icons.visibility_rounded : Icons.play_arrow_rounded,
@@ -144,9 +213,22 @@ class _ChallengeCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 9),
-                      DailyPuzzleCountdown(completed: completed),
-                      const SizedBox(height: 7),
+                      const SizedBox(height: 12),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundDeep,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: DailyPuzzleCountdown(completed: completed),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                       UiText(
                         completed
                             ? 'You earned {0} coins today.'
@@ -161,7 +243,7 @@ class _ChallengeCard extends StatelessWidget {
               ],
             ),
             if (!wide) ...<Widget>[const SizedBox(height: 14), play],
-            const Divider(height: 26, color: AppColors.border),
+            const Divider(height: 30, color: AppColors.border),
             Row(
               children: <Widget>[
                 Image.asset(
@@ -180,7 +262,7 @@ class _ChallengeCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Flexible(
-                  child: TextButton(
+                  child: OutlinedButton(
                     onPressed: onOpenStreak,
                     child: const UiText(
                       'View Daily Streak',
