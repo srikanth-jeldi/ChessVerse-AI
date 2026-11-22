@@ -1153,5 +1153,20 @@
   "Opening Sage": "ఓపెనింగ్ సేజ్",
   "Registered players · provisional pairings": "రిజిస్టర్డ్ ప్లేయర్లు · తాత్కాలిక జతలు",
   "Your opponent is shown below. Pairings lock when registration closes.": "మీ ప్రత్యర్థి క్రింద చూపబడింది. రిజిస్ట్రేషన్ మూసివేసినప్పుడు జతలు లాక్ చేయబడతాయి.",
-  "Past tournaments · results": "గత టోర్నమెంట్లు · ఫలితాలు"
+  "Past tournaments · results": "గత టోర్నమెంట్లు · ఫలితాలు",
+  "Daily menu": "డైలీ ఛాలెంజ్ మెనూ",
+  "Puzzle Academy": "పజిల్ అకాడమీ",
+  "How Daily Challenge works": "డైలీ ఛాలెంజ్ నియమాలు",
+  "Your 24 hours begin when you first open the puzzle board. Solve the puzzle to earn coins and extend your streak.": "పజిల్ బోర్డును మొదటిసారి తెరిచినప్పటి నుంచి 24 గంటల సమయం ఉంటుంది. పజిల్‌ను పూర్తి చేస్తే కాయిన్లు వస్తాయి, మీ స్ట్రీక్ కొనసాగుతుంది.",
+  "Challenge complete": "ఛాలెంజ్ పూర్తయింది",
+  "Today’s puzzle": "ఈరోజు పజిల్",
+  "24 hours from first open": "బోర్డు తెరిచినప్పటి నుంచి 24 గంటలు",
+  "Next puzzle in": "తదుపరి పజిల్‌కు మిగిలిన సమయం",
+  "Time left to solve": "పజిల్ పూర్తి చేయడానికి మిగిలిన సమయం",
+  "You earned {0} coins today.": "ఈరోజు మీరు {0} కాయిన్లు సంపాదించారు.",
+  "Solve today’s puzzle to earn {0} coins.": "ఈరోజు పజిల్ పూర్తి చేసి {0} కాయిన్లు సంపాదించండి.",
+  "View today’s challenge": "ఈరోజు ఛాలెంజ్ చూడండి",
+  "Play Daily Challenge": "డైలీ ఛాలెంజ్ ఆడండి",
+  "{0} day streak": "{0} రోజుల స్ట్రీక్",
+  "View Daily Streak": "డైలీ స్ట్రీక్ చూడండి"
 }

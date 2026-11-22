@@ -1,7 +1,10 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/daily_challenge/presentation/daily_challenge_screen.dart';
 import 'package:chessverse_ai/features/daily_challenge/widgets/daily_puzzle_streak.dart';
+import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,6 +66,64 @@ void main() {
     },
   );
 
+  testWidgets('completed challenge and all menu items are in Telugu', (
+    WidgetTester tester,
+  ) async {
+    await tester.runAsync(() async {
+      FlutterSecureStorage.setMockInitialValues({
+        'chessverse_last_daily_completion_utc': DateTime.now()
+            .toUtc()
+            .toIso8601String(),
+      });
+      await LocalGameArchive.init();
+      await UiCopy.load('te');
+    });
+    addTearDown(() async {
+      await UiCopy.load('en');
+      await LocalGameArchive.clearDeviceUserData();
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 640);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('te'),
+        supportedLocales: const [Locale('en'), Locale('te')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: DailyChallengeScreen(
+          onPlay: () {},
+          onOpenStreak: () {},
+          onOpenPuzzles: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ఛాలెంజ్ పూర్తయింది'), findsOneWidget);
+    expect(find.text('తదుపరి పజిల్‌కు మిగిలిన సమయం'), findsOneWidget);
+    expect(find.text('ఈరోజు ఛాలెంజ్ చూడండి'), findsOneWidget);
+    expect(find.text('Challenge complete'), findsNothing);
+
+    await tester.tap(find.byTooltip('డైలీ ఛాలెంజ్ మెనూ'));
+    await tester.pumpAndSettle();
+    expect(find.text('డైలీ స్ట్రీక్'), findsOneWidget);
+    expect(find.text('పజిల్ అకాడమీ'), findsOneWidget);
+    expect(find.text('Puzzle Academy'), findsNothing);
+    await tester.tap(find.text('డైలీ ఛాలెంజ్ నియమాలు'));
+    await tester.pumpAndSettle();
+    final Finder dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.textContaining('24 గంటల')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('అయింది'));
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   for (final Size viewport in <Size>[
     const Size(360, 640),
     const Size(1200, 800),
@@ -115,11 +176,45 @@ void main() {
         await tester.tap(streak);
         await tester.pumpAndSettle();
         expect(find.text('Daily Streak'), findsOneWidget);
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        expect(find.text('Daily Challenge'), findsOneWidget);
+        expect(find.text('Puzzle Academy'), findsOneWidget);
+        await tester.tap(find.text('How Daily Challenge works'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Done'));
+        await tester.pumpAndSettle();
         final Finder play = find.text('Play Daily Challenge');
         await tester.ensureVisible(play);
         await tester.tap(play);
         expect(starts, 1);
         expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(
+          MaterialApp(
+            home: PuzzleAcademyScreen(
+              showPrimaryNavigation: false,
+              onDailyChallenge: () => starts++,
+              onDailyStreak: () {},
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        final items = find.descendant(
+          of: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+          matching: find.byType(Text),
+        );
+        expect(tester.widgetList<Text>(items).map((text) => text.data), [
+          'Daily Challenge',
+          'Daily Streak',
+          'Puzzle Academy',
+          'How Daily Challenge works',
+        ]);
+        await tester.tap(items.first);
+        await tester.pumpAndSettle();
+        expect(starts, 2);
         await tester.pumpWidget(const SizedBox.shrink());
       },
     );

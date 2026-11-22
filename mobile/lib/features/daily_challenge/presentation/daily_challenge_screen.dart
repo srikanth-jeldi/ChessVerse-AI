@@ -7,6 +7,7 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../widgets/daily_navigation_menu.dart';
 import '../widgets/daily_puzzle_countdown.dart';
 
 class DailyChallengeScreen extends StatefulWidget {
@@ -46,25 +47,6 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     super.dispose();
   }
 
-  void _showRules() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const UiText('How Daily Challenge works'),
-        content: const UiText(
-          'Your 24 hours begin when you first open the puzzle board. '
-          'Solve the puzzle to earn coins and extend your streak.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const UiText('Done'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.backgroundDeep,
@@ -72,48 +54,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
       title: const UiText('Daily Challenge'),
       backgroundColor: AppColors.background,
       actions: <Widget>[
-        PopupMenuButton<_DailyMenu>(
-          tooltip: uiText(context, 'Daily menu'),
-          icon: const Icon(Icons.menu_rounded),
-          onSelected: (option) {
-            switch (option) {
-              case _DailyMenu.streak:
-                widget.onOpenStreak();
-              case _DailyMenu.puzzles:
-                widget.onOpenPuzzles();
-              case _DailyMenu.rules:
-                _showRules();
-            }
-          },
-          itemBuilder: (_) => const <PopupMenuEntry<_DailyMenu>>[
-            PopupMenuItem(
-              value: _DailyMenu.streak,
-              child: ListTile(
-                leading: Icon(Icons.local_fire_department_rounded),
-                title: UiText('Daily Streak'),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: _DailyMenu.puzzles,
-              child: ListTile(
-                leading: Icon(Icons.extension_rounded),
-                title: UiText('Puzzle Academy'),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: _DailyMenu.rules,
-              child: ListTile(
-                leading: Icon(Icons.info_outline_rounded),
-                title: UiText('How Daily Challenge works'),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
+        DailyNavigationMenu(
+          onOpenStreak: widget.onOpenStreak,
+          onOpenPuzzles: widget.onOpenPuzzles,
         ),
         const SizedBox(width: 8),
       ],
@@ -150,8 +93,6 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     ),
   );
 }
-
-enum _DailyMenu { streak, puzzles, rules }
 
 class _ChallengeCard extends StatelessWidget {
   const _ChallengeCard({

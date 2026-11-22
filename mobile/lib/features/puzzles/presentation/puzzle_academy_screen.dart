@@ -14,6 +14,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../analysis/domain/player_learning_profile.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../daily_challenge/widgets/daily_navigation_menu.dart';
 import '../data/puzzle_sprint_api.dart';
 import '../domain/puzzle_catalog.dart';
 import '../domain/puzzle_sprint.dart';
@@ -218,8 +219,15 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
   @override
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
-    final Widget? dailyLinks = widget.onDailyChallenge == null &&
-            widget.onDailyStreak == null
+    final dailyMenu =
+        widget.onDailyChallenge == null && widget.onDailyStreak == null
+        ? null
+        : DailyNavigationMenu(
+            onOpenChallenge: widget.onDailyChallenge,
+            onOpenStreak: widget.onDailyStreak,
+          );
+    final Widget? dailyLinks =
+        widget.onDailyChallenge == null && widget.onDailyStreak == null
         ? null
         : Padding(
             padding: const EdgeInsets.only(bottom: 14),
@@ -285,6 +293,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                 Expanded(
                   child: _DesktopPuzzleAcademy(
                     dailyLinks: dailyLinks,
+                    dailyMenu: dailyMenu,
                     stats: stats,
                     rewards: rewards,
                     adaptiveFocus: adaptiveFocus,
@@ -313,6 +322,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   shadowColor: Colors.black87,
                   centerTitle: false,
                   automaticallyImplyLeading: false,
+                  actions: [if (dailyMenu != null) dailyMenu],
                   title: SizedBox(
                     width: MediaQuery.sizeOf(context).width - 150,
                     child: const Column(
@@ -454,6 +464,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
 class _DesktopPuzzleAcademy extends StatelessWidget {
   const _DesktopPuzzleAcademy({
     this.dailyLinks,
+    this.dailyMenu,
     required this.stats,
     required this.rewards,
     required this.onStart,
@@ -465,6 +476,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
 
   final LocalGameStats stats;
   final Widget? dailyLinks;
+  final Widget? dailyMenu;
   final RewardSnapshot rewards;
   final VoidCallback onStart;
   final ValueChanged<PuzzleDifficulty> onDifficulty;
@@ -480,35 +492,45 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
         child: Column(
           children: <Widget>[
-            const SizedBox(
+            SizedBox(
               height: 78,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    UiText(
-                      'PUZZLE ACADEMY',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        letterSpacing: .7,
-                        fontWeight: FontWeight.w900,
-                      ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        UiText(
+                          'PUZZLE ACADEMY',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 23,
+                            letterSpacing: .7,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        UiText(
+                          'Train tactics and sharpen pattern recognition',
+                          style: TextStyle(
+                            color: Color(0xFFA7B7CA),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 2),
-                    UiText(
-                      'Train tactics and sharpen pattern recognition',
-                      style: TextStyle(color: Color(0xFFA7B7CA), fontSize: 14),
-                    ),
-                  ],
-                ),
+                  ),
+                  if (dailyMenu != null) dailyMenu!,
+                ],
               ),
             ),
             const SizedBox(height: 6),
             if (dailyLinks != null)
-              Align(alignment: AlignmentDirectional.centerStart, child: dailyLinks),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: dailyLinks,
+              ),
             _PuzzleHero(
               solved: stats.puzzlesSolved,
               adaptiveFocus: adaptiveFocus,
@@ -565,13 +587,10 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                     const SizedBox(width: 24),
                     Expanded(
                       flex: 3,
-                      child: SizedBox(
-                        height: 380,
-                        child: _TrainingStatsPanel(
-                          stats: stats,
-                          rewards: rewards,
-                          onViewStats: onViewStats,
-                        ),
+                      child: _TrainingStatsPanel(
+                        stats: stats,
+                        rewards: rewards,
+                        onViewStats: onViewStats,
                       ),
                     ),
                   ],
@@ -1462,37 +1481,35 @@ class _TrainingStatsPanel extends StatelessWidget {
             style: TextStyle(color: Color(0xFFA7B7C6), height: 1.35),
           ),
           const SizedBox(height: 14),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0x99081725),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF233C51)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  _TrainingStatRow(
-                    icon: Icons.extension_rounded,
-                    label: uiText(context, 'Puzzles Solved'),
-                    value: '${stats.puzzlesSolved}',
-                    color: const Color(0xFF5DD7C0),
-                  ),
-                  _TrainingStatRow(
-                    icon: Icons.verified_outlined,
-                    label: uiText(context, 'Completion'),
-                    value: '$completion%',
-                    color: const Color(0xFF5DD7C0),
-                  ),
-                  _TrainingStatRow(
-                    icon: Icons.local_fire_department_rounded,
-                    label: uiText(context, 'Daily Streak'),
-                    value: '${rewards.streak}',
-                    color: const Color(0xFFF06E42),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0x99081725),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF233C51)),
+            ),
+            child: Column(
+              spacing: 6,
+              children: <Widget>[
+                _TrainingStatRow(
+                  icon: Icons.extension_rounded,
+                  label: uiText(context, 'Puzzles Solved'),
+                  value: '${stats.puzzlesSolved}',
+                  color: const Color(0xFF5DD7C0),
+                ),
+                _TrainingStatRow(
+                  icon: Icons.verified_outlined,
+                  label: uiText(context, 'Completion'),
+                  value: '$completion%',
+                  color: const Color(0xFF5DD7C0),
+                ),
+                _TrainingStatRow(
+                  icon: Icons.local_fire_department_rounded,
+                  label: uiText(context, 'Daily Streak'),
+                  value: '${rewards.streak}',
+                  color: const Color(0xFFF06E42),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),

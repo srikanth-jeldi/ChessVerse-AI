@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_ui_localizations.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
+import 'daily_navigation_menu.dart';
 import 'daily_puzzle_countdown.dart';
 
 const Color _gold = AppColors.accentGold;
@@ -191,9 +192,16 @@ class DailyPuzzleStreak extends StatelessWidget {
 }
 
 class DailyStreakScreen extends StatefulWidget {
-  const DailyStreakScreen({super.key, required this.onPractice});
+  const DailyStreakScreen({
+    super.key,
+    required this.onPractice,
+    this.onOpenChallenge,
+    this.onOpenPuzzles,
+  });
 
   final VoidCallback onPractice;
+  final VoidCallback? onOpenChallenge;
+  final VoidCallback? onOpenPuzzles;
 
   @override
   State<DailyStreakScreen> createState() => _DailyStreakScreenState();
@@ -297,7 +305,10 @@ class _DailyStreakScreenState extends State<DailyStreakScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 48),
+                          DailyNavigationMenu(
+                            onOpenChallenge: widget.onOpenChallenge,
+                            onOpenPuzzles: widget.onOpenPuzzles,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),

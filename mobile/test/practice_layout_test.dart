@@ -99,7 +99,10 @@ void main() {
         await tester.pumpWidget(app(DailyStreakScreen(onPractice: () {})));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        final action = find.widgetWithText(FilledButton, UiCopy.text('Daily Puzzle'));
+        final action = find.widgetWithText(
+          FilledButton,
+          UiCopy.text('Play Daily Challenge'),
+        );
         await tester.scrollUntilVisible(action, 300, scrollable: find.byType(Scrollable).first);
         await tester.ensureVisible(action);
         await tester.pumpAndSettle();

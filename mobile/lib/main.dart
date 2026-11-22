@@ -1311,7 +1311,10 @@ class _SplashGateState extends State<SplashGate> {
       context,
       DailyChallengeScreen(
         onPlay: () => _openGame(context, GameMode.daily),
-        onOpenStreak: () => _showDailyStreak(context),
+        onOpenStreak: () {
+          Navigator.of(context).pop();
+          _showDailyStreak(context);
+        },
         onOpenPuzzles: () => _closeSettingsAndSelect(context, 2),
       ),
     );
@@ -1320,7 +1323,14 @@ class _SplashGateState extends State<SplashGate> {
   void _showDailyStreak(BuildContext context) {
     _push(
       context,
-      DailyStreakScreen(onPractice: () => _openGame(context, GameMode.daily)),
+      DailyStreakScreen(
+        onPractice: () => _openGame(context, GameMode.daily),
+        onOpenChallenge: () {
+          Navigator.of(context).pop();
+          _showDailyChallenge(context);
+        },
+        onOpenPuzzles: () => _closeSettingsAndSelect(context, 2),
+      ),
     );
   }
 
