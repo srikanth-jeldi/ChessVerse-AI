@@ -190,16 +190,26 @@ void main() {
         expect(starts, 1);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
+        var walletOpened = 0;
         await tester.pumpWidget(
           MaterialApp(
             home: PuzzleAcademyScreen(
               showPrimaryNavigation: false,
               onDailyChallenge: () => starts++,
               onDailyStreak: () {},
+              walletAction: IconButton(
+                tooltip: 'Coins',
+                onPressed: () => walletOpened++,
+                icon: const Icon(Icons.monetization_on_outlined),
+              ),
             ),
           ),
         );
         await tester.pumpAndSettle();
+        final wallet = find.byTooltip('Coins');
+        expect(tester.getRect(wallet).overlaps(tester.getRect(menu)), isFalse);
+        await tester.tap(wallet);
+        expect(walletOpened, 1);
         await tester.tap(menu);
         await tester.pumpAndSettle();
         final items = find.descendant(

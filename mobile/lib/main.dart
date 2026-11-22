@@ -1470,6 +1470,14 @@ class _SplashGateState extends State<SplashGate> {
       PuzzlesScreen(
         isActive: _primaryDestination == 2,
         showPrimaryNavigation: false,
+        walletAction: Center(
+          widthFactor: 1,
+          child: CoinBalanceBadge(
+            balance: _coinBalance,
+            compact: true,
+            onTap: () => _openRewardsCenter(context),
+          ),
+        ),
         onDailyChallenge: () => _showDailyChallenge(context),
         onDailyStreak: () => _showDailyStreak(context),
         onStartPuzzle: (String puzzleId) =>
@@ -1541,7 +1549,6 @@ class _SplashGateState extends State<SplashGate> {
         );
         final double coinTop = switch (_primaryDestination) {
           1 => useDesktopSidebar ? 25 : 8,
-          2 => useDesktopSidebar ? 18 : 10,
           3 => useDesktopSidebar ? 18 : 10,
           4 || 5 => useDesktopSidebar ? 9 : 8,
           _ => 10,
@@ -1559,7 +1566,9 @@ class _SplashGateState extends State<SplashGate> {
             Positioned.fill(child: destinationStack),
             // Learning is intentionally distraction-free; the wallet remains
             // available from the play, profile and rewards surfaces.
-            if (_primaryDestination != 0 && _primaryDestination != 3)
+            if (_primaryDestination != 0 &&
+                _primaryDestination != 2 &&
+                _primaryDestination != 3)
               Positioned(
                 top: coinTop,
                 right: coinRight,

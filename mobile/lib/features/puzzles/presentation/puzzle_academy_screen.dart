@@ -29,6 +29,7 @@ class PuzzleAcademyScreen extends StatefulWidget {
     this.onStartPuzzle = _noPuzzleLaunch,
     this.onDailyChallenge,
     this.onDailyStreak,
+    this.walletAction,
     this.showPrimaryNavigation = true,
     this.isActive = true,
     super.key,
@@ -37,6 +38,7 @@ class PuzzleAcademyScreen extends StatefulWidget {
   final PuzzleLauncher onStartPuzzle;
   final VoidCallback? onDailyChallenge;
   final VoidCallback? onDailyStreak;
+  final Widget? walletAction;
   final bool showPrimaryNavigation;
   final bool isActive;
 
@@ -294,6 +296,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   child: _DesktopPuzzleAcademy(
                     dailyLinks: dailyLinks,
                     dailyMenu: dailyMenu,
+                    walletAction: widget.walletAction,
                     stats: stats,
                     rewards: rewards,
                     adaptiveFocus: adaptiveFocus,
@@ -322,7 +325,10 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   shadowColor: Colors.black87,
                   centerTitle: false,
                   automaticallyImplyLeading: false,
-                  actions: [if (dailyMenu != null) dailyMenu],
+                  actions: [
+                    if (widget.walletAction case final wallet?) wallet,
+                    if (dailyMenu != null) dailyMenu,
+                  ],
                   title: SizedBox(
                     width: MediaQuery.sizeOf(context).width - 150,
                     child: const Column(
@@ -465,6 +471,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
   const _DesktopPuzzleAcademy({
     this.dailyLinks,
     this.dailyMenu,
+    this.walletAction,
     required this.stats,
     required this.rewards,
     required this.onStart,
@@ -477,6 +484,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
   final LocalGameStats stats;
   final Widget? dailyLinks;
   final Widget? dailyMenu;
+  final Widget? walletAction;
   final RewardSnapshot rewards;
   final VoidCallback onStart;
   final ValueChanged<PuzzleDifficulty> onDifficulty;
@@ -521,7 +529,8 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (dailyMenu != null) dailyMenu!,
+                  if (walletAction case final wallet?) wallet,
+                  if (dailyMenu case final menu?) menu,
                 ],
               ),
             ),

@@ -11,6 +11,7 @@ class PuzzlesScreen extends StatelessWidget {
     this.onStartPuzzle = _ignorePuzzleLaunch,
     this.onDailyChallenge,
     this.onDailyStreak,
+    this.walletAction,
     this.showPrimaryNavigation = true,
     this.isActive = true,
     super.key,
@@ -19,6 +20,7 @@ class PuzzlesScreen extends StatelessWidget {
   final PuzzleLauncher onStartPuzzle;
   final VoidCallback? onDailyChallenge;
   final VoidCallback? onDailyStreak;
+  final Widget? walletAction;
   final bool showPrimaryNavigation;
   final bool isActive;
 
@@ -28,6 +30,7 @@ class PuzzlesScreen extends StatelessWidget {
       onStartPuzzle: onStartPuzzle,
       onDailyChallenge: onDailyChallenge,
       onDailyStreak: onDailyStreak,
+      walletAction: walletAction,
       showPrimaryNavigation: showPrimaryNavigation,
       isActive: isActive,
     );

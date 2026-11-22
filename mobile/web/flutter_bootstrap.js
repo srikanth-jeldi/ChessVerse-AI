@@ -3,7 +3,7 @@
 
 // A new URL also bypasses cached entrypoints from before the board fix.
 for (const build of _flutter.buildConfig.builds) {
-  if (build.mainJsPath) build.mainJsPath += '?v=20261122-daily4';
+  if (build.mainJsPath) build.mainJsPath += '?v=20261122-daily5';
 }
 
 // ChessVerseAI is deployed frequently and must always load the tested release
