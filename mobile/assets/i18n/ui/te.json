@@ -1172,5 +1172,11 @@
   "This match is no longer active.": "ఈ మ్యాచ్ ముగిసింది.",
   "This notification has no page to open.": "ఈ నోటిఫికేషన్‌కు తెరవాల్సిన పేజీ లేదు.",
   "This notification is no longer available.": "ఈ నోటిఫికేషన్‌కు సంబంధించిన అంశం ఇప్పుడు అందుబాటులో లేదు.",
-  "Sign in to view notifications.": "నోటిఫికేషన్లు చూడటానికి సైన్ ఇన్ చేయండి."
+  "Sign in to view notifications.": "నోటిఫికేషన్లు చూడటానికి సైన్ ఇన్ చేయండి.",
+  "Next event: {0} • {1} coins entry": "తదుపరి టోర్నమెంట్: {0} • ప్రవేశ రుసుము {1} కాయిన్లు",
+  "Explore city cups, brackets and championship rewards": "నగరాల కప్‌లు, మ్యాచ్‌ల పట్టికలు, ఛాంపియన్‌షిప్ బహుమతులు చూడండి",
+  "Open tournaments and upcoming events": "రిజిస్ట్రేషన్‌కు తెరిచిన టోర్నమెంట్‌లు, త్వరలో జరిగే పోటీలు",
+  "STARTING SOON": "త్వరలో ప్రారంభం",
+  "STARTS IN {0}D {1}H": "{0} రోజులు {1} గం.లో ప్రారంభం",
+  "STARTS IN {0}H {1}M": "{0} గం. {1} నిమి.లో ప్రారంభం"
 }

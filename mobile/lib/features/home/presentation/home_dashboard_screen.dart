@@ -323,6 +323,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onLearnChess,
                         ),
                         _tournamentHero(
+                          context,
                           widget.nextTournament,
                           widget.onTournaments,
                         ),
@@ -690,6 +691,7 @@ class _WideHomeState extends State<_WideHome> {
                               onTap: widget.onLearnChess,
                             ),
                             _tournamentHero(
+                              context,
                               widget.nextTournament,
                               widget.onTournaments,
                             ),
@@ -2033,18 +2035,25 @@ class _HomeHeroData {
   final DateTime? countdownTarget;
 }
 
-_HomeHeroData _tournamentHero(TournamentDto? tournament, VoidCallback onTap) {
+_HomeHeroData _tournamentHero(
+  BuildContext context,
+  TournamentDto? tournament,
+  VoidCallback onTap,
+) {
   final String nextEvent = tournament == null
-      ? 'Explore city cups, brackets and championship rewards'
-      : 'Next event: ${tournament.name} • ${tournament.entryCoins} coins entry';
+      ? uiText(context, 'Explore city cups, brackets and championship rewards')
+      : UiCopy.format('Next event: {0} • {1} coins entry', [
+          tournament.name,
+          tournament.entryCoins,
+        ]);
   return _HomeHeroData(
-    title: 'World Chess Tournaments',
+    title: uiText(context, 'World Chess Tournaments'),
     subtitle: nextEvent,
     icon: Icons.emoji_events_rounded,
     buttonLabel: 'View Tournaments',
     asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
     statusLabel: tournament == null
-        ? 'Open tournaments and upcoming events'
+        ? uiText(context, 'Open tournaments and upcoming events')
         : null,
     countdownTarget: tournament?.startsAt,
     onTap: onTap,
@@ -2125,7 +2134,11 @@ class _HomeHeroCarousel extends StatelessWidget {
                 ? 0
                 : 5 +
                       measure(
-                        slide.statusLabel ?? '00 days 00 hours 00 minutes',
+                        slide.statusLabel ??
+                            _tournamentCountdownText(
+                              context,
+                              slide.countdownTarget!,
+                            ),
                         10,
                         contentWidth,
                       ));
@@ -2333,6 +2346,21 @@ class _CarouselHero extends StatelessWidget {
   );
 }
 
+String _tournamentCountdownText(BuildContext context, DateTime startsAt) {
+  final Duration remaining = startsAt.difference(DateTime.now());
+  if (remaining.isNegative) return uiText(context, 'STARTING SOON');
+  if (remaining.inDays > 0) {
+    return UiCopy.format('STARTS IN {0}D {1}H', [
+      remaining.inDays,
+      remaining.inHours % 24,
+    ]);
+  }
+  return UiCopy.format('STARTS IN {0}H {1}M', [
+    remaining.inHours,
+    remaining.inMinutes % 60,
+  ]);
+}
+
 class _LiveTournamentCountdown extends StatefulWidget {
   const _LiveTournamentCountdown({required this.startsAt});
   final DateTime startsAt;
@@ -2361,12 +2389,7 @@ class _LiveTournamentCountdownState extends State<_LiveTournamentCountdown> {
 
   @override
   Widget build(BuildContext context) {
-    final Duration remaining = widget.startsAt.difference(DateTime.now());
-    final String label = remaining.isNegative
-        ? 'STARTING SOON'
-        : remaining.inDays > 0
-        ? 'STARTS IN ${remaining.inDays}D ${remaining.inHours % 24}H'
-        : 'STARTS IN ${remaining.inHours}H ${remaining.inMinutes % 60}M';
+    final String label = _tournamentCountdownText(context, widget.startsAt);
     return Text(
       '●  $label',
       key: const ValueKey<String>('home-tournament-countdown'),

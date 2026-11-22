@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:chessverse_ai/core/theme/app_theme.dart';
 import 'package:chessverse_ai/features/home/presentation/home_dashboard_screen.dart';
 import 'package:chessverse_ai/features/social/data/community_api.dart';
@@ -398,4 +399,52 @@ void main() {
       findsOneWidget,
     );
   });
+
+  for (final width in [390.0, 1440.0]) {
+    testWidgets('home tournament card is in Telugu at ${width}px', (
+      tester,
+    ) async {
+      await tester.runAsync(() => UiCopy.load('te'));
+      addTearDown(() => UiCopy.load('en'));
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        app(
+          onOnline: () {},
+          onComputer: () {},
+          nextTournament: TournamentDto(
+            id: 'tournament-fixture',
+            name: 'Hyderabad Royal Cup',
+            description: 'Weekly city cup',
+            minutes: 10,
+            players: 4,
+            capacity: 128,
+            status: 'OPEN',
+            joined: false,
+            entryCoins: 100,
+            startsAt: DateTime.now().add(const Duration(days: 2, hours: 3)),
+          ),
+        ),
+      );
+      final carousel = tester.widget<PageView>(
+        find.byKey(const ValueKey('home-hero-carousel')),
+      );
+      carousel.controller!.jumpToPage(4);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ప్రపంచ చెస్ టోర్నమెంట్‌లు'), findsOneWidget);
+      expect(
+        find.text(
+          'తదుపరి టోర్నమెంట్: Hyderabad Royal Cup • ప్రవేశ రుసుము 100 కాయిన్లు',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('రోజులు'), findsOneWidget);
+      expect(find.textContaining('లో ప్రారంభం'), findsOneWidget);
+      expect(find.textContaining('STARTS IN'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
