@@ -83,7 +83,7 @@ void main() {
     expect(dailyPuzzleStreakFromIds(ids, day.add(const Duration(days: 1))), 1);
     expect(dailyPuzzleStreakFromIds(ids, day.add(const Duration(days: 2))), 0);
   });
-  test('daily resets at midnight instead of waiting 24 hours', () async {
+  test('a legacy completion without an opening time gets a 24-hour window', () async {
     FlutterSecureStorage.setMockInitialValues({
       'chessverse_last_daily_completion_utc': '2026-10-28T23:59:00Z',
     });
@@ -118,3 +118,12 @@ void main() {
     );
   });
 }
+      true,
+    );
+    expect(
+      LocalGameArchive.dailyChallengeRemainingAt(DateTime.utc(2026, 10, 29)),
+      const Duration(hours: 23, minutes: 59),
+    );
+    expect(
+      LocalGameArchive.isDailyChallengeLockedAt(DateTime.utc(2026, 10, 29, 23, 59)),
+    await LocalGameArchive.clearDeviceUserData();

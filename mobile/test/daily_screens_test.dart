@@ -59,6 +59,12 @@ void main() {
         isTrue,
       );
       expect(
+        LocalGameArchive.dailyChallengeRemainingAt(
+          DateTime.utc(2026, 11, 21, 3),
+        ),
+        const Duration(hours: 19, minutes: 30),
+      );
+      expect(
         LocalGameArchive.isDailyChallengeLockedAt(
           DateTime.utc(2026, 11, 21, 22, 30),
         ),
@@ -74,6 +80,7 @@ void main() {
     await tester.runAsync(() async {
       FlutterSecureStorage.setMockInitialValues({
         'chessverse_last_daily_completion_utc': DateTime.now()
+            .subtract(const Duration(minutes: 5))
             .toUtc()
             .toIso8601String(),
       });
@@ -104,6 +111,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ఛాలెంజ్ పూర్తయింది'), findsOneWidget);
     expect(find.text('తదుపరి పజిల్‌కు మిగిలిన సమయం'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'^23:5[45]:\d{2}$')), findsOneWidget);
     expect(find.text('ఈరోజు ఛాలెంజ్ చూడండి'), findsOneWidget);
     expect(find.text('Challenge complete'), findsNothing);
 
@@ -124,6 +132,28 @@ void main() {
     expect(dialog, findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  test('a newer synced completion replaces an expired local attempt', () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'chessverse_daily_attempt_started_utc': '2026-11-19T09:00:00Z',
+    });
+    await LocalGameArchive.init();
+    await LocalGameArchive.mergeCloudSnapshot({
+      'lastDailyCompletedAt': '2026-11-20T23:30:00Z',
+      'completedDailyChallengeIds': ['2026-11-20-v8-medium-001'],
+    });
+    final now = DateTime.utc(2026, 11, 21, 2, 30);
+    expect(LocalGameArchive.isDailyChallengeLockedAt(now), isTrue);
+    expect(
+      LocalGameArchive.dailyChallengeRemainingAt(now),
+      const Duration(hours: 21),
+    );
+    expect(
+      LocalGameArchive.dailyPuzzleDateForAttempt(now),
+      DateTime.utc(2026, 11, 20),
+    );
+    await LocalGameArchive.clearDeviceUserData();
   });
 
   for (final Size viewport in <Size>[

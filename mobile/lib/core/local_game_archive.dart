@@ -820,21 +820,29 @@ class LocalGameArchive {
   }
 
   static bool isDailyChallengeLockedAt(DateTime now) {
-    if (_dailyAttemptStartedAt != null) {
-      final String date = dailyPuzzleDateForAttempt(now)
-          .toIso8601String()
-          .substring(0, 10);
-      return _completedDailyChallengeIds.any((id) => id.startsWith('$date-'));
+    if (dailyAttemptRemainingAt(now) == null) return false;
+    if (_dailyWindowStart != _dailyAttemptStartedAt) return true;
+    final String date = dailyPuzzleDateForAttempt(now)
+        .toIso8601String()
+        .substring(0, 10);
+    return _completedDailyChallengeIds.any((id) => id.startsWith('$date-'));
+  }
+
+  static DateTime? get _dailyWindowStart {
+    final start = _dailyAttemptStartedAt;
+    final completed = _lastDailyCompletedAt;
+    // Legacy progress and synced completions may only have the solve time.
+    // Keep the known opening time whenever it contains the completion.
+    if (completed != null &&
+        (start == null ||
+            !completed.isBefore(start.add(dailyChallengeLockDuration)))) {
+      return completed;
     }
-    final DateTime? completedAt = _lastDailyCompletedAt;
-    if (completedAt == null) {
-      return false;
-    }
-    return dailyPuzzleDay(completedAt) == dailyPuzzleDay(now);
+    return start;
   }
 
   static Duration? dailyAttemptRemainingAt(DateTime now) {
-    final DateTime? start = _dailyAttemptStartedAt;
+    final DateTime? start = _dailyWindowStart;
     if (start == null || start.isAfter(now)) return null;
     final Duration remaining =
         start.add(dailyChallengeLockDuration).difference(now);
@@ -842,7 +850,7 @@ class LocalGameArchive {
   }
 
   static DateTime dailyPuzzleDateForAttempt(DateTime now) => dailyPuzzleDay(
-    dailyAttemptRemainingAt(now) == null ? now : _dailyAttemptStartedAt!,
+    dailyAttemptRemainingAt(now) == null ? now : _dailyWindowStart!,
   );
 
   /// Called only when the playable board opens, including an explicit restart.
@@ -886,7 +894,7 @@ class LocalGameArchive {
 
   static Duration dailyChallengeRemainingAt(DateTime now) {
     if (!isDailyChallengeLockedAt(now)) return Duration.zero;
-    return dailyAttemptRemainingAt(now) ?? dailyPuzzleTimeRemaining(now);
+    return dailyAttemptRemainingAt(now) ?? Duration.zero;
   }
 
   static void markDailyChallengeComplete(
@@ -1105,6 +1113,8 @@ class LocalGameArchive {
   }
 
   static Future<void> mergeCloudSnapshot(Map<String, dynamic> cloud) async {
+    final previousDailyCount = _completedDailyChallengeIds.length;
+    final previousDailyCompletion = _lastDailyCompletedAt;
     _mergingCloud = true;
     try {
       final Iterable<dynamic> puzzles =
@@ -1193,6 +1203,10 @@ class LocalGameArchive {
             value: _profileUpdatedAt!.toIso8601String(),
           ),
       ]);
+      if (previousDailyCount != _completedDailyChallengeIds.length ||
+          previousDailyCompletion != _lastDailyCompletedAt) {
+        activityRevision.value++;
+      }
     } finally {
       _mergingCloud = false;
     }

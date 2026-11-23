@@ -35,15 +35,13 @@ class _DailyPuzzleCountdownState extends State<DailyPuzzleCountdown> {
   Widget build(BuildContext context) {
     final DateTime now = DateTime.now();
     final Duration? remaining = LocalGameArchive.dailyAttemptRemainingAt(now);
-    if (remaining == null && !widget.completed) {
+    if (remaining == null) {
       return const UiText(
         '24 hours from first open',
         style: TextStyle(color: AppColors.textSecondary),
       );
     }
-    final int seconds =
-        ((remaining ?? dailyPuzzleTimeRemaining(now)).inMilliseconds + 999) ~/
-        1000;
+    final int seconds = (remaining.inMilliseconds + 999) ~/ 1000;
     final String hours = (seconds ~/ 3600).toString().padLeft(2, '0');
     final String minutes = (seconds ~/ 60 % 60).toString().padLeft(2, '0');
     final String remainder = (seconds % 60).toString().padLeft(2, '0');
