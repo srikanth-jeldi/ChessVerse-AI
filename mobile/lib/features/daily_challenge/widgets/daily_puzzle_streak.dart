@@ -260,32 +260,23 @@ class _DailyStreakScreenState extends State<DailyStreakScreen> {
             final DateTime todayUtc = dailyPuzzleDay(now);
             final Set<DateTime> completedDays =
                 LocalGameArchive.completedDailyChallengeDaysThisWeek(todayUtc);
-            final Widget summary = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _StreakHero(
-                  streak: streak,
-                  bestStreak: LocalGameArchive.bestDailyStreak,
-                  completedToday: completedToday,
-                ),
-                const SizedBox(height: 14),
-                _TodayChallenge(
-                  completedToday: completedToday,
-                  onPractice: widget.onPractice,
-                ),
-              ],
+            final Widget summary = _TodayChallenge(
+              streak: streak,
+              bestStreak: LocalGameArchive.bestDailyStreak,
+              completedToday: completedToday,
+              onPractice: widget.onPractice,
             );
             final Widget progress = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _WeeklyProgress(
-                  completedDays: completedDays,
-                  todayUtc: todayUtc,
-                ),
-                const SizedBox(height: 14),
                 DailyPuzzleStreak(
                   streak: streak,
                   completedToday: completedToday,
+                ),
+                const SizedBox(height: 14),
+                _WeeklyProgress(
+                  completedDays: completedDays,
+                  todayUtc: todayUtc,
                 ),
               ],
             );
@@ -340,122 +331,6 @@ class _DailyStreakScreenState extends State<DailyStreakScreen> {
           },
         ),
       ),
-    ),
-  );
-}
-
-class _StreakHero extends StatelessWidget {
-  const _StreakHero({
-    required this.streak,
-    required this.bestStreak,
-    required this.completedToday,
-  });
-
-  final int streak;
-  final int bestStreak;
-  final bool completedToday;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-    decoration: _panel(highlighted: true),
-    child: Row(
-      children: <Widget>[
-        Image.asset(
-          'assets/badges/streak-flame-v1.webp',
-          width: 86,
-          height: 86,
-          excludeFromSemantics: true,
-          errorBuilder: (_, _, _) => const Icon(
-            Icons.local_fire_department_rounded,
-            size: 62,
-            color: _gold,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              UiText(
-                streak == 0 ? 'Start your streak today' : '{0} day streak',
-                values: <Object?>[streak],
-                style: const TextStyle(
-                  color: _gold,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              UiText(
-                'Best: {0} days',
-                values: <Object?>[bestStreak],
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 5),
-              UiText(
-                completedToday
-                    ? 'Great work. Your streak is safe for today.'
-                    : streak == 0
-                    ? 'Play today to start a new streak.'
-                    : 'Play today to keep your streak alive.',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: (completedToday ? _teal : _gold).withValues(
-                    alpha: .12,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: (completedToday ? _teal : _gold).withValues(
-                      alpha: .55,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Icon(
-                      completedToday
-                          ? Icons.check_circle_rounded
-                          : Icons.bolt_rounded,
-                      size: 15,
-                      color: completedToday ? _teal : _gold,
-                    ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: UiText(
-                        completedToday
-                            ? 'Completed today'
-                            : 'Today’s challenge is ready',
-                        style: TextStyle(
-                          color: completedToday ? _teal : _gold,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     ),
   );
 }
@@ -602,10 +477,14 @@ class _WeeklyProgress extends StatelessWidget {
 
 class _TodayChallenge extends StatelessWidget {
   const _TodayChallenge({
+    required this.streak,
+    required this.bestStreak,
     required this.completedToday,
     required this.onPractice,
   });
 
+  final int streak;
+  final int bestStreak;
   final bool completedToday;
   final VoidCallback onPractice;
 
@@ -619,17 +498,17 @@ class _TodayChallenge extends StatelessWidget {
         Row(
           children: <Widget>[
             Container(
-              width: 46,
-              height: 46,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
-                color: _gold.withValues(alpha: .14),
+                color: _gold.withValues(alpha: .18),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _gold.withValues(alpha: .48)),
               ),
               child: const Icon(
-                Icons.extension_rounded,
+                Icons.monetization_on_rounded,
                 color: _gold,
-                size: 25,
+                size: 34,
               ),
             ),
             const SizedBox(width: 12),
@@ -637,15 +516,36 @@ class _TodayChallenge extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const UiText(
-                    'Today’s challenge',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  UiText(
+                    completedToday
+                        ? streak > 0
+                              ? 'Coins earned'
+                              : 'Challenge complete'
+                        : 'Today’s coin reward',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
+                  if (!completedToday || streak > 0)
+                    UiText(
+                      '+{0} coins',
+                      values: [
+                        dailyPuzzleRewardCoins(
+                          completedToday ? streak : streak + 1,
+                        ),
+                      ],
+                      style: const TextStyle(
+                        color: _gold,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   const SizedBox(height: 3),
                   UiText(
                     completedToday
                         ? 'Daily challenge completed. You can review it here.'
-                        : 'Complete today’s puzzle and protect your streak.',
+                        : 'Solve today’s puzzle to collect your reward.',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
@@ -686,6 +586,19 @@ class _TodayChallenge extends StatelessWidget {
               ),
             ),
           ),
+        ),
+        const Divider(height: 24, color: AppColors.border),
+        Wrap(
+          spacing: 14,
+          runSpacing: 4,
+          children: [
+            UiText('{0} day streak', values: [streak]),
+            UiText(
+              'Best: {0} days',
+              values: [bestStreak],
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
         ),
       ],
     ),

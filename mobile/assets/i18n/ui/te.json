@@ -1178,5 +1178,12 @@
   "Open tournaments and upcoming events": "రిజిస్ట్రేషన్‌కు తెరిచిన టోర్నమెంట్‌లు, త్వరలో జరిగే పోటీలు",
   "STARTING SOON": "త్వరలో ప్రారంభం",
   "STARTS IN {0}D {1}H": "{0} రోజులు {1} గం.లో ప్రారంభం",
-  "STARTS IN {0}H {1}M": "{0} గం. {1} నిమి.లో ప్రారంభం"
+  "STARTS IN {0}H {1}M": "{0} గం. {1} నిమి.లో ప్రారంభం",
+  "Today’s coin reward": "ఈరోజు కాయిన్ల రివార్డ్",
+  "Coins earned": "సంపాదించిన కాయిన్లు",
+  "+{0} coins": "+{0} కాయిన్లు",
+  "Best: {0} days": "అత్యధిక స్ట్రీక్: {0} రోజులు",
+  "Solve today’s puzzle to collect your reward.": "రివార్డ్ పొందడానికి ఈరోజు పజిల్ పూర్తి చేయండి.",
+  "Daily challenge completed. You can review it here.": "డైలీ ఛాలెంజ్ పూర్తయింది. పజిల్‌ను మళ్లీ చూడవచ్చు.",
+  "Solve the Daily Puzzle to earn 10–40 coins.": "డైలీ పజిల్ పూర్తి చేసి 10–40 కాయిన్లు సంపాదించండి."
 }

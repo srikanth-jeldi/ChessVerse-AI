@@ -211,6 +211,8 @@ void main() {
         await tester.tap(streak);
         await tester.pumpAndSettle();
         expect(find.text('Daily Streak'), findsOneWidget);
+        expect(find.text('Today’s coin reward'), findsOneWidget);
+        expect(find.text('+10 coins'), findsOneWidget);
         expect(sidebar, showSidebar ? findsOneWidget : findsNothing);
         await tester.tap(menu);
         await tester.pumpAndSettle();
